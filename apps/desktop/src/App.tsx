@@ -6,6 +6,7 @@ import AppearanceSettings from "./components/AppearanceSettings";
 import { navigation, type Page } from "./navigation";
 import { useTheme } from "./lib/useTheme";
 import Agent from "./pages/Agent";
+import Inbox from "./pages/Inbox";
 
 export default function App() {
   const [page, setPage] = useState<Page>("Inbox");
@@ -28,7 +29,13 @@ export default function App() {
             </div>
           </header>
         )}
-        {page === "Agent" ? <Agent /> : <EmptyWorkspace item={current} />}
+        {page === "Agent" ? (
+          <Agent />
+        ) : page === "Inbox" ? (
+          <Inbox />
+        ) : (
+          <EmptyWorkspace item={current} />
+        )}
       </main>
       <AppearanceSettings
         open={settingsOpen}

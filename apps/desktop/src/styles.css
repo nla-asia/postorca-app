@@ -48,11 +48,19 @@
 * {
   box-sizing: border-box;
 }
+.preview-note {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 12px 0 0;
+}
 body {
   margin: 0;
 }
 button,
-input {
+input,
+textarea,
+select {
   font: inherit;
 }
 button {
@@ -62,7 +70,9 @@ button {
   background: none;
 }
 button,
-input {
+input,
+textarea,
+select {
   -webkit-app-region: no-drag;
 }
 button:focus-visible {
