@@ -11,6 +11,10 @@
   --bg: #fff;
   --sidebar: #f7f8f5;
   --surface: #fff;
+  --surface-hover: #f7f8f5;
+  --accent-hover: #355436;
+  --badge: #f1f3ed;
+  --note-border: #e5eadb;
   --text: #303730;
   --muted: #82877f;
   --secondary: #62695f;
@@ -27,6 +31,10 @@
   --bg: #181b18;
   --sidebar: #131613;
   --surface: #1c201c;
+  --surface-hover: #252a24;
+  --accent-hover: #cce5ba;
+  --badge: #2b3228;
+  --note-border: #35432d;
   --text: #e5e9e0;
   --muted: #90998a;
   --secondary: #b1baaa;

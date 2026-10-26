@@ -5,6 +5,7 @@ import EmptyWorkspace from "./components/EmptyWorkspace";
 import AppearanceSettings from "./components/AppearanceSettings";
 import { navigation, type Page } from "./navigation";
 import { useTheme } from "./lib/useTheme";
+import Agent from "./pages/Agent";
 
 export default function App() {
   const [page, setPage] = useState<Page>("Inbox");
@@ -19,13 +20,15 @@ export default function App() {
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <main className="workspace" aria-label={page}>
-        <header className="topbar">
-          <div className="breadcrumb">
-            Your space <ChevronRight size={13} aria-hidden="true" />
-            <span>{page}</span>
-          </div>
-        </header>
-        <EmptyWorkspace item={current} />
+        {page !== "Agent" && (
+          <header className="topbar">
+            <div className="breadcrumb">
+              Your space <ChevronRight size={13} aria-hidden="true" />
+              <span>{page}</span>
+            </div>
+          </header>
+        )}
+        {page === "Agent" ? <Agent /> : <EmptyWorkspace item={current} />}
       </main>
       <AppearanceSettings
         open={settingsOpen}
