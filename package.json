@@ -12,6 +12,8 @@
     "start": "npm start --workspace @postorca/desktop",
     "api:dev": "npm run dev --workspace @postorca/api",
     "api:start": "npm start --workspace @postorca/api",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "db:local": "npm run db:local --workspace @postorca/api",
+    "db:migrate": "npm run db:migrate --workspace @postorca/api"
   }
 }

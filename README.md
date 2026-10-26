@@ -27,17 +27,28 @@ npm start
 
 ## API
 
-Run the API separately from the desktop:
+Copy `apps/api/.env.example` to `apps/api/.env` and set `DATABASE_URL` to your PostgreSQL database. For the optional project-local database, the example URL uses port 55433 and the `postorca` database. Start it in a separate terminal:
 
 ```sh
+npm run db:local
+```
+
+This uses embedded PostgreSQL without a global installation and keeps its cluster in `apps/api/.data/postgres`. It only manages the `postorca` database on `127.0.0.1`. Keep this process running while using the API. An external PostgreSQL database can be used instead by setting `DATABASE_URL` and skipping `db:local`.
+
+Apply migrations, then start the API from another terminal:
+
+```sh
+npm run db:migrate
 npm run api:dev
 ```
 
-It listens on `http://127.0.0.1:3001`. `GET /api/health` returns `{ "ok": true }` as a process liveness check. Database readiness, authentication, and agent execution are not connected yet; the desktop continues to use its local previews.
+It listens on `http://127.0.0.1:3001` after checking the database connection. `GET /api/health` queries PostgreSQL before returning `{ "ok": true }`. Authentication and agent execution are not connected yet; the desktop continues to use its local previews.
 
-Configuration is optional. To customize it, copy `apps/api/.env.example` to `apps/api/.env` and set `PORT` or `CLIENT_ORIGINS`. Origins are comma-separated HTTP(S) origins without paths or trailing slashes. Local renderer origins are allowed by default; the `null` origin used by packaged Electron windows is also allowed. The API binds to loopback only.
+`DATABASE_URL` is required. `PORT` and `CLIENT_ORIGINS` are optional. Origins are comma-separated HTTP(S) origins without paths or trailing slashes. Local renderer origins are allowed by default; the `null` origin used by packaged Electron windows is also allowed. The API binds to loopback only.
 
-`npm run build` builds both workspaces. After building, `npm run api:start` runs the compiled API. `npm test` checks configuration, HTTP responses, CORS, and error handling without external services.
+Migrations run in filename order within one transaction and an advisory lock; applied files are recorded in `schema_migrations`. The initial schema includes `users` and `brand_profiles`, with profiles keyed by user ID and cascading profile deletion. Run migrations explicitly when setting up or updating the database.
+
+`npm run build` builds both workspaces, including the API's SQL files. After building, `npm run api:start` runs the compiled API; `node apps/api/dist/migrate.js` runs compiled migrations. `npm test` checks the API and database against isolated temporary PostgreSQL instances, including concurrent migrations, constraints, and rollback. Tests do not use your configured database.
 
 ## Workspace
 

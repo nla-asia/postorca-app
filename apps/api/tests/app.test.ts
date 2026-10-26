@@ -8,25 +8,58 @@ import { z } from "zod";
 import { createApp } from "../src/app.js";
 import { configFromEnv } from "../src/config.js";
 import { handleErrors, HttpError } from "../src/handlers/errors.js";
+import { createDatabase } from "../src/db.js";
+import { temporaryPostgres } from "./postgres.js";
 
 let server: Server;
 let baseUrl: string;
+let fixture: Awaited<ReturnType<typeof temporaryPostgres>>;
 before(async () => {
-  server = createApp(configFromEnv({})).listen(0, "127.0.0.1");
+  fixture = await temporaryPostgres();
+  server = createApp(
+    fixture.db,
+    configFromEnv({ DATABASE_URL: fixture.url }),
+  ).listen(0, "127.0.0.1");
   await once(server, "listening");
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 after(async () => {
-  await new Promise<void>((resolve, reject) =>
-    server.close((error) => (error ? reject(error) : resolve())),
-  );
+  if (server)
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  await fixture?.close();
 });
 
-test("health reports liveness without exposing Express", async () => {
+test("health checks PostgreSQL without exposing Express", async () => {
   const response = await fetch(`${baseUrl}/api/health`);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { ok: true });
   assert.equal(response.headers.get("x-powered-by"), null);
+});
+
+test("health does not report success when the database cannot be queried", async (context) => {
+  const db = createDatabase(fixture.url);
+  await db.end();
+  const offlineServer = createApp(
+    db,
+    configFromEnv({ DATABASE_URL: fixture.url }),
+  ).listen(0, "127.0.0.1");
+  await once(offlineServer, "listening");
+  context.after(
+    () =>
+      new Promise<void>((resolve, reject) =>
+        offlineServer.close((error) => (error ? reject(error) : resolve())),
+      ),
+  );
+  context.mock.method(console, "error", () => {});
+  const response = await fetch(
+    `http://127.0.0.1:${(offlineServer.address() as AddressInfo).port}/api/health`,
+  );
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), {
+    error: "The server could not complete your request.",
+  });
 });
 
 test("unknown endpoints return a JSON 404", async () => {

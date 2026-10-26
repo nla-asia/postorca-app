@@ -2,8 +2,9 @@ import express from "express";
 import cors from "cors";
 import type { Config } from "./config.js";
 import { handleErrors } from "./handlers/errors.js";
+import { ping, type Database } from "./db.js";
 
-export function createApp(config: Config) {
+export function createApp(db: Database, config: Config) {
   const app = express();
   app.disable("x-powered-by");
   app.use(
@@ -19,8 +20,8 @@ export function createApp(config: Config) {
   );
   app.use(express.json({ limit: "256kb" }));
 
-  // Liveness only. Database readiness will be added with persistence.
-  app.get("/api/health", (_req, res) => {
+  app.get("/api/health", async (_req, res) => {
+    await ping(db);
     res.json({ ok: true });
   });
   app.use((_req, res) => {
