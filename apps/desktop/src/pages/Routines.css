@@ -1,0 +1,162 @@
+.schedule-list {
+  display: grid;
+  gap: 15px;
+}
+
+.schedule-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 21px 24px 12px;
+}
+
+.schedule-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--secondary);
+}
+
+.schedule-card-top .switch {
+  margin-left: auto;
+}
+
+.schedule-card h3 {
+  font-size: 15px;
+  font-weight: 550;
+  letter-spacing: -0.2px;
+  margin-top: 17px;
+}
+
+.schedule-card p {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+  line-height: 1.8;
+}
+
+.schedule-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  margin-top: 18px;
+}
+
+.schedule-card-bottom > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--secondary);
+}
+
+.schedule-card-bottom .muted {
+  font-size: 11px;
+}
+
+.page-content.schedules-page {
+  padding-top: 24px;
+}
+
+.schedule-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  -webkit-app-region: drag;
+}
+
+.schedule-toolbar > div {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.schedule-toolbar strong {
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.schedule-toolbar span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.routine-last-run {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.routine-last-run .muted {
+  font-size: 11px;
+}
+
+.routine-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--accent);
+  background: none;
+  padding: 0;
+}
+
+.routine-link:hover {
+  text-decoration: underline;
+}
+
+.schedule-card-bottom > .routine-actions {
+  gap: 4px;
+}
+
+.routine-time-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 14px;
+}
+
+.routine-days {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.routine-days > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.routine-days button {
+  min-width: 44px;
+  padding: 6px 8px;
+  border: 1px solid var(--strong-line);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--secondary);
+  font-size: 12px;
+}
+
+.routine-days button.chosen {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 550;
+}
+
+.routine-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--secondary);
+}

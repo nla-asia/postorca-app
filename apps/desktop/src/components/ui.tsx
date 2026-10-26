@@ -27,7 +27,7 @@ export function Modal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  description: string;
+  description?: string;
   children: ReactNode;
 }) {
   const opener = useRef<HTMLElement | null>(null);
@@ -37,6 +37,7 @@ export function Modal({
         <Dialog.Overlay className="modal-overlay" />
         <Dialog.Content
           className="modal"
+          {...(!description ? { "aria-describedby": undefined } : {})}
           onOpenAutoFocus={() => {
             opener.current =
               document.activeElement instanceof HTMLElement
@@ -51,9 +52,11 @@ export function Modal({
           }}
         >
           <Dialog.Title className="modal-title">{title}</Dialog.Title>
-          <Dialog.Description className="modal-description">
-            {description}
-          </Dialog.Description>
+          {description && (
+            <Dialog.Description className="modal-description">
+              {description}
+            </Dialog.Description>
+          )}
           <Dialog.Close
             className="icon-button modal-close"
             aria-label="Close dialog"
@@ -64,5 +67,31 @@ export function Modal({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+export function Pill({
+  children,
+  tone = "",
+}: {
+  children: ReactNode;
+  tone?: string;
+}) {
+  return <span className={`pill ${tone}`}>{children}</span>;
+}
+
+export function Platform({ name }: { name: string }) {
+  return (
+    <span className={`platform ${name.toLowerCase()}`} aria-label={name}>
+      {name === "Threads"
+        ? "@"
+        : name === "Instagram"
+          ? "◎"
+          : name === "Facebook"
+            ? "f"
+            : name === "LinkedIn"
+              ? "in"
+              : "𝕏"}
+    </span>
   );
 }
