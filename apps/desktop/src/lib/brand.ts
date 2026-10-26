@@ -27,15 +27,3 @@ export type Brand = {
   links: BrandLink[];
   onboarding_status: "not_started" | "in_progress" | "completed";
 };
-
-// Empty profile until account and brand loading are connected.
-export const emptyBrand: Brand = {
-  name: "",
-  company: "",
-  audience: "",
-  voice: "",
-  topics: "",
-  colors: {},
-  links: [],
-  onboarding_status: "not_started",
-};

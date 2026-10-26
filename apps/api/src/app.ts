@@ -4,6 +4,8 @@ import type { Config } from "./config.js";
 import { handleErrors } from "./handlers/errors.js";
 import { ping, type Database } from "./db.js";
 import { authRoutes } from "./routes/auth.js";
+import { authenticate } from "./middleware/auth.js";
+import { brandRoutes } from "./routes/brand.js";
 
 export function createApp(db: Database, config: Config) {
   const app = express();
@@ -26,6 +28,11 @@ export function createApp(db: Database, config: Config) {
     res.json({ ok: true });
   });
   app.use("/api/auth", authRoutes(db, config.jwtSecret));
+  app.use(
+    "/api/brand-profile",
+    authenticate(config.jwtSecret),
+    brandRoutes(db),
+  );
   app.use((_req, res) => {
     res.status(404).json({ error: "Endpoint not found." });
   });

@@ -120,6 +120,16 @@
   font-weight: 600;
   letter-spacing: -0.6px;
 }
+.brand-loading,
+.brand-load-error {
+  margin-top: 24px;
+  color: var(--secondary);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.brand-load-error .button {
+  margin-top: 14px;
+}
 .brand-page .preview-note {
   margin: 10px 0 26px;
 }

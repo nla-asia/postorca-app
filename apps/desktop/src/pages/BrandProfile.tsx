@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ExternalLink,
   Globe2,
@@ -7,7 +7,9 @@ import {
   Target,
   Users,
 } from "lucide-react";
-import { emptyBrand, type Brand } from "../lib/brand";
+import type { Brand } from "../lib/brand";
+import { api } from "../lib/api";
+import { Button } from "../components/ui";
 import "./BrandProfile.css";
 import "../components/tabs.css";
 import "../components/forms.css";
@@ -42,17 +44,64 @@ const colorFields = [
 ] as const;
 
 export default function BrandProfile({
-  brand = emptyBrand,
+  onNameChange,
 }: {
-  brand?: Brand;
+  onNameChange: (name: string) => void;
 }) {
+  const [brand, setBrand] = useState<Brand | null>(null);
+  const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
   const [tab, setTab] = useState<string>("General");
+  useEffect(() => {
+    const controller = new AbortController();
+    void api<Brand>("/brand-profile", {
+      signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+    })
+      .then((profile) => {
+        if (controller.signal.aborted) return;
+        setBrand(profile);
+        onNameChange(profile.name);
+      })
+      .catch((failure) => {
+        if (!controller.signal.aborted)
+          setError(
+            failure instanceof Error
+              ? failure.message
+              : "Unable to load Brand Profile.",
+          );
+      });
+    return () => controller.abort();
+  }, [attempt, onNameChange]);
   const active = tabs.find((item) => item.name === tab)!;
+  if (!brand)
+    return (
+      <div className="page-content brand-page">
+        <h1 className="brand-page-heading">Brand Profile</h1>
+        {error ? (
+          <div className="brand-load-error">
+            <p role="alert">{error}</p>
+            <Button
+              onClick={() => {
+                setError("");
+                setAttempt((value) => value + 1);
+              }}
+            >
+              Try again
+            </Button>
+          </div>
+        ) : (
+          <p className="brand-loading" role="status">
+            Loading Brand Profile…
+          </p>
+        )}
+      </div>
+    );
   return (
     <div className="page-content brand-page">
       <h1 className="brand-page-heading">Brand Profile</h1>
       <p className="preview-note">
-        Preview · Your profile will appear here once your account is connected.
+        Your saved brand context. Manage details with Asia once chat is
+        connected.
       </p>
       <div className="brand-layout">
         <nav

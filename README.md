@@ -42,7 +42,7 @@ npm run db:migrate
 npm run api:dev
 ```
 
-It listens on `http://127.0.0.1:3001` after checking the database connection. `GET /api/health` queries PostgreSQL before returning `{ "ok": true }`. The desktop login/register screen uses the account endpoints. Agent execution is not connected yet; the work pages continue to use local previews.
+It listens on `http://127.0.0.1:3001` after checking the database connection. `GET /api/health` queries PostgreSQL before returning `{ "ok": true }`. The desktop uses the account and Brand Profile endpoints. Agent execution is not connected yet; scheduling pages continue to use local previews.
 
 `DATABASE_URL` and `JWT_SECRET` are required. `PORT` and `CLIENT_ORIGINS` are optional. Origins are comma-separated HTTP(S) origins without paths or trailing slashes. Local renderer origins are allowed by default; the `null` origin used by packaged Electron windows is also allowed. The API binds to loopback only.
 
@@ -68,6 +68,21 @@ Log out clears the current session, removes the saved session file, and clears s
 
 The renderer uses `http://127.0.0.1:3001/api` by default. To change it, copy `apps/desktop/.env.example` to `apps/desktop/.env`, set `VITE_API_URL`, and restart development or rebuild. Only this API origin is added to the renderer's connection policy. Start the API before signing in.
 
+## Brand Profile
+
+Both endpoints require `Authorization: Bearer <token>` and use the signed-in account's profile.
+
+| Method | Endpoint | Behavior |
+| --- | --- | --- |
+| GET | `/api/brand-profile` | Returns saved name, company, audience, voice, topics, colors, links, and onboarding status. |
+| PUT | `/api/brand-profile` | Validates and saves a partial profile update; returns the saved profile. |
+
+Omitted fields keep their saved values. A supplied `links` array replaces the account's links; existing IDs retain their identity and omitted publishing metadata. Changing a link URL resets its access status to `not_granted`. Foreign or duplicate link IDs are rejected. Names, context, and links save in one transaction.
+
+Colors accept optional `background`, `text`, and `highlight` values in `#RRGGBB` format. Links accept HTTP(S) URLs, a platform kind, publishing method/instructions, and access status. Completing onboarding requires company context, primary topics, and at least one social account link. Completing a profile does not create routines yet.
+
+The desktop loads saved data whenever Brand Profile opens and offers a retry if loading fails. General, Audience, Voice, Colours, and Links remain read-only; editing through Asia will follow with chat integration. HTTP(S) links open in the system browser.
+
 ## Workspace
 
 - `apps/desktop/electron`: Electron main process and window.
@@ -81,7 +96,7 @@ The desktop includes five sections:
 - **Inbox:** review, approved, and activity filters with empty work lists.
 - **Calendar:** month navigation and a one-time task editor.
 - **Routines:** recurring routine cards, weekday/timezone editor, pause, and delete.
-- **Brand Profile:** read-only General, Audience, Voice, Colours, and Links tabs with an empty profile.
+- **Brand Profile:** read-only General, Audience, Voice, Colours, and Links tabs showing saved account data.
 
 Calendar and Routines use a temporary in-memory preview adapter. Changes last until logout, reload, or restart; no scheduled tasks or routines execute. These previews make no server requests. Agent and scheduling integration are coming soon.
 

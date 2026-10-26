@@ -5,7 +5,6 @@ import AppearanceSettings from "./AppearanceSettings";
 import type { Page } from "../navigation";
 import type { Theme } from "../lib/useTheme";
 import type { AuthUser } from "../lib/api";
-import { emptyBrand } from "../lib/brand";
 import Agent from "../pages/Agent";
 import Inbox from "../pages/Inbox";
 import Routines from "../pages/Routines";
@@ -26,6 +25,7 @@ export default function Workspace({
   const [page, setPage] = useState<Page>("Inbox");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notice, setNotice] = useState("");
+  const [profileName, setProfileName] = useState(user.name);
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(""), 3500);
@@ -34,7 +34,7 @@ export default function Workspace({
   return (
     <div className="app-shell">
       <Sidebar
-        user={user}
+        user={{ ...user, name: profileName }}
         onLogOut={onLogOut}
         page={page}
         onNavigate={setPage}
@@ -62,7 +62,7 @@ export default function Workspace({
           />
         )}
         {page === "Brand Profile" && (
-          <BrandProfile brand={{ ...emptyBrand, name: user.name }} />
+          <BrandProfile onNameChange={setProfileName} />
         )}
       </main>
       <AppearanceSettings
