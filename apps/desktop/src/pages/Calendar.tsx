@@ -343,7 +343,7 @@ function ScheduleEditor({
           />
         </label>
         <label>
-          What should Asia do?
+          What should Orca do?
           <textarea
             required
             rows={4}

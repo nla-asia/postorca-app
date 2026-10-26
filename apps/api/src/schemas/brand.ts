@@ -1,5 +1,5 @@
 import { z } from "zod";
-/** Brand profile input, validated the same way for the HTTP API and Asia's tools. */
+/** Brand profile input, validated the same way for the HTTP API and Orca's tools. */
 export const brandLinkSchema = z
   .object({
     id: z.uuid().optional(),

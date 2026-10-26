@@ -144,7 +144,7 @@ export default function Routines({
           <Clock3 size={30} />
           <h3>No routines yet</h3>
           <p>
-            Give Asia recurring work, like finding fresh ideas every weekday
+            Give Orca recurring work, like finding fresh ideas every weekday
             morning.
           </p>
           <Button variant="primary" onClick={() => setEditing("new")}>
@@ -180,7 +180,7 @@ export default function Routines({
                     {running ? (
                       <Pill>
                         <LoaderCircle className="loading-icon" size={12} />
-                        Asia is working
+                        Orca is working
                       </Pill>
                     ) : status === "failed" ? (
                       <Pill tone="danger">
@@ -360,7 +360,7 @@ function RoutineEditor({
           />
         </label>
         <label>
-          What should Asia do?
+          What should Orca do?
           <textarea
             required
             rows={4}

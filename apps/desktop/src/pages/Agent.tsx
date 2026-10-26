@@ -12,7 +12,7 @@ export default function Agent() {
           <Sparkles size={15} strokeWidth={1.7} aria-hidden="true" />
         </span>
         <div className="work-heading">
-          <h1>Asia</h1>
+          <h1>Orca</h1>
         </div>
       </header>
       <div className="chat-scroll">
@@ -25,7 +25,7 @@ export default function Agent() {
           <textarea
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            placeholder="Message Asia"
+            placeholder="Message Orca"
             aria-label="Message your agent"
             aria-describedby="agent-preview"
           />

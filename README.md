@@ -81,7 +81,7 @@ Omitted fields keep their saved values. A supplied `links` array replaces the ac
 
 Colors accept optional `background`, `text`, and `highlight` values in `#RRGGBB` format. Links accept HTTP(S) URLs, a platform kind, publishing method/instructions, and access status. Completing onboarding requires company context, primary topics, and at least one social account link. Completing a profile does not create routines yet.
 
-The desktop loads saved data whenever Brand Profile opens and offers a retry if loading fails. General, Audience, Voice, Colours, and Links remain read-only; editing through Asia will follow with chat integration. HTTP(S) links open in the system browser.
+The desktop loads saved data whenever Brand Profile opens and offers a retry if loading fails. General, Audience, Voice, Colours, and Links remain read-only; editing through Orca will follow with chat integration. HTTP(S) links open in the system browser.
 
 ## Workspace
 

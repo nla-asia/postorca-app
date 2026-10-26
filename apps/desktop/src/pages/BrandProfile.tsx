@@ -100,7 +100,7 @@ export default function BrandProfile({
     <div className="page-content brand-page">
       <h1 className="brand-page-heading">Brand Profile</h1>
       <p className="preview-note">
-        Your saved brand context. Manage details with Asia once chat is
+        Your saved brand context. Manage details with Orca once chat is
         connected.
       </p>
       <div className="brand-layout">
