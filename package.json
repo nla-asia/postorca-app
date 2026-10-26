@@ -1,0 +1,14 @@
+{
+  "name": "postorca",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @postorca/desktop",
+    "check": "npm run check --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "start": "npm start --workspace @postorca/desktop"
+  }
+}

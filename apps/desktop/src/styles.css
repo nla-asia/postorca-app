@@ -1,0 +1,64 @@
+:root {
+  font-family:
+    "Segoe UI",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  color: #303730;
+  background: #f8f9f7;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+.welcome {
+  min-height: 100vh;
+  padding: 40px 64px 28px;
+  display: flex;
+  flex-direction: column;
+}
+.wordmark {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.6px;
+}
+section {
+  margin: auto 0;
+  padding: 64px 0;
+}
+.eyebrow {
+  color: #456846;
+  font-size: 14px;
+  font-weight: 600;
+}
+h1 {
+  margin: 20px 0;
+  font-size: clamp(36px, 5vw, 60px);
+  line-height: 1.12;
+  letter-spacing: -2px;
+  font-weight: 600;
+}
+.description {
+  color: #62695f;
+  font-size: 18px;
+  line-height: 1.6;
+}
+.draft-label {
+  display: inline-block;
+  margin-top: 24px;
+  border: 1px solid #dfe4da;
+  padding: 7px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  color: #62695f;
+}
+footer {
+  color: #62695f;
+  font-size: 12px;
+}
