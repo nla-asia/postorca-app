@@ -83,6 +83,26 @@ Colors accept optional `background`, `text`, and `highlight` values in `#RRGGBB`
 
 The desktop loads saved data whenever Brand Profile opens and offers a retry if loading fails. General, Audience, Voice, Colours, and Links remain read-only; editing through Orca will follow with chat integration. HTTP(S) links open in the system browser.
 
+## Scheduling API
+
+Recurring routines and one-time Calendar schedules share `/api/routines`. All endpoints require `Authorization: Bearer <token>` and only access the signed-in account's schedules.
+
+| Method | Endpoint | Behavior |
+| --- | --- | --- |
+| GET | `/api/routines` | Lists recurring routines; `?once=true` lists one-time schedules instead. |
+| POST | `/api/routines` | Creates a recurring routine or a one-time schedule and returns it. |
+| PATCH | `/api/routines/:id` | Saves a partial update and returns the schedule. |
+| DELETE | `/api/routines/:id` | Deletes a recurring routine or cancels a pending one-time schedule. |
+| POST | `/api/routines/:id/run` | Returns 503 while execution is unavailable; creates no work. |
+
+Recurring routines accept `platform` (`X`, `Threads`, `Instagram`, `Facebook`, or `LinkedIn`), `title`, `instructions`, `time` (`HH:MM`), `days` (ISO weekdays 1–7), `timezone`, and optional `active` (defaults to true). Days are deduplicated and sorted. PostgreSQL computes `next_run_at` strictly after now in the chosen timezone, including daylight-saving changes. Pausing clears the next run; resuming recalculates it from now.
+
+One-time schedules accept `title`, `instructions`, `timezone`, an optional nullable `platform`, and a future `run_at` ISO timestamp with a timezone offset. They cannot take recurring fields or be converted into recurring routines. Once a one-time schedule has started, editing and cancellation return 409.
+
+Each account can have up to 50 recurring routines and pending one-time schedules combined; paused recurring routines count toward this limit. Creation is serialized per account to enforce the limit during concurrent requests. Responses include the latest run's task ID, trigger, and live status when available. Deleting a routine keeps any work it previously produced.
+
+The API stores schedules but does not execute them yet. Default routines are not seeded automatically. Calendar and Routines still use their local desktop preview adapter until UI integration is connected.
+
 ## Workspace
 
 - `apps/desktop/electron`: Electron main process and window.

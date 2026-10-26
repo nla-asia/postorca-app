@@ -6,6 +6,7 @@ import { ping, type Database } from "./db.js";
 import { authRoutes } from "./routes/auth.js";
 import { authenticate } from "./middleware/auth.js";
 import { brandRoutes } from "./routes/brand.js";
+import { routineRoutes } from "./routes/routines.js";
 
 export function createApp(db: Database, config: Config) {
   const app = express();
@@ -33,6 +34,7 @@ export function createApp(db: Database, config: Config) {
     authenticate(config.jwtSecret),
     brandRoutes(db),
   );
+  app.use("/api/routines", authenticate(config.jwtSecret), routineRoutes(db));
   app.use((_req, res) => {
     res.status(404).json({ error: "Endpoint not found." });
   });
