@@ -58,6 +58,10 @@ export type WorkTask = {
 // Temporary session-only adapter. Replace with the authenticated schedule API.
 const routines = new Map<string, Routine>();
 const scheduled = new Map<string, ScheduledTask>();
+export function clearSchedulePreview() {
+  routines.clear();
+  scheduled.clear();
+}
 export async function previewScheduleRequest<T>(
   path: string,
   options: RequestInit = {},

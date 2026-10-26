@@ -1,74 +1,98 @@
-import { useEffect, useState } from "react";
-import { ChevronRight, X } from "lucide-react";
-import Sidebar from "./components/Sidebar";
-import AppearanceSettings from "./components/AppearanceSettings";
-import type { Page } from "./navigation";
+import { useCallback, useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
+import AuthScreen from "./components/AuthScreen";
+import Workspace from "./components/Workspace";
+import {
+  api,
+  ApiError,
+  onUnauthorized,
+  tokenStore,
+  type AuthUser,
+} from "./lib/api";
+import { clearSchedulePreview } from "./lib/previewSchedules";
 import { useTheme } from "./lib/useTheme";
-import Agent from "./pages/Agent";
-import Inbox from "./pages/Inbox";
-import Routines from "./pages/Routines";
-import Calendar from "./pages/Calendar";
-import BrandProfile from "./pages/BrandProfile";
 
 export default function App() {
-  const [page, setPage] = useState<Page>("Inbox");
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [theme, setTheme] = useTheme();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
+  const [theme, setTheme] = useTheme();
+  const signOut = useCallback(() => {
+    tokenStore.clear();
+    clearSchedulePreview();
+    setUser(null);
+  }, []);
+
+  useEffect(
+    () =>
+      onUnauthorized((message) => {
+        setNotice(message);
+        signOut();
+      }),
+    [signOut],
+  );
+
   useEffect(() => {
-    if (!notice) return;
-    const timer = setTimeout(() => setNotice(""), 3500);
-    return () => clearTimeout(timer);
-  }, [notice]);
-  return (
-    <div className="app-shell">
-      <Sidebar
-        page={page}
-        onNavigate={setPage}
-        onOpenSettings={() => setSettingsOpen(true)}
-      />
-      <main className="workspace" aria-label={page}>
-        {page !== "Agent" && (
-          <header className="topbar">
-            <div className="breadcrumb">
-              Your space <ChevronRight size={13} aria-hidden="true" />
-              <span>{page}</span>
-            </div>
-          </header>
-        )}
-        {page === "Agent" && <Agent />}
-        {page === "Inbox" && <Inbox />}
-        {page === "Routines" && (
-          <Routines notify={setNotice} onOpenWork={() => setPage("Inbox")} />
-        )}
-        {page === "Calendar" && (
-          <Calendar
-            tasks={[]}
-            onOpenWork={() => setPage("Inbox")}
-            onApprovedSelect={() => setNotice("Work details are coming soon.")}
-          />
-        )}
-        {page === "Brand Profile" && <BrandProfile />}
-      </main>
-      <AppearanceSettings
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        theme={theme}
-        onThemeChange={setTheme}
-      />
-      {notice && (
-        <div className="toast" role="status">
-          {notice}
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Dismiss notification"
-            onClick={() => setNotice("")}
-          >
-            <X size={15} />
-          </button>
+    let cancelled = false;
+    void tokenStore
+      .load()
+      .then(async (saved) => {
+        if (!saved) return;
+        const result = await api<{ user: AuthUser }>("/auth/me");
+        if (!cancelled) setUser(result.user);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        if (error instanceof ApiError && error.status === 401)
+          tokenStore.clear();
+        setNotice(
+          error instanceof Error
+            ? error.message
+            : "Unable to restore your session.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading)
+    return (
+      <div className="auth-screen">
+        <div className="auth-titlebar" />
+        <div
+          className="auth-loading"
+          role="status"
+          aria-label="Loading account"
+        >
+          <Sparkles size={24} />
         </div>
-      )}
-    </div>
+      </div>
+    );
+  if (!user)
+    return (
+      <AuthScreen
+        notice={notice}
+        onComplete={(account) => {
+          setNotice("");
+          clearSchedulePreview();
+          setUser(account);
+        }}
+      />
+    );
+  return (
+    <Workspace
+      key={user.id}
+      user={user}
+      onLogOut={() => {
+        setNotice("");
+        signOut();
+      }}
+      theme={theme}
+      onThemeChange={setTheme}
+    />
   );
 }
