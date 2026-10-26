@@ -29,4 +29,4 @@ npm start
 - `apps/desktop/electron`: Electron main process and window.
 - `apps/desktop/src`: React interface and styles.
 
-The initial desktop draft displays a welcome screen. Account and agent features are not connected yet.
+The desktop shell includes sidebar navigation for Agent, Inbox, Calendar, Routines, and Brand Profile. Each section currently displays a placeholder. Settings provides light, dark, and system appearance, saved on this device. Account and agent features are not connected yet.

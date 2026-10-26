@@ -14,7 +14,8 @@ export default defineConfig(({ command }) => ({
             tag: "meta",
             attrs: {
               "http-equiv": "Content-Security-Policy",
-              content: `default-src 'self'; script-src 'self'${development ? " 'unsafe-inline'" : ""}; style-src 'self'${development ? " 'unsafe-inline'" : ""}; connect-src 'self'${development ? " ws://127.0.0.1:5173" : ""}`,
+              // Radix dialogs inject styles to lock background scrolling.
+              content: `default-src 'self'; script-src 'self'${development ? " 'unsafe-inline'" : ""}; style-src 'self' 'unsafe-inline'; connect-src 'self'${development ? " ws://127.0.0.1:5173" : ""}`,
             },
             injectTo: "head-prepend",
           },

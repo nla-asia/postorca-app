@@ -1,20 +1,38 @@
+import { useState } from "react";
+import { ChevronRight } from "lucide-react";
+import Sidebar from "./components/Sidebar";
+import EmptyWorkspace from "./components/EmptyWorkspace";
+import AppearanceSettings from "./components/AppearanceSettings";
+import { navigation, type Page } from "./navigation";
+import { useTheme } from "./lib/useTheme";
+
 export default function App() {
+  const [page, setPage] = useState<Page>("Inbox");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [theme, setTheme] = useTheme();
+  const current = navigation.find((item) => item.name === page)!;
   return (
-    <main className="welcome">
-      <span className="wordmark">PostOrca</span>
-      <section aria-labelledby="welcome-title">
-        <p className="eyebrow">A space for your personal brand</p>
-        <h1 id="welcome-title">
-          Keep building.
-          <br />
-          Your story belongs here.
-        </h1>
-        <p className="description">
-          Your workspace for ideas, drafts, and conversations.
-        </p>
-        <span className="draft-label">First draft</span>
-      </section>
-      <footer>Personal Brand Agent for Builders</footer>
-    </main>
+    <div className="app-shell">
+      <Sidebar
+        page={page}
+        onNavigate={setPage}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
+      <main className="workspace" aria-label={page}>
+        <header className="topbar">
+          <div className="breadcrumb">
+            Your space <ChevronRight size={13} aria-hidden="true" />
+            <span>{page}</span>
+          </div>
+        </header>
+        <EmptyWorkspace item={current} />
+      </main>
+      <AppearanceSettings
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        theme={theme}
+        onThemeChange={setTheme}
+      />
+    </div>
   );
 }
