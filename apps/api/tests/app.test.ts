@@ -10,6 +10,7 @@ import { configFromEnv } from "../src/config.js";
 import { handleErrors, HttpError } from "../src/handlers/errors.js";
 import { createDatabase } from "../src/db.js";
 import { temporaryPostgres } from "./postgres.js";
+const secret = "test-only-secret-at-least-32-characters";
 
 let server: Server;
 let baseUrl: string;
@@ -18,7 +19,7 @@ before(async () => {
   fixture = await temporaryPostgres();
   server = createApp(
     fixture.db,
-    configFromEnv({ DATABASE_URL: fixture.url }),
+    configFromEnv({ DATABASE_URL: fixture.url, JWT_SECRET: secret }),
   ).listen(0, "127.0.0.1");
   await once(server, "listening");
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -43,7 +44,7 @@ test("health does not report success when the database cannot be queried", async
   await db.end();
   const offlineServer = createApp(
     db,
-    configFromEnv({ DATABASE_URL: fixture.url }),
+    configFromEnv({ DATABASE_URL: fixture.url, JWT_SECRET: secret }),
   ).listen(0, "127.0.0.1");
   await once(offlineServer, "listening");
   context.after(

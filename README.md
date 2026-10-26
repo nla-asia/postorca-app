@@ -27,7 +27,7 @@ npm start
 
 ## API
 
-Copy `apps/api/.env.example` to `apps/api/.env` and set `DATABASE_URL` to your PostgreSQL database. For the optional project-local database, the example URL uses port 55433 and the `postorca` database. Start it in a separate terminal:
+Copy `apps/api/.env.example` to `apps/api/.env`, set `DATABASE_URL` to your PostgreSQL database, and replace the example `JWT_SECRET` with a random secret of at least 32 characters. Generate one with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`. For the optional project-local database, the example URL uses port 55433 and the `postorca` database. Start it in a separate terminal:
 
 ```sh
 npm run db:local
@@ -42,13 +42,25 @@ npm run db:migrate
 npm run api:dev
 ```
 
-It listens on `http://127.0.0.1:3001` after checking the database connection. `GET /api/health` queries PostgreSQL before returning `{ "ok": true }`. Authentication and agent execution are not connected yet; the desktop continues to use its local previews.
+It listens on `http://127.0.0.1:3001` after checking the database connection. `GET /api/health` queries PostgreSQL before returning `{ "ok": true }`. Account endpoints are available; the desktop login flow and agent execution are not connected yet. The desktop continues to use its local previews.
 
-`DATABASE_URL` is required. `PORT` and `CLIENT_ORIGINS` are optional. Origins are comma-separated HTTP(S) origins without paths or trailing slashes. Local renderer origins are allowed by default; the `null` origin used by packaged Electron windows is also allowed. The API binds to loopback only.
+`DATABASE_URL` and `JWT_SECRET` are required. `PORT` and `CLIENT_ORIGINS` are optional. Origins are comma-separated HTTP(S) origins without paths or trailing slashes. Local renderer origins are allowed by default; the `null` origin used by packaged Electron windows is also allowed. The API binds to loopback only.
 
 Migrations run in filename order within one transaction and an advisory lock; applied files are recorded in `schema_migrations`. The initial schema includes `users` and `brand_profiles`, with profiles keyed by user ID and cascading profile deletion. Run migrations explicitly when setting up or updating the database.
 
 `npm run build` builds both workspaces, including the API's SQL files. After building, `npm run api:start` runs the compiled API; `node apps/api/dist/migrate.js` runs compiled migrations. `npm test` checks the API and database against isolated temporary PostgreSQL instances, including concurrent migrations, constraints, and rollback. Tests do not use your configured database.
+
+## Accounts
+
+| Method | Endpoint | Behavior |
+| --- | --- | --- |
+| POST | `/api/auth/register` | Accepts `name`, `email`, and `password`; creates an account and empty brand profile; returns `{user, token}`. |
+| POST | `/api/auth/login` | Accepts `email` and `password`; returns `{user, token}`. |
+| GET | `/api/auth/me` | Accepts `Authorization: Bearer <token>`; returns `{user}` for the signed-in account. |
+
+Emails are trimmed and lowercased. Registration requires an eight-character password; stored passwords use salted scrypt hashes. User responses contain only `id`, `name`, and `email`.
+
+User tokens use HS256, expire after 12 hours, and are scoped to the PostOrca desktop app. Token refresh and revocation are not implemented. All authentication routes share a limit of 60 requests per IP per 15 minutes. The optional `X-Timezone` header saves a recognized PostgreSQL timezone on registration, login, or session restore; unknown zones are ignored.
 
 ## Workspace
 

@@ -26,6 +26,10 @@ export const handleErrors: ErrorRequestHandler = (error, _req, res, next) => {
     res.status(error.status).json({ error: error.message });
     return;
   }
+  if (error?.code === "23505") {
+    res.status(409).json({ error: "This record already exists." });
+    return;
+  }
   if (error?.type === "entity.parse.failed") {
     res.status(400).json({ error: "Invalid JSON request body." });
     return;

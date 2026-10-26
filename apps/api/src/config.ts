@@ -9,6 +9,9 @@ const origin = z.url({ protocol: /^https?$/ }).refine((value) => {
 }, "Use an HTTP(S) origin without paths, credentials, or a trailing slash.");
 const schema = z.object({
   databaseUrl: z.string().min(1, "DATABASE_URL is required."),
+  jwtSecret: z
+    .string()
+    .min(32, "JWT_SECRET must contain at least 32 characters."),
   port: z.coerce.number().int().min(1).max(65535),
   origins: z.array(origin).min(1),
 });
@@ -16,6 +19,7 @@ const schema = z.object({
 export function configFromEnv(env: NodeJS.ProcessEnv = process.env) {
   const result = schema.safeParse({
     databaseUrl: env.DATABASE_URL ?? "",
+    jwtSecret: env.JWT_SECRET ?? "",
     port: env.PORT ?? "3001",
     origins: (
       env.CLIENT_ORIGINS ?? "http://127.0.0.1:5173,http://localhost:5173"

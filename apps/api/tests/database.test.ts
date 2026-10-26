@@ -18,7 +18,7 @@ test("migrations apply once, including concurrent runners", async () => {
   await migrate(db);
   assert.deepEqual(
     (await db.query("SELECT name FROM schema_migrations ORDER BY name")).rows,
-    [{ name: "001_accounts.sql" }],
+    [{ name: "001_accounts.sql" }, { name: "002_account_timezone.sql" }],
   );
   await ping(db);
   assert.equal(
@@ -118,7 +118,7 @@ test("a failed migration rolls back new tables and its migration record", async 
     await migrate(db);
     assert.equal(
       (await db.query("SELECT 1 FROM schema_migrations")).rowCount,
-      1,
+      2,
     );
   } finally {
     await db.end();

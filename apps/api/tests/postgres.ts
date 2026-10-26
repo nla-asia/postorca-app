@@ -1,12 +1,18 @@
-import { mkdtemp, rmdir } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { createServer } from "node:net";
 import EmbeddedPostgres from "embedded-postgres";
 import { createDatabase } from "../src/db.js";
 
 export async function temporaryPostgres() {
   const folder = await mkdtemp(join(tmpdir(), "postorca-postgres-"));
+  if (
+    dirname(resolve(folder)) !== resolve(tmpdir()) ||
+    !basename(folder).startsWith("postorca-postgres-")
+  ) {
+    throw new Error("Unexpected temporary PostgreSQL directory.");
+  }
   const socket = createServer();
   await new Promise<void>((resolve) => socket.listen(0, "127.0.0.1", resolve));
   const port = (socket.address() as { port: number }).port;
@@ -33,8 +39,31 @@ export async function temporaryPostgres() {
     postgres,
     async close() {
       await db.end();
-      await postgres.stop();
-      await rmdir(folder);
+      try {
+        await postgres.stop();
+      } catch (error) {
+        // The process has exited, but Windows can briefly retain file locks.
+        if (
+          !["EBUSY", "EPERM", "ENOTEMPTY"].includes(
+            (error as NodeJS.ErrnoException).code ?? "",
+          )
+        )
+          throw error;
+      }
+      if (
+        dirname(resolve(folder)) !== resolve(tmpdir()) ||
+        !basename(folder).startsWith("postorca-postgres-")
+      ) {
+        throw new Error(
+          "Refusing to remove an unexpected PostgreSQL directory.",
+        );
+      }
+      await rm(folder, {
+        recursive: true,
+        force: true,
+        maxRetries: 10,
+        retryDelay: 100,
+      });
     },
   };
 }

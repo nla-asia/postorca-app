@@ -3,6 +3,7 @@ import cors from "cors";
 import type { Config } from "./config.js";
 import { handleErrors } from "./handlers/errors.js";
 import { ping, type Database } from "./db.js";
+import { authRoutes } from "./routes/auth.js";
 
 export function createApp(db: Database, config: Config) {
   const app = express();
@@ -24,6 +25,7 @@ export function createApp(db: Database, config: Config) {
     await ping(db);
     res.json({ ok: true });
   });
+  app.use("/api/auth", authRoutes(db, config.jwtSecret));
   app.use((_req, res) => {
     res.status(404).json({ error: "Endpoint not found." });
   });
