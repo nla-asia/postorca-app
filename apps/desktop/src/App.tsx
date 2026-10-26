@@ -8,6 +8,7 @@ import { useTheme } from "./lib/useTheme";
 import Agent from "./pages/Agent";
 import Inbox from "./pages/Inbox";
 import Routines from "./pages/Routines";
+import Calendar from "./pages/Calendar";
 
 export default function App() {
   const [page, setPage] = useState<Page>("Inbox");
@@ -42,6 +43,12 @@ export default function App() {
           <Inbox />
         ) : page === "Routines" ? (
           <Routines notify={setNotice} onOpenWork={() => setPage("Inbox")} />
+        ) : page === "Calendar" ? (
+          <Calendar
+            tasks={[]}
+            onOpenWork={() => setPage("Inbox")}
+            onApprovedSelect={() => setNotice("Work details are coming soon.")}
+          />
         ) : (
           <EmptyWorkspace item={current} />
         )}
