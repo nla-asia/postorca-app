@@ -1,6 +1,7 @@
 export type AuthUser = { id: string; email: string; name: string };
 const baseUrl = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:3001/api";
 const tokenKey = "postorca-access-token";
+const desktop = window.postorca;
 const hot = import.meta.hot?.data as { token?: string | null } | undefined;
 let token: string | null = hot?.token ?? null;
 const remember = (value: string | null) => {
@@ -8,20 +9,25 @@ const remember = (value: string | null) => {
   if (hot) hot.token = value;
 };
 
-// Session storage retains sign-in across reloads in the current window.
+// Electron owns encrypted persistence; browsers use the current window's session.
 export const tokenStore = {
   async load() {
-    remember(sessionStorage.getItem(tokenKey));
+    if (desktop) sessionStorage.removeItem(tokenKey);
+    remember(
+      desktop ? await desktop.session.get() : sessionStorage.getItem(tokenKey),
+    );
     return token;
   },
   get: () => token,
   set: (value: string) => {
     remember(value);
-    sessionStorage.setItem(tokenKey, value);
+    if (desktop) void desktop.session.set({ token: value, apiUrl: baseUrl });
+    else sessionStorage.setItem(tokenKey, value);
   },
   clear: () => {
     remember(null);
-    sessionStorage.removeItem(tokenKey);
+    if (desktop) void desktop.session.clear();
+    else sessionStorage.removeItem(tokenKey);
   },
 };
 export class ApiError extends Error {

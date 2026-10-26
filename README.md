@@ -62,7 +62,9 @@ Emails are trimmed and lowercased. Registration requires an eight-character pass
 
 User tokens use HS256, expire after 12 hours, and are scoped to the PostOrca desktop app. Token refresh and revocation are not implemented. All authentication routes share a limit of 60 requests per IP per 15 minutes. The optional `X-Timezone` header saves a recognized PostgreSQL timezone on registration, login, or session restore; unknown zones are ignored.
 
-The desktop opens with Log in and provides a Sign up form. Successful sign-in opens the workspace and shows the account name/email in the sidebar. Log out clears the current session and session-only work previews. Tokens are currently held in memory and `sessionStorage`; reloads validate them through `/auth/me`. Encrypted persistence across desktop restarts is not connected yet. A rejected token returns to Log in; a network failure keeps the saved token so a later reload can retry.
+The desktop opens with Log in and provides a Sign up form. Successful sign-in opens the workspace and shows the account name/email in the sidebar. Electron encrypts the token and API URL with `safeStorage` in the app's data directory. On restart, the saved token is validated through `/auth/me`. If OS encryption is unavailable, the session stays in memory for that launch. The preload bridge exposes only session get/set/clear to the app's top frame; renderer Node access remains disabled.
+
+Log out clears the current session, removes the saved session file, and clears session-only work previews. A rejected token returns to Log in and removes the saved session; a network failure retains it for a later retry. Plain-browser development uses `sessionStorage` instead of desktop persistence. Opening the desktop again focuses the existing window rather than starting another process for the same profile.
 
 The renderer uses `http://127.0.0.1:3001/api` by default. To change it, copy `apps/desktop/.env.example` to `apps/desktop/.env`, set `VITE_API_URL`, and restart development or rebuild. Only this API origin is added to the renderer's connection policy. Start the API before signing in.
 
