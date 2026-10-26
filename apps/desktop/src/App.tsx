@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { ChevronRight, X } from "lucide-react";
 import Sidebar from "./components/Sidebar";
-import EmptyWorkspace from "./components/EmptyWorkspace";
 import AppearanceSettings from "./components/AppearanceSettings";
-import { navigation, type Page } from "./navigation";
+import type { Page } from "./navigation";
 import { useTheme } from "./lib/useTheme";
 import Agent from "./pages/Agent";
 import Inbox from "./pages/Inbox";
 import Routines from "./pages/Routines";
 import Calendar from "./pages/Calendar";
+import BrandProfile from "./pages/BrandProfile";
 
 export default function App() {
   const [page, setPage] = useState<Page>("Inbox");
@@ -20,7 +20,6 @@ export default function App() {
     const timer = setTimeout(() => setNotice(""), 3500);
     return () => clearTimeout(timer);
   }, [notice]);
-  const current = navigation.find((item) => item.name === page)!;
   return (
     <div className="app-shell">
       <Sidebar
@@ -37,21 +36,19 @@ export default function App() {
             </div>
           </header>
         )}
-        {page === "Agent" ? (
-          <Agent />
-        ) : page === "Inbox" ? (
-          <Inbox />
-        ) : page === "Routines" ? (
+        {page === "Agent" && <Agent />}
+        {page === "Inbox" && <Inbox />}
+        {page === "Routines" && (
           <Routines notify={setNotice} onOpenWork={() => setPage("Inbox")} />
-        ) : page === "Calendar" ? (
+        )}
+        {page === "Calendar" && (
           <Calendar
             tasks={[]}
             onOpenWork={() => setPage("Inbox")}
             onApprovedSelect={() => setNotice("Work details are coming soon.")}
           />
-        ) : (
-          <EmptyWorkspace item={current} />
         )}
+        {page === "Brand Profile" && <BrandProfile />}
       </main>
       <AppearanceSettings
         open={settingsOpen}

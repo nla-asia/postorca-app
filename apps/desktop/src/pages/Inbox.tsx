@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CheckCheck } from "lucide-react";
 import "./Inbox.css";
+import "../components/tabs.css";
 
 const tabs = ["For review", "Approved", "All activity"] as const;
 

@@ -29,4 +29,14 @@ npm start
 - `apps/desktop/electron`: Electron main process and window.
 - `apps/desktop/src`: React interface and styles.
 
-The desktop shell includes sidebar navigation for Agent, Inbox, Calendar, Routines, and Brand Profile. Each section currently displays a placeholder. Settings provides light, dark, and system appearance, saved on this device. Account and agent features are not connected yet.
+The desktop includes five sections:
+
+- **Agent:** chat welcome screen and draft composer. Messages are not sent yet.
+- **Inbox:** review, approved, and activity filters with empty work lists.
+- **Calendar:** month navigation and a one-time task editor.
+- **Routines:** recurring routine cards, weekday/timezone editor, pause, and delete.
+- **Brand Profile:** read-only General, Audience, Voice, Colours, and Links tabs with an empty profile.
+
+Calendar and Routines use a temporary in-memory preview adapter. Changes last until the app reloads or restarts; no scheduled tasks or routines execute. These previews make no server requests. Account, agent, and scheduling integration are coming soon.
+
+Settings provides light, dark, and system appearance, saved on this device.
