@@ -67,6 +67,7 @@ class ComputerController {
     capture,
     displays,
     clipboard,
+    requestAccess = {},
     now = Date.now,
   }) {
     Object.assign(this, {
@@ -76,6 +77,7 @@ class ComputerController {
       capture,
       displays,
       clipboard,
+      requestAccess,
       now,
     });
     this.lease = null;
@@ -136,14 +138,20 @@ class ComputerController {
     if (this.lease?.owner !== owner || this.lease.expires <= this.now())
       this.reset();
     this.robot ??= this.loadRobot();
-    if (this.robot.getAccessibilityPermission?.() === false)
+    // A missing permission asks macOS to show its prompt, which also lists the app
+    // in System Settings; only the founder can turn it on.
+    if (this.robot.getAccessibilityPermission?.() === false) {
+      this.requestAccess.accessibility?.();
       throw new Error(
-        "Grant Accessibility permission to PostOrca in macOS System Settings, then activate again.",
+        "Grant Accessibility permission to PostOrca in macOS System Settings (macOS is showing its prompt), then activate again.",
       );
-    if (this.robot.getScreenCapturePermission?.() === false)
+    }
+    if (this.robot.getScreenCapturePermission?.() === false) {
+      this.requestAccess.screen?.();
       throw new Error(
-        "Grant Screen Recording permission to PostOrca in macOS System Settings, then activate again.",
+        "Grant Screen Recording permission to PostOrca in macOS System Settings (macOS is showing its prompt), then activate again.",
       );
+    }
     this.lease = { owner, expires: this.now() + LEASE_MS };
     return { active: true, platform: process.platform };
   }

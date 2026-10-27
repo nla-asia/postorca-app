@@ -284,6 +284,9 @@ export async function runComputerEval<Id extends string>(
   let desktopLog = "";
   let recorded = false;
   const sessionFile = join(folder, "desktop-session.json");
+  const desktopOutput = join(folder, "desktop-output.log");
+  const readDesktopLog = async () =>
+    desktopLog + (await readFile(desktopOutput, "utf8").catch(() => ""));
   const observerTurn = randomUUID(),
     observerTask = randomUUID();
   let userId = "";
@@ -350,16 +353,33 @@ export async function runComputerEval<Id extends string>(
     });
     const env = { ...process.env };
     delete env.ELECTRON_RUN_AS_NODE;
-    desktop = spawn(
-      require("electron"),
-      [resolve(repoRoot, "apps/desktop/electron/plugins/computer/eval-desktop.cjs"), sessionFile],
-      { windowsHide: true, stdio: ["ignore", "pipe", "pipe"], env },
+    const evalDesktop = resolve(
+      repoRoot,
+      "apps/desktop/electron/plugins/computer/eval-desktop.cjs",
     );
-    const log = (data: Buffer) => {
-      desktopLog += data.toString();
-    };
-    desktop.stdout!.on("data", log);
-    desktop.stderr!.on("data", log);
+    if (process.platform === "darwin") {
+      // Launched as its own app, so macOS asks for (and remembers) Accessibility and
+      // Screen Recording for the desktop app, not for whatever started this runner.
+      // It quits when the session file is removed.
+      const electronApp = resolve(require("electron"), "../../..");
+      desktop = spawn(
+        "open",
+        ["-n", "-W", "-a", electronApp, "--stdout", desktopOutput,
+          "--stderr", desktopOutput, "--args", evalDesktop, sessionFile],
+        { stdio: "ignore", env },
+      );
+    } else {
+      desktop = spawn(require("electron"), [evalDesktop, sessionFile], {
+        windowsHide: true,
+        stdio: ["ignore", "pipe", "pipe"],
+        env,
+      });
+      const log = (data: Buffer) => {
+        desktopLog += data.toString();
+      };
+      desktop.stdout!.on("data", log);
+      desktop.stderr!.on("data", log);
+    }
     for (
       let i = 0;
       i < 100 && !desktopConnections.online(userId).includes(deviceId);
@@ -368,7 +388,7 @@ export async function runComputerEval<Id extends string>(
       await delay(200);
     if (!desktopConnections.online(userId).includes(deviceId))
       throw new Error(
-        `Eval desktop did not connect. ${desktopLog.slice(-1000)}`,
+        `Eval desktop did not connect. ${(await readDesktopLog()).slice(-1000)}`,
       );
     const context = { userId, taskId: observerTask, turnId: observerTurn };
     const observeCall = (name: string, args: unknown = {}) =>
@@ -575,7 +595,7 @@ export async function runComputerEval<Id extends string>(
       JSON.stringify(result, null, 2),
     );
     await writeFile(join(folder, "calls.json"), JSON.stringify(calls, null, 2));
-    await writeFile(join(folder, "desktop.log"), desktopLog);
+    await writeFile(join(folder, "desktop.log"), await readDesktopLog());
     const screenshots = calls
       .flatMap((c) => c.result?.attachments ?? [])
       .concat(observed.attachments ?? [])
@@ -623,7 +643,7 @@ export async function runComputerEval<Id extends string>(
           2,
         ),
       );
-      await writeFile(join(folder, "desktop.log"), desktopLog);
+      await writeFile(join(folder, "desktop.log"), await readDesktopLog());
       state.push({ caseId, verdict, fingerprint: runtime.key, folder });
       await writeFile(stateFile, JSON.stringify(state, null, 2));
     }
@@ -642,7 +662,8 @@ export async function runComputerEval<Id extends string>(
       ).catch(() => {});
     await rm(sessionFile, { force: true });
     if (desktop) {
-      for (let i = 0; i < 20 && desktop.exitCode === null; i++)
+      // The desktop checks for its session file every second.
+      for (let i = 0; i < 30 && desktop.exitCode === null; i++)
         await delay(100);
       if (desktop.exitCode === null) desktop.kill();
     }

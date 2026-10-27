@@ -481,3 +481,38 @@ test("observation waits validate their bound and cancellation prevents later foc
   await assert.rejects(pending, /abort/i);
   assert.equal(focus, 0);
 });
+
+test("a missing macOS permission asks macOS to prompt and grants no control", async () => {
+  const asked = [];
+  const permissions = { accessibility: false, screen: false };
+  const controller = new ComputerController({
+    native: async () => ({}),
+    loadRobot: () => ({
+      getAccessibilityPermission: () => permissions.accessibility,
+      getScreenCapturePermission: () => permissions.screen,
+    }),
+    encode: () => Buffer.from("png"),
+    clipboard: {},
+    requestAccess: {
+      accessibility: () => asked.push("accessibility"),
+      screen: () => asked.push("screen"),
+    },
+  });
+  const context = { taskId: "task", turnId: "turn" };
+  await assert.rejects(
+    controller.session(true, context),
+    /Grant Accessibility permission .*prompt/,
+  );
+  permissions.accessibility = true;
+  await assert.rejects(
+    controller.session(true, context),
+    /Grant Screen Recording permission .*prompt/,
+  );
+  assert.deepEqual(asked, ["accessibility", "screen"]);
+  assert.equal(controller.lease, null);
+  permissions.screen = true;
+  assert.deepEqual(await controller.session(true, context), {
+    active: true,
+    platform: process.platform,
+  });
+});

@@ -7,6 +7,14 @@ const controller = new ComputerController({
   capture,
   displays,
   encode: (bitmap) => bitmap.image,
+  requestAccess: {
+    accessibility: () =>
+      require("electron").systemPreferences.isTrustedAccessibilityClient(true),
+    screen: () =>
+      require("electron")
+        .desktopCapturer.getSources({ types: ["screen"] })
+        .catch(() => {}),
+  },
   loadRobot: () => {
     const robot = require("robotjs");
     robot.setMouseDelay(15);
