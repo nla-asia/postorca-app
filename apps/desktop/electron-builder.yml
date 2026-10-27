@@ -1,0 +1,42 @@
+# macOS desktop package: npm run desktop:package (renderer build, video bundle, then this).
+appId: com.autopilotstartup.postorca
+productName: PostOrca
+directories:
+  output: release
+  # icon.png: 1024 px macOS icon made from assets/logo.png.
+  buildResources: build-resources
+# Lets the hardened runtime load Remotion's ffmpeg libraries (see the hook).
+afterPack: packaging/after-pack.cjs
+files:
+  - package.json
+  - dist/**/*
+  - electron/**/*
+  - "!electron/**/*.test.cjs"
+  - "!electron/plugins/video/{bundle,fixtures,smoke}.cjs"
+  - "!electron/plugins/computer/{smoke,live-check,eval-desktop}.cjs"
+  # Production dependencies only the renderer (bundled into dist/) or the server use.
+  - "!node_modules/{lucide-react,openai}/**/*"
+asarUnpack:
+  - electron/plugins/computer/native/windows.ps1
+  - node_modules/robotjs/**/*
+  # Browsers start it with the app's binary as plain Node (browser/pairing.cjs).
+  - electron/plugins/browser/native-host.cjs
+  # Remotion's compositor and ffmpeg run as child processes (video/index.cjs).
+  - node_modules/@remotion/compositor-*/**/*
+extraResources:
+  - from: build/remotion
+    to: remotion-bundle
+mac:
+  extraResources:
+    - from: build/computer-use/computer-native
+      to: computer-native
+  binaries:
+    - Contents/Resources/computer-native
+  category: public.app-category.productivity
+  # Off until there's an Apple team ID; Gatekeeper rejects downloaded copies meanwhile.
+  notarize: false
+  target:
+    - target: dmg
+      arch: arm64
+    - target: zip
+      arch: arm64
