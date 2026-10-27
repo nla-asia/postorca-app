@@ -36,6 +36,8 @@ export type OnceFields = {
   platform?: string | null;
   run_at: string;
   timezone: string;
+  /** The idea artifact this schedule turns into content. */
+  source_artifact_id?: string;
 };
 
 // Client-facing routine shape, including the most recent run and its live status.
@@ -155,6 +157,52 @@ export async function getRoutine(
   return routine;
 }
 
+/** How long a confirmed idea waits in the queue before the scheduler picks it up. */
+export const IDEA_QUEUE_DELAY_MS = 5 * 60_000;
+
+/**
+ * Queues content work for an idea the founder chose: a one-time schedule a few
+ * minutes out that runs the create-content skill on the idea. One per idea.
+ */
+export async function queueIdeaContent(
+  db: Database,
+  userId: string,
+  taskId: string,
+  artifactId: string,
+  note?: string,
+) {
+  const {
+    rows: [idea],
+  } = await db.query(
+    `SELECT a.id, a.title, a.content, t.platform, coalesce(u.timezone, 'UTC') AS timezone
+     FROM artifacts a JOIN tasks t ON t.id = a.task_id JOIN users u ON u.id = t.user_id
+     WHERE a.id = $1 AND a.task_id = $2 AND t.user_id = $3 AND a.kind = 'idea'`,
+    [artifactId, taskId, userId],
+  );
+  if (!idea) throw new HttpError(404, "Idea not found.");
+  const instructions = [
+    "Read the create-content skill with read_skill, then follow it for this idea.",
+    `Idea: ${idea.title}\n\n${idea.content}`,
+    ...(note ? [`Founder's note: ${note}`] : []),
+  ].join("\n\n");
+  try {
+    const routineId = await createRoutine(db, userId, {
+      title: idea.title,
+      platform: idea.platform,
+      instructions,
+      run_at: new Date(Date.now() + IDEA_QUEUE_DELAY_MS).toISOString(),
+      timezone: idea.timezone,
+      source_artifact_id: idea.id,
+    });
+    return getRoutine(db, userId, routineId);
+  } catch (error) {
+    // routines_source_artifact: content is already queued for this idea.
+    if ((error as { code?: string }).code === "23505")
+      throw new HttpError(409, "Content for this idea is already queued.");
+    throw error;
+  }
+}
+
 /** Creates a routine, enforcing the per-user cap. Returns its id. */
 export async function createRoutine(
   db: Database,
@@ -181,8 +229,8 @@ export async function createRoutine(
       const {
         rows: [created],
       } = await client.query(
-        `INSERT INTO routines(user_id, platform, title, instructions, timezone, run_at, next_run_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$6) RETURNING id`,
+        `INSERT INTO routines(user_id, platform, title, instructions, timezone, run_at, next_run_at, source_artifact_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$6,$7) RETURNING id`,
         [
           userId,
           data.platform ?? null,
@@ -190,6 +238,7 @@ export async function createRoutine(
           data.instructions,
           data.timezone,
           data.run_at,
+          data.source_artifact_id ?? null,
         ],
       );
       return created.id;

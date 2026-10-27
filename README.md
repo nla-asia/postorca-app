@@ -122,6 +122,7 @@ All task endpoints require `Authorization: Bearer <token>` and check account own
 | GET | `/api/tasks/:id` | Returns task status, ordered turns/messages, and artifacts grouped by turn. |
 | PATCH | `/api/tasks/:id` | Accepts `action: "approve"` or `"archive"`; returns the task. |
 | PATCH | `/api/tasks/:id/artifacts/:artifactId` | Accepts `content` and edits a document belonging to this task. Other artifact kinds are read-only. |
+| POST | `/api/tasks/:id/artifacts/:artifactId/content` | Turns an idea into content work with an optional `note` (up to 2,000 characters): a one-time schedule five minutes out that follows the `create-content` skill. 201 with the schedule; 404 for other artifacts; 409 when content is already queued for the idea. |
 | POST | `/api/tasks/:id/turns` | Validates `message` and ownership, saves a queued turn, and returns it with 202 while Orca runs it in the background. Returns 503 without creating a turn when no model is configured, and 409 while the task is busy or archived. |
 
 Each account has one chat and one onboarding conversation. Repeated creation reuses the existing conversation; work tasks remain independent. Onboarding opens once with a fixed Orca greeting and first question, completes that opening turn without a model call, and marks the profile `in_progress`. Existing history and completed profiles do not receive another opening.
@@ -130,13 +131,13 @@ Task lists include live status, the latest nonempty assistant text (up to 280 ch
 
 Queued or running work cannot be approved or archived. Only completed work can be approved. Repeated review actions retain their first timestamp. The turn repository permits one active turn per task, clears approval when a follow-up starts, and rejects follow-ups to archived tasks.
 
-Inbox uses these endpoints for saved work, details, document editing, and review; Agent chat and onboarding use them for their conversations. Inbox follow-ups and idea-to-content actions will follow.
+Inbox uses these endpoints for saved work, details, document editing, review, follow-ups, and turning ideas into content; Agent chat and onboarding use them for their conversations. Each idea's detail includes the content work queued from it: its schedule, and once it runs, its task and live status.
 
 ## Inbox
 
 For review shows working, failed, and unapproved work. Approved shows approved work that is not archived. All activity includes archived work. The attention count in the sidebar and For review tab counts unapproved review items and failures; working items appear in the list without increasing that count.
 
-Opening work shows its request, ordered replies, tool activity, status, and artifacts. Markdown renders as React elements without raw HTML; links can open HTTP(S) pages or artifacts belonging to that work. Documents can be copied and edited, with errors preserving the draft. Archived documents are read-only in the desktop. Ideas can be read, while follow-up execution and Create content remain disabled. Media viewing will follow with file delivery.
+Opening work shows its request, ordered replies, tool activity, status, and artifacts. Markdown renders as React elements without raw HTML; links can open HTTP(S) pages or artifacts belonging to that work. Documents can be copied and edited, with errors preserving the draft. Archived documents are read-only in the desktop. Follow Up sends Orca feedback or a next step on finished or failed work, which continues as a new turn. Opening an idea offers Create content with an optional note; the idea then shows that its content is queued, being created, ready, or failed, and opens the content work once it has run. Media viewing will follow with file delivery.
 
 Approve and Archive save through the task API and refresh the lists. Load failures offer a retry. The Inbox list refreshes every twenty seconds, or every three seconds while work is active; an active detail refreshes every 1.5 seconds. Saved reviews and document edits survive logout and app restarts. New accounts have an empty Inbox until work is created; no example results are inserted automatically.
 

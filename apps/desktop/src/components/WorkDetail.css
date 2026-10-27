@@ -1,14 +1,6 @@
 .work-load-error {
   padding: 20px 32px;
 }
-.modal.wide {
-  width: min(840px, calc(100vw - 70px));
-  padding: 30px 0 0;
-}
-.wide > .modal-title,
-.wide > .modal-description {
-  margin-left: 28px;
-}
 .artifact-editor textarea {
   width: 100%;
   padding: 12px;
@@ -211,24 +203,52 @@
   font-weight: 500;
 }
 
+.modal.idea-modal {
+  width: min(720px, calc(100vw - 50px));
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.idea-modal > .modal-title {
+  padding: 26px 64px 0 28px;
+  margin: 0;
+}
+
+.idea-modal > .modal-description {
+  margin: 6px 0 0;
+  padding: 0 28px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.idea-modal .modal-close {
+  top: 20px;
+  right: 20px;
+}
+
 .idea-detail {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  flex: 1;
+  min-height: 0;
 }
 
 .idea-body {
-  max-height: 52vh;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
-  font-size: 13px;
+  padding: 22px 28px 26px;
+  font-size: 14px;
   line-height: 1.7;
 }
 
 .idea-footer {
   display: grid;
   gap: 8px;
-  padding-top: 16px;
+  padding: 16px 28px 20px;
   border-top: 1px solid var(--line);
+  background: var(--sidebar);
 }
 
 .idea-footer label {
@@ -242,13 +262,30 @@
   margin-left: 6px;
 }
 
+.idea-footer textarea {
+  resize: vertical;
+  min-height: 64px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.idea-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.idea-footer-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .idea-footer p {
   font-size: 12px;
   color: var(--secondary);
-}
-
-.idea-footer .button {
-  justify-self: end;
 }
 
 .artifact-icon,

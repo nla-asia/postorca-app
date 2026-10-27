@@ -12,6 +12,7 @@ import {
   TASK_KINDS,
 } from "../repositories/tasks.js";
 import { updateDocumentArtifact } from "../repositories/artifacts.js";
+import { queueIdeaContent } from "../repositories/routines.js";
 import { HttpError } from "../handlers/errors.js";
 import type { AgentRouter } from "../agent/router.js";
 const id = z.uuid();
@@ -71,6 +72,23 @@ export function taskRoutes(db: Database, agent: AgentRouter | null) {
     );
     if (!artifact) throw new HttpError(404, "Editable artifact not found.");
     res.json(artifact);
+  });
+  // Turn an idea into content work: queued as a one-time schedule the scheduler runs.
+  router.post("/:id/artifacts/:artifactId/content", async (req, res) => {
+    const { note } = z
+      .object({ note: z.string().trim().max(2000).optional() })
+      .parse(req.body ?? {});
+    res
+      .status(201)
+      .json(
+        await queueIdeaContent(
+          db,
+          res.locals.userId,
+          id.parse(req.params.id),
+          id.parse(req.params.artifactId),
+          note || undefined,
+        ),
+      );
   });
   return router;
 }

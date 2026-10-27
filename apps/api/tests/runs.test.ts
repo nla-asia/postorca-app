@@ -13,7 +13,9 @@ import { transaction } from "../src/db.js";
 import { migrate } from "../src/migrate.js";
 import { issueToken } from "../src/middleware/auth.js";
 import type { Provider } from "../src/providers/types.js";
+import { createArtifact } from "../src/repositories/artifacts.js";
 import { startRoutineRun } from "../src/repositories/routines.js";
+import { createWorkTask } from "../src/repositories/tasks.js";
 import { createUser } from "../src/repositories/users.js";
 import { Scheduler } from "../src/scheduler.js";
 import { temporaryPostgres } from "./postgres.js";
@@ -334,4 +336,124 @@ test("stopping the scheduler waits for its tick and starts nothing more", async 
   );
   await new Promise((resolve) => setTimeout(resolve, 60));
   assert.equal(await runCount(created.id), 0);
+});
+
+test("an idea queues one create-content task that the scheduler runs", async () => {
+  const a = await account();
+  const b = await account();
+  const { task, turn } = await createWorkTask(
+    fixture.db,
+    a.id,
+    "Content ideas",
+    "Find ideas",
+    "X",
+  );
+  const idea = await createArtifact(fixture.db, task.id, turn.id, {
+    kind: "idea",
+    title: "The awkward first post",
+    content: "**Hook**: I almost didn't post this.",
+  });
+  const doc = await createArtifact(fixture.db, task.id, turn.id, {
+    kind: "document",
+    title: "Notes",
+    content: "Not an idea",
+  });
+  const path = (artifactId: string) =>
+    `/tasks/${task.id}/artifacts/${artifactId}/content`;
+
+  // Only the owner's ideas can be turned into content.
+  assert.equal((await request(path(idea.id), "POST", {}, b.token)).status, 404);
+  assert.equal((await request(path(doc.id), "POST", {}, a.token)).status, 404);
+  assert.equal(
+    (await request(path(idea.id), "POST", { note: "x".repeat(2001) }, a.token))
+      .status,
+    400,
+  );
+
+  const queued = await request(
+    path(idea.id),
+    "POST",
+    { note: "Keep the product out of it" },
+    a.token,
+  );
+  assert.equal(queued.status, 201);
+  // Queued a few minutes out, not run immediately.
+  const wait = new Date(queued.data.run_at).getTime() - Date.now();
+  assert.ok(wait > 4 * 60_000 && wait <= 5 * 60_000);
+  assert.equal(queued.data.platform, "X");
+  assert.equal(
+    queued.data.instructions,
+    "Read the create-content skill with read_skill, then follow it for this idea.\n\nIdea: The awkward first post\n\n**Hook**: I almost didn't post this.\n\nFounder's note: Keep the product out of it",
+  );
+  // One content task per idea.
+  const again = await request(path(idea.id), "POST", {}, a.token);
+  assert.equal(again.status, 409);
+  assert.equal(again.data.error, "Content for this idea is already queued.");
+  // It is a pending Calendar task until it runs.
+  const calendar = (await request("/routines?once=true", "GET", undefined, a.token))
+    .data;
+  assert.deepEqual(
+    calendar.map((item: { id: string }) => item.id),
+    [queued.data.id],
+  );
+
+  const ideaOf = async () =>
+    (await request(`/tasks/${task.id}`, "GET", undefined, a.token)).data.turns[0]
+      .artifacts.find((item: any) => item.id === idea.id);
+  assert.deepEqual((await ideaOf()).content_work, {
+    routine_id: queued.data.id,
+    run_at: queued.data.run_at,
+    task_id: null,
+    status: null,
+  });
+
+  await fixture.db.query(
+    "UPDATE routines SET next_run_at = now() - interval '1 second' WHERE id = $1",
+    [queued.data.id],
+  );
+  const scheduler = new Scheduler(fixture.db, agent, 60_000);
+  await scheduler.tick();
+  await scheduler.stop();
+  const work = await ideaOf();
+  assert.ok(work.content_work.task_id);
+  const content = await waitFor(async () => {
+    const detail = (
+      await request(`/tasks/${work.content_work.task_id}`, "GET", undefined, a.token)
+    ).data;
+    return detail.status === "completed" ? detail : undefined;
+  });
+  assert.equal(content.title, "The awkward first post");
+  assert.equal(content.platform, "X");
+  assert.match(
+    content.turns[0].messages[0].content.text,
+    /^Scheduled task: The awkward first post \(X\)\n\nRead the create-content skill/,
+  );
+  assert.equal((await ideaOf()).content_work.status, "completed");
+});
+
+test("a follow-up continues finished work with a new turn", async () => {
+  const a = await account();
+  const { task, turn } = await createWorkTask(fixture.db, a.id, "Draft", "Draft a post");
+  // Without the turn finishing, a follow-up is refused.
+  const early = await request(`/tasks/${task.id}/turns`, "POST", { message: "Shorter" }, a.token);
+  assert.equal(early.status, 409);
+  agent.dispatch(task.id, turn.id, a.id);
+  await waitFor(async () => {
+    const detail = (await request(`/tasks/${task.id}`, "GET", undefined, a.token)).data;
+    return detail.status === "completed" ? detail : undefined;
+  });
+  const followed = await request(
+    `/tasks/${task.id}/turns`,
+    "POST",
+    { message: "Make it shorter" },
+    a.token,
+  );
+  assert.equal(followed.status, 202);
+  const detail = await waitFor(async () => {
+    const result = (await request(`/tasks/${task.id}`, "GET", undefined, a.token)).data;
+    return result.turns.length === 2 && result.status === "completed"
+      ? result
+      : undefined;
+  });
+  assert.equal(detail.turns[1].messages[0].content.text, "Make it shorter");
 });

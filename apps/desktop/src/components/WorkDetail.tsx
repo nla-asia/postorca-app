@@ -10,6 +10,7 @@ import {
   Lightbulb,
   LoaderCircle,
   Reply,
+  X,
 } from "lucide-react";
 import { Button, Modal, Platform } from "./ui";
 import WorkActions from "./WorkActions";
@@ -62,6 +63,9 @@ export default function WorkDetail({
   const [busy, setBusy] = useState(false);
   const [viewing, setViewing] = useState<Viewable | null>(null);
   const [ideaId, setIdeaId] = useState<string | null>(null);
+  const [ideaNote, setIdeaNote] = useState("");
+  const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [feedback, setFeedback] = useState("");
   const requestController = useRef<AbortController | null>(null);
   const load = useCallback(async () => {
     requestController.current?.abort();
@@ -154,6 +158,7 @@ export default function WorkDetail({
     : undefined;
   const openArtifact = (item: TaskArtifact) => {
     if (item.kind === "idea") {
+      setIdeaNote("");
       setIdeaId(item.id);
     } else setViewing({ type: "artifact", id: item.id });
   };
@@ -288,8 +293,8 @@ export default function WorkDetail({
                           role="alert"
                         >
                           <AlertCircle size={14} />
-                          {turn.error ?? "This run failed."} Follow-up execution
-                          is coming soon.
+                          {turn.error ?? "This run failed."} Use Follow Up to
+                          try again.
                         </p>
                       )}
                       {turn.artifacts.length > 0 && (
@@ -321,7 +326,7 @@ export default function WorkDetail({
                                 ) : (
                                   !archived && (
                                     <span className="idea-cta">
-                                      Content creation coming soon
+                                      Create content
                                     </span>
                                   )
                                 )}
@@ -343,8 +348,72 @@ export default function WorkDetail({
               </Fragment>
             );
           })}
+          {followUpOpen && (
+            <section
+              className="follow-up-panel"
+              aria-label="Provide follow-up feedback"
+            >
+              <div className="follow-up-title">
+                <h2>Follow Up</h2>
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label="Close follow-up"
+                  onClick={() => setFollowUpOpen(false)}
+                >
+                  <X size={17} aria-hidden="true" />
+                </button>
+              </div>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const message = feedback.trim();
+                  if (!message) return;
+                  void act(
+                    () =>
+                      api(`/tasks/${task.id}/turns`, {
+                        method: "POST",
+                        body: JSON.stringify({ message }),
+                      }),
+                    "Orca is working on your follow-up.",
+                  ).then((ok) => {
+                    if (ok) {
+                      setFeedback("");
+                      setFollowUpOpen(false);
+                    }
+                  });
+                }}
+              >
+                <label htmlFor="work-feedback">
+                  What would you like Orca to change or continue?
+                </label>
+                <textarea
+                  id="work-feedback"
+                  autoFocus
+                  rows={4}
+                  value={feedback}
+                  onChange={(event) => setFeedback(event.target.value)}
+                  placeholder="Share your feedback or the next step…"
+                />
+                <div className="form-footer">
+                  <Button onClick={() => setFollowUpOpen(false)}>Cancel</Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    disabled={!feedback.trim() || busy}
+                  >
+                    <Reply size={15} aria-hidden="true" />
+                    Send follow-up
+                  </Button>
+                </div>
+              </form>
+            </section>
+          )}
           <div className="work-review">
-            <Button disabled title="Follow-up execution is coming soon">
+            <Button
+              onClick={() => setFollowUpOpen(true)}
+              disabled={followUpOpen || working || archived || busy}
+            >
               <Reply size={15} />
               Follow Up
             </Button>
@@ -393,7 +462,7 @@ export default function WorkDetail({
         }}
         title={idea?.title ?? "Idea"}
         description={`${task.platform ? `${task.platform} · ` : ""}Content idea`}
-        wide
+        className="idea-modal"
       >
         {idea && (
           <div className="idea-detail">
@@ -401,7 +470,7 @@ export default function WorkDetail({
               <Markdown text={idea.content} />
             </div>
             {idea.content_work ? (
-              <div className="idea-footer">
+              <div className="idea-footer idea-footer-status">
                 <p>
                   {ideaStatus(idea)}
                   {!idea.content_work.task_id &&
@@ -419,15 +488,38 @@ export default function WorkDetail({
               </div>
             ) : (
               !archived && (
-                <div className="idea-footer">
-                  <Button
-                    variant="primary"
-                    disabled
-                    title="Content creation is coming soon"
-                  >
-                    Create content
-                  </Button>
-                </div>
+                <form
+                  className="idea-footer"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void act(
+                      () =>
+                        api(`/tasks/${task.id}/artifacts/${idea.id}/content`, {
+                          method: "POST",
+                          body: JSON.stringify({ note: ideaNote.trim() }),
+                        }),
+                      "Queued. Orca will start on it in a few minutes.",
+                    );
+                  }}
+                >
+                  <label htmlFor="idea-note">
+                    Note for Orca <span>Optional</span>
+                  </label>
+                  <textarea
+                    id="idea-note"
+                    rows={2}
+                    maxLength={2000}
+                    value={ideaNote}
+                    placeholder="e.g. Use our launch story, or keep the product out of it"
+                    onChange={(event) => setIdeaNote(event.target.value)}
+                  />
+                  <div className="idea-actions">
+                    <Button variant="primary" type="submit" disabled={busy}>
+                      Create content from this idea
+                      <ChevronRight size={15} aria-hidden="true" />
+                    </Button>
+                  </div>
+                </form>
               )
             )}
           </div>
