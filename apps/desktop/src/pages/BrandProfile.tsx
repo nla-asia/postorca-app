@@ -100,8 +100,7 @@ export default function BrandProfile({
     <div className="page-content brand-page">
       <h1 className="brand-page-heading">Brand Profile</h1>
       <p className="preview-note">
-        Your saved brand context. Manage details with Orca once chat is
-        connected.
+        Your saved brand context. Ask Orca in Agent chat to change it.
       </p>
       <div className="brand-layout">
         <nav

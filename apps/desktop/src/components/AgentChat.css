@@ -1,0 +1,309 @@
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--note-border);
+  border-radius: 12px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.brand-mark.small {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+}
+
+.chat-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.chat-scroll {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  padding: 0 40px;
+}
+
+.chat-welcome {
+  max-width: 590px;
+  margin: clamp(30px, 9vh, 100px) auto 40px;
+  text-align: center;
+}
+
+.chat-welcome h2 {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--secondary);
+}
+
+.composer-wrap {
+  padding: 12px 40px 18px;
+  max-width: 840px;
+  width: 100%;
+  margin: auto;
+}
+
+.composer {
+  background: var(--surface);
+  border: 1px solid var(--strong-line);
+  border-radius: 13px;
+  padding: 13px 15px 11px;
+  box-shadow: 0 3px 15px #00000003;
+}
+
+.composer:focus-within {
+  border-color: var(--muted);
+}
+
+.composer textarea {
+  width: 100%;
+  height: 55px;
+  min-height: 45px;
+  border: 0;
+  padding: 0;
+  resize: none;
+  font-size: 13px;
+  background: none;
+  box-shadow: none;
+}
+
+.composer textarea::placeholder {
+  color: var(--muted);
+}
+
+.composer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.composer-bottom .button {
+  width: 29px;
+  height: 29px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 7px;
+}
+
+@media (max-width: 800px) {
+  .chat-scroll {
+    padding-inline: 22px;
+  }
+  .composer-wrap {
+    padding-inline: 22px;
+  }
+}
+
+.work-header {
+  -webkit-app-region: drag;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--line);
+}
+
+.work-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.work-heading h1 {
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 550;
+  letter-spacing: -0.3px;
+}
+
+.work-author > span:not(.avatar):not(.brand-mark) {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+@media (max-width: 1000px) {
+  .work-header {
+    padding: 20px;
+    gap: 10px;
+  }
+  .work-heading h1 {
+    font-size: 16px;
+  }
+}
+
+.chat-page {
+  min-height: 0;
+  flex: 1;
+}
+
+.messages {
+  max-width: 710px;
+  margin: 25px auto;
+}
+
+.message {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 29px;
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.message p {
+  white-space: pre-wrap;
+}
+
+.message strong {
+  font-size: 12px;
+  font-weight: 550;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.message.user {
+  justify-content: flex-end;
+}
+
+.message.user > div {
+  max-width: 80%;
+  background: var(--badge);
+  border-radius: 14px 14px 4px 14px;
+  padding: 12px 17px;
+}
+
+.thinking {
+  color: var(--muted);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.thinking span {
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.chat-turn-error {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--strong-line);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.question-widget {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 20px;
+}
+
+.question-widget fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.question-widget legend {
+  font-weight: 550;
+  margin-bottom: 14px;
+  line-height: 1.6;
+}
+
+.question-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.question-options {
+  display: grid;
+  gap: 8px;
+}
+
+.question-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.question-option:hover {
+  background: var(--surface-hover);
+}
+
+.question-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.question-option input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+
+.question-widget fieldset:disabled .question-option {
+  cursor: default;
+}
+
+.question-custom {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  color: var(--secondary);
+  font-size: 12px;
+}
+
+.question-custom textarea {
+  width: 100%;
+  resize: vertical;
+  font-size: 13px;
+}
+
+.question-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.question-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Delivered work in Agent chat. */
+.media-message > div {
+  min-width: 0;
+  width: min(100%, 560px);
+}

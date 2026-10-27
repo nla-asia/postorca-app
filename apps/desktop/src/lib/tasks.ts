@@ -1,5 +1,12 @@
 import type { WorkTask, TurnStatus } from "./schedules";
 
+/** A multiple-choice question Orca asked with request_user_input. */
+export type ChatQuestion = {
+  question: string;
+  options: string[];
+  multiple?: boolean;
+};
+
 export type TaskMessage = {
   id: string;
   kind: "user" | "assistant" | "tool_call" | "tool_result";
