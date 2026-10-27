@@ -111,6 +111,27 @@ After profile completion, each social account receives its defaults once: Conten
 
 Editing, pausing, or deleting a default does not recreate it on later profile saves or timezone changes. Social accounts added later receive their own defaults. Removing a profile link pauses its routines and clears their link reference. Seeding respects the shared 50-schedule cap and defers a link's entire set of defaults if there is insufficient room; a later profile save or timezone change can retry it.
 
+## Tasks and review API
+
+All task endpoints require `Authorization: Bearer <token>` and check account ownership.
+
+| Method | Endpoint | Behavior |
+| --- | --- | --- |
+| POST | `/api/tasks` | Accepts `kind` (`chat`, `onboarding`, or `work`) and `title`; returns the task. |
+| GET | `/api/tasks` | Lists the newest 100 tasks, optionally filtered by `?kind=work`, `chat`, or `onboarding`. |
+| GET | `/api/tasks/:id` | Returns task status, ordered turns/messages, and artifacts grouped by turn. |
+| PATCH | `/api/tasks/:id` | Accepts `action: "approve"` or `"archive"`; returns the task. |
+| PATCH | `/api/tasks/:id/artifacts/:artifactId` | Accepts `content` and edits a document belonging to this task. Other artifact kinds are read-only. |
+| POST | `/api/tasks/:id/turns` | Validates `message` and ownership, then returns 503 while the model provider is unavailable; queues no turn. |
+
+Each account has one chat and one onboarding conversation. Repeated creation reuses the existing conversation; work tasks remain independent. Onboarding opens once with a fixed Orca greeting and first question, completes that opening turn without a model call, and marks the profile `in_progress`. Existing history and completed profiles do not receive another opening.
+
+Task lists include live status, the latest nonempty assistant text (up to 280 characters), and the recurring routine's title when applicable. Task details expose assistant text without provider replay data. Messages and artifacts stay associated with their own turns; document edits retain the artifact ID.
+
+Queued or running work cannot be approved or archived. Only completed work can be approved. Repeated review actions retain their first timestamp. The turn repository permits one active turn per task, clears approval when a follow-up starts, and rejects follow-ups to archived tasks. Model-backed follow-ups and scheduled execution are not enabled yet.
+
+These endpoints provide backend storage and review behavior. Agent chat, onboarding, and Inbox have not yet been connected to them in the desktop. Artifact generation and idea-to-content queue actions will follow with execution.
+
 ## Workspace
 
 - `apps/desktop/electron`: Electron main process and window.

@@ -7,6 +7,7 @@ import { authRoutes } from "./routes/auth.js";
 import { authenticate } from "./middleware/auth.js";
 import { brandRoutes } from "./routes/brand.js";
 import { routineRoutes } from "./routes/routines.js";
+import { taskRoutes } from "./routes/tasks.js";
 
 export function createApp(db: Database, config: Config) {
   const app = express();
@@ -35,6 +36,7 @@ export function createApp(db: Database, config: Config) {
     brandRoutes(db),
   );
   app.use("/api/routines", authenticate(config.jwtSecret), routineRoutes(db));
+  app.use("/api/tasks", authenticate(config.jwtSecret), taskRoutes(db));
   app.use((_req, res) => {
     res.status(404).json({ error: "Endpoint not found." });
   });
