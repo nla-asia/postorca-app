@@ -44,21 +44,22 @@ Only when the owner says to merge:
 
 When the owner asks for a release (for example, "release v0.2.0"):
 
-1. Bump `version` in the root and every `apps/*/package.json` through a pull request into `develop`.
+Releases are built on this Mac, not on GitHub.
+
+1. Set the new version everywhere with `npm run version:set -- X.Y.Z` on a `chore/release-vX.Y.Z` branch, and merge it into `develop` through a pull request.
 2. Open a pull request from `develop` into `main` titled `Release vX.Y.Z`, and merge it with a merge commit once the owner approves.
-3. Tag and publish:
+3. Build and publish:
    ```sh
-   git fetch origin
-   git tag -a vX.Y.Z origin/main -m "PostOrca vX.Y.Z"
-   git push origin vX.Y.Z
-   gh release create vX.Y.Z --generate-notes
+   npm run release -- X.Y.Z --deploy
    ```
-4. Deploy from the tag (see [DEPLOY.md](../DEPLOY.md)) in a clean worktree of `vX.Y.Z`. Never deploy uncommitted changes or anything that isn't a tag on `main`.
+   This checks out `origin/main` in a clean temporary worktree, runs checks and tests, builds the macOS installer, tags `vX.Y.Z`, creates the GitHub Release with the installer attached and generated notes, and with `--deploy` deploys the backend from that same tree (see [DEPLOY.md](../DEPLOY.md)). Leave out `--deploy` to publish without deploying.
+
+Never deploy uncommitted changes or anything that isn't a tag on `main`.
 
 ## Urgent production fixes
 
 1. Branch `fix/<name>` from `origin/main` instead of `develop`.
-2. Open the pull request into `main`. Once it's merged, release it as the next patch version (for example, `v0.2.1`).
+2. In the same branch, set the next patch version (for example, `npm run version:set -- 0.2.1`), then open the pull request into `main`. Once it's merged, run `npm run release -- 0.2.1 --deploy`.
 3. Merge `main` back into `develop` with a pull request.
 
 ## Rules
