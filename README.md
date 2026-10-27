@@ -268,6 +268,25 @@ npm run computer:eval -- regrade <run-folder>
 
 Each case needs three consecutive passes on the same runtime before the next case unlocks. The runner uses the production agent and authenticated desktop connection, saves evidence under `.data/computer-evals/`, and independently reads the app after the turn. Conversation and search cases also need an observer review; mechanical failures cannot be overridden. Regrading retains the original result and does not execute the agent. Run-folder arguments can be absolute or relative to the repository root. Model or execution-code changes reset pass streaks; grader-only changes allow retained evidence to be regraded.
 
+## Browser evals
+
+`apps/api/src/evals/browser-cases.ts` defines 20 browser scenarios, from finding flights and hotels to collecting stock media and researching recent posts on X, YouTube, Instagram, LinkedIn and Threads. Each has a natural `brief` and separate `success_criteria`. Only the brief reaches Orca; the criteria are for the reviewer. Being in the catalog does not mean a case has a runner or grader. The observer runs `flights`, `hotels` and `x-post-research` as normal Inbox work tasks; flights and hotels use fixed November 12–19, 2026 dates, and the X case uses a rolling seven-day window anchored at launch.
+
+The observer uses the running API on `PORT`, with `DATABASE_URL`, `JWT_SECRET`, `OPENAI_API_KEY` and `OPENAI_MODEL` from `apps/api/.env`, and `POSTORCA_EVAL_EMAIL` when the database has more than one founder. Before preparing, check that the desktop is signed in and the browser extension is connected, and record that in a readiness file:
+
+```json
+{ "checked_at": "2026-10-27T08:00:00Z", "desktop_signed_in": true, "browser_connected": true }
+```
+
+```sh
+npm run browser:eval -- prepare flights readiness.json
+npm run browser:eval -- start <run-folder>
+npm run browser:eval -- inspect <run-folder>
+npm run browser:eval -- diagnose <run-folder>
+```
+
+`prepare` refuses readiness older than five minutes, an unhealthy API, pending migrations, a missing model, or other queued or running turns. It freezes the brief, criteria, model, commit and hashes of the eval and browser runtime files in `run.json`, and starts `judgment.json` with every criterion unreviewed, under `.data/browser-evals/<date>-<case>/<time>/`. `start` is the only step that calls the model: it refuses if anything changed since prepare or another turn is active, then creates the work task and submits the brief once. `inspect` saves the task as `evidence.json`, the paired tool calls as `calls.json`, measured `diagnostics.json` (wall time, model responses, tool calls and errors, tool-interval time counted once for overlapping calls, unchanged snapshots and multipart reads) and `summary.json`. Optional reviewer classifications of individual calls go in `call-review.json` (`useful`, `avoidable`, `low_yield` or `failed`). `diagnose` recomputes the diagnostics offline from the saved evidence and adds token usage from the turn's local traces. Run-folder and readiness paths are relative to where the command is typed.
+
 ## Media creation suite
 
 The `media` plugin provides OpenAI image generation/editing plus ElevenLabs voice
