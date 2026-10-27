@@ -7,12 +7,14 @@ export default function Sidebar({
   onOpenSettings,
   user,
   onLogOut,
+  reviewCount = 0,
 }: {
   page: Page;
   onNavigate: (page: Page) => void;
   onOpenSettings: () => void;
   user: AuthUser;
   onLogOut: () => void;
+  reviewCount?: number;
 }) {
   return (
     <aside className="sidebar" aria-label="Workspace sidebar">
@@ -31,6 +33,9 @@ export default function Sidebar({
           >
             <Icon size={18} strokeWidth={1.7} aria-hidden="true" />
             <span>{name}</span>
+            {name === "Inbox" && reviewCount > 0 && (
+              <span className="nav-count">{reviewCount}</span>
+            )}
           </button>
         ))}
       </nav>

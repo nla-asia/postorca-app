@@ -6,7 +6,9 @@ import type { Page } from "../navigation";
 import type { Theme } from "../lib/useTheme";
 import type { AuthUser } from "../lib/api";
 import Agent from "../pages/Agent";
-import Inbox from "../pages/Inbox";
+import Inbox, { type InboxFilter } from "../pages/Inbox";
+import WorkDetail from "./WorkDetail";
+import { useWorkTasks } from "../lib/useWorkTasks";
 import Routines from "../pages/Routines";
 import Calendar from "../pages/Calendar";
 import BrandProfile from "../pages/BrandProfile";
@@ -26,6 +28,13 @@ export default function Workspace({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [profileName, setProfileName] = useState(user.name);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [filter, setFilter] = useState<InboxFilter>("For review");
+  const work = useWorkTasks(user.id);
+  const openWork = (id: string) => {
+    setSelected(id);
+    setPage("Inbox");
+  };
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(""), 3500);
@@ -37,11 +46,15 @@ export default function Workspace({
         user={{ ...user, name: profileName }}
         onLogOut={onLogOut}
         page={page}
-        onNavigate={setPage}
+        onNavigate={(next) => {
+          setSelected(null);
+          setPage(next);
+        }}
+        reviewCount={work.attention}
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <main className="workspace" aria-label={page}>
-        {page !== "Agent" && (
+        {page !== "Agent" && !(page === "Inbox" && selected) && (
           <header className="topbar">
             <div className="breadcrumb">
               Your space <ChevronRight size={13} aria-hidden="true" />
@@ -50,15 +63,39 @@ export default function Workspace({
           </header>
         )}
         {page === "Agent" && <Agent />}
-        {page === "Inbox" && <Inbox />}
+        {page === "Inbox" && !selected && (
+          <Inbox
+            tasks={work.tasks}
+            error={work.error}
+            onRetry={() => void work.reload()}
+            reviewCount={work.attention}
+            filter={filter}
+            onFilterChange={setFilter}
+            onSelect={openWork}
+          />
+        )}
+        {page === "Inbox" && selected && (
+          <WorkDetail
+            key={selected}
+            taskId={selected}
+            founder={profileName}
+            routineTitle={
+              work.tasks?.find((task) => task.id === selected)?.routine_title
+            }
+            onBack={() => setSelected(null)}
+            onOpenTask={openWork}
+            onChanged={() => void work.reload()}
+            notify={setNotice}
+          />
+        )}
         {page === "Routines" && (
-          <Routines notify={setNotice} onOpenWork={() => setPage("Inbox")} />
+          <Routines notify={setNotice} onOpenWork={openWork} />
         )}
         {page === "Calendar" && (
           <Calendar
-            tasks={[]}
-            onOpenWork={() => setPage("Inbox")}
-            onApprovedSelect={() => setNotice("Work details are coming soon.")}
+            tasks={work.tasks ?? []}
+            onOpenWork={openWork}
+            onApprovedSelect={openWork}
           />
         )}
         {page === "Brand Profile" && (

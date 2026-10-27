@@ -42,7 +42,7 @@ npm run db:migrate
 npm run api:dev
 ```
 
-It listens on `http://127.0.0.1:3001` after checking the database connection. `GET /api/health` queries PostgreSQL before returning `{ "ok": true }`. The desktop uses the account, Brand Profile, and scheduling endpoints. Agent execution is not connected yet; saved schedules do not run.
+It listens on `http://127.0.0.1:3001` after checking the database connection. `GET /api/health` queries PostgreSQL before returning `{ "ok": true }`. The desktop uses the account, Brand Profile, scheduling, and task endpoints. Agent execution is not connected yet; saved schedules do not run.
 
 `DATABASE_URL` and `JWT_SECRET` are required. `PORT` and `CLIENT_ORIGINS` are optional. Origins are comma-separated HTTP(S) origins without paths or trailing slashes. Local renderer origins are allowed by default; the `null` origin used by packaged Electron windows is also allowed. The API binds to loopback only.
 
@@ -103,7 +103,7 @@ Each account can have up to 50 recurring routines and pending one-time schedules
 
 The API stores schedules but does not execute them yet. Both Calendar and Routines use these endpoints. Run now stays disabled in the desktop until execution is connected.
 
-Calendar saves one-time tasks to the signed-in account, including edits and confirmed cancellation. Schedules survive logout and app restarts. Dates are entered and displayed in the device's local timezone and sent as absolute timestamps with the timezone name. Calendar refreshes every ten seconds, or every two seconds while work is queued or running. Failed loads offer a retry, and failed saves keep the form open. Inbox work links will be connected when execution and review are available.
+Calendar saves one-time tasks to the signed-in account, including edits and confirmed cancellation. Schedules survive logout and app restarts. Dates are entered and displayed in the device's local timezone and sent as absolute timestamps with the timezone name. Calendar refreshes every ten seconds, or every two seconds while work is queued or running. Failed loads offer a retry, and failed saves keep the form open. Calendar and Routines work links open the corresponding Inbox detail.
 
 Routines saves recurring work, weekday/timezone settings, pause/resume, and confirmed deletion. Cards show the next run in the routine's timezone. The list refreshes every thirty seconds, or every two seconds while work is queued or running. Failed loads offer a retry; failed edits preserve the form.
 
@@ -130,7 +130,15 @@ Task lists include live status, the latest nonempty assistant text (up to 280 ch
 
 Queued or running work cannot be approved or archived. Only completed work can be approved. Repeated review actions retain their first timestamp. The turn repository permits one active turn per task, clears approval when a follow-up starts, and rejects follow-ups to archived tasks. Model-backed follow-ups and scheduled execution are not enabled yet.
 
-These endpoints provide backend storage and review behavior. Agent chat, onboarding, and Inbox have not yet been connected to them in the desktop. Artifact generation and idea-to-content queue actions will follow with execution.
+Inbox uses these endpoints for saved work, details, document editing, and review. Agent chat and onboarding have not yet been connected in the desktop. Artifact generation and idea-to-content queue actions will follow with execution.
+
+## Inbox
+
+For review shows working, failed, and unapproved work. Approved shows approved work that is not archived. All activity includes archived work. The attention count in the sidebar and For review tab counts unapproved review items and failures; working items appear in the list without increasing that count.
+
+Opening work shows its request, ordered replies, tool activity, status, and artifacts. Markdown renders as React elements without raw HTML; links can open HTTP(S) pages or artifacts belonging to that work. Documents can be copied and edited, with errors preserving the draft. Archived documents are read-only in the desktop. Ideas can be read, while follow-up execution and Create content remain disabled. Media viewing will follow with file delivery.
+
+Approve and Archive save through the task API and refresh the lists. Load failures offer a retry. The Inbox list refreshes every twenty seconds, or every three seconds while work is active; an active detail refreshes every 1.5 seconds. Saved reviews and document edits survive logout and app restarts. New accounts have an empty Inbox until work is created; no example results are inserted automatically.
 
 ## Workspace
 
@@ -142,11 +150,11 @@ These endpoints provide backend storage and review behavior. Agent chat, onboard
 The desktop includes five sections:
 
 - **Agent:** chat welcome screen and draft composer. Messages are not sent yet.
-- **Inbox:** review, approved, and activity filters with empty work lists.
+- **Inbox:** saved work filters, task details, document editing, approval, and archive.
 - **Calendar:** month navigation and persistent one-time task creation, editing, and cancellation.
 - **Routines:** persistent recurring routines, weekday/timezone editor, next-run times, pause/resume, and confirmed deletion.
 - **Brand Profile:** read-only General, Audience, Voice, Colours, and Links tabs showing saved account data.
 
-Calendar and Routines persist their settings on the server. No scheduled tasks or routines execute yet. Agent execution and Inbox integration are coming soon.
+Calendar and Routines persist their settings on the server. Inbox displays saved work. No scheduled tasks or routines execute yet; agent execution is coming soon.
 
 Settings provides light, dark, and system appearance, saved on this device.
