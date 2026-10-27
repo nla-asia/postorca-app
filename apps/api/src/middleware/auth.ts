@@ -1,13 +1,14 @@
 import jwt from "jsonwebtoken";
 import type { RequestHandler } from "express";
 /**
- * Short-lived API access token. Clients keep a session with a rotating refresh
- * token (repositories/sessions.ts) and exchange it for a new one before this expires.
+ * API access token, valid for a week. Clients keep a session with a rotating
+ * refresh token (repositories/sessions.ts) and exchange it for a new one when this
+ * expires.
  */
 export function issueToken(
   userId: string,
   secret: string,
-  expiresIn: jwt.SignOptions["expiresIn"] = "15m",
+  expiresIn: jwt.SignOptions["expiresIn"] = "7d",
 ) {
   return jwt.sign({}, secret, {
     subject: userId,

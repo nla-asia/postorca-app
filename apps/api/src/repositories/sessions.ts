@@ -1,7 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
 import { transaction, type Database, type Queryable } from "../db.js";
-/** A session stays signed in while its app refreshes at least this often. */
-const IDLE_DAYS = 30;
+/**
+ * A live refresh token never expires: a session stays signed in until logout or a
+ * detected copy. A spent token is kept this long to detect a copy being reused.
+ */
+const SPENT_KEPT_DAYS = 30;
 /**
  * A spent token presented again this soon is a client retrying a refresh whose
  * response it never received, not a copy; it gets a fresh token instead of
@@ -12,9 +15,8 @@ const hash = (token: string) => createHash("sha256").update(token).digest();
 async function issue(client: Queryable, sessionId: string) {
   const token = randomBytes(32).toString("base64url");
   await client.query(
-    `INSERT INTO refresh_tokens(token_hash,session_id,expires_at)
-     VALUES ($1,$2,now() + make_interval(days => $3))`,
-    [hash(token), sessionId, IDLE_DAYS],
+    "INSERT INTO refresh_tokens(token_hash,session_id) VALUES ($1,$2)",
+    [hash(token), sessionId],
   );
   return token;
 }
@@ -61,8 +63,10 @@ export async function rotateSession(db: Database, token: string) {
     // A session has one live token: this one, or after a retry the one the
     // client never received, is spent. Spent tokens are kept to detect reuse.
     await client.query(
-      "UPDATE refresh_tokens SET used_at=now() WHERE session_id=$1 AND used_at IS NULL",
-      [row.session_id],
+      `UPDATE refresh_tokens
+          SET used_at=now(), expires_at=now() + make_interval(days => $2)
+        WHERE session_id=$1 AND used_at IS NULL`,
+      [row.session_id, SPENT_KEPT_DAYS],
     );
     await client.query(
       "DELETE FROM refresh_tokens WHERE session_id=$1 AND expires_at <= now()",

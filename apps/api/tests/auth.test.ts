@@ -88,7 +88,7 @@ test("passwords use independent scrypt salts and reject incorrect or missing has
   assert.equal(await verifyPassword(password), false);
 });
 
-test("registration normalizes identity, creates a profile, and returns a 15-minute user token and a refresh token", async () => {
+test("registration normalizes identity, creates a profile, and returns a 7-day user token and a refresh token", async () => {
   const account = await register(" Case@Example.com ");
   assert.equal(account.user.name, "Founder");
   assert.equal(account.user.email, "case@example.com");
@@ -114,7 +114,7 @@ test("registration normalizes identity, creates a profile, and returns a 15-minu
   });
   assert.ok(typeof claims !== "string");
   assert.equal(claims.sub, account.user.id);
-  assert.equal(claims.exp! - claims.iat!, 15 * 60);
+  assert.equal(claims.exp! - claims.iat!, 7 * 24 * 60 * 60);
 });
 
 test("refresh tokens rotate, tolerate a retried refresh, and revoke a reused session", async () => {
@@ -130,9 +130,28 @@ test("refresh tokens rotate, tolerate a retried refresh, and revoke a reused ses
     ).data.refreshToken!;
   const ownSessions =
     "session_id IN (SELECT id FROM auth_sessions WHERE user_id = $1)";
+  const expiries = async () =>
+    (
+      await fixture.db.query(
+        `SELECT used_at IS NOT NULL AS spent,
+                expires_at IS NULL AS never_expires,
+                round(extract(epoch FROM expires_at - used_at) / 86400) AS kept_days
+           FROM refresh_tokens WHERE ${ownSessions} ORDER BY used_at NULLS LAST`,
+        [account.user.id],
+      )
+    ).rows;
+  // A live token never expires: the session lasts until logout or a detected copy.
+  assert.deepEqual(await expiries(), [
+    { spent: false, never_expires: true, kept_days: null },
+  ]);
   const first = await refresh(account.refreshToken);
   assert.equal(first.status, 200);
   assert.notEqual(first.data.refreshToken, account.refreshToken);
+  // The spent token is kept 30 days to detect reuse; its successor never expires.
+  assert.deepEqual(await expiries(), [
+    { spent: true, never_expires: false, kept_days: "30" },
+    { spent: false, never_expires: true, kept_days: null },
+  ]);
   assert.equal(
     (await request("/auth/me", "GET", undefined, first.data.token)).data.user
       ?.id,
