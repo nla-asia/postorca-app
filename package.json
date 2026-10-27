@@ -29,6 +29,7 @@
     "computer:live-check": "npm run computer:live-check --workspace @postorca/desktop",
     "browser:eval": "npm run browser:eval --workspace @postorca/api --",
     "computer:eval": "npm run computer:eval --workspace @postorca/api --",
+    "computer:eval:mac": "npm run computer:eval:mac --workspace @postorca/api --",
     "test:computer-eval": "npm run test:computer-eval --workspace @postorca/api",
     "video:bundle": "npm run video:bundle --workspace @postorca/desktop",
     "video:smoke": "npm run video:smoke --workspace @postorca/desktop",

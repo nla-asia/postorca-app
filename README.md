@@ -269,6 +269,14 @@ npm run computer:eval -- regrade <run-folder>
 
 Each case needs three consecutive passes on the same runtime before the next case unlocks. The runner uses the production agent and authenticated desktop connection, saves evidence under `.data/computer-evals/`, and independently reads the app after the turn. Conversation and search cases also need an observer review; mechanical failures cannot be overridden. Regrading retains the original result and does not execute the agent. Run-folder arguments can be absolute or relative to the repository root. Model or execution-code changes reset pass streaks; grader-only changes allow retained evidence to be regraded.
 
+The macOS suite has its own cases, pass history and execution fingerprint, so Windows passes never count on a Mac. `mac-calculator` asks Orca to open Calculator, run a fresh calculation, report the result and deliver a screenshot. `mac-simulator-maps` asks Orca to start the iOS Simulator from a cold state, open Maps and record it; the observer requires the Simulator to be closed and no device booted beforehand, keeps any new Simulator recordings from the Desktop, and extracts review frames. Evidence is saved under `.data/computer-evals-mac/`.
+
+```sh
+npm run computer:eval:mac -- list
+npm run computer:eval:mac -- run mac-calculator
+npm run computer:eval:mac -- status
+```
+
 ## Browser evals
 
 `apps/api/src/evals/browser-cases.ts` defines 20 browser scenarios, from finding flights and hotels to collecting stock media and researching recent posts on X, YouTube, Instagram, LinkedIn and Threads. Each has a natural `brief` and separate `success_criteria`. Only the brief reaches Orca; the criteria are for the reviewer. Being in the catalog does not mean a case has a runner or grader. The observer runs `flights`, `hotels` and `x-post-research` as normal Inbox work tasks; flights and hotels use fixed November 12–19, 2026 dates, and the X case uses a rolling seven-day window anchored at launch.

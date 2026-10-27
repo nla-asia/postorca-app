@@ -13,6 +13,7 @@
     "db:migrate": "tsx src/migrate.ts",
     "browser:eval": "tsx src/scripts/browser-eval.ts",
     "computer:eval": "tsx src/scripts/computer-eval.ts",
+    "computer:eval:mac": "tsx src/scripts/computer-eval-mac.ts",
     "test:computer-eval": "tsx --test tests/computer-eval*.test.ts",
     "media:smoke": "tsx src/scripts/media-smoke.ts",
     "video:eval": "tsx src/scripts/video-eval.ts"
