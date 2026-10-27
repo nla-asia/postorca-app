@@ -3,10 +3,14 @@
  * kind is listed in `kinds` gets its own copy, scheduled in the founder's time zone
  * on that link's platform. Founders edit, pause, or delete them like any routine.
  *
- * Instructions name the core skill (src/skills) that holds the process, with
+ * Each is keyed by its core skill (src/skills), recorded on the link when created, so
+ * a default added here later also reaches links seeded before it. Instructions name
+ * that skill, which holds the process, with
  * {{account}} (the link's name) and {{url}}; the brand profile itself is already in
  * Orca's context for every run.
  */
+import type { WorkType } from "../repositories/routines.js";
+
 export type LinkKind = "x" | "threads" | "instagram" | "facebook" | "linkedin";
 
 export const PLATFORM_BY_KIND: Record<LinkKind, string> = {
@@ -24,6 +28,10 @@ export type DefaultRoutine = {
   time: string;
   /** ISO weekdays, 1 = Monday … 7 = Sunday. */
   days: number[];
+  /** How the task's deliverable is labeled and handled in the app. */
+  workType: WorkType;
+  /** The core skill it follows; also its key on the link. */
+  skill: string;
   instructions: string;
 };
 
@@ -33,6 +41,8 @@ export const DEFAULT_ROUTINES: DefaultRoutine[] = [
     title: "Content ideas",
     time: "09:00",
     days: [1, 2, 3, 4, 5],
+    workType: "ideas",
+    skill: "find-content-ideas",
     instructions:
       "Read the find-content-ideas skill with read_skill, then follow it for {{account}} ({{url}}).",
   },
@@ -41,6 +51,8 @@ export const DEFAULT_ROUTINES: DefaultRoutine[] = [
     title: "Conversations to join",
     time: "13:00",
     days: [1, 2, 3, 4, 5],
+    workType: "conversations",
+    skill: "conversations-to-join",
     instructions:
       "Read the conversations-to-join skill with read_skill, then follow it for {{account}} ({{url}}).",
   },
@@ -49,8 +61,43 @@ export const DEFAULT_ROUTINES: DefaultRoutine[] = [
     title: "Weekly strategy research",
     time: "10:00",
     days: [1],
+    workType: "strategy",
+    skill: "weekly-strategy-research",
     instructions:
       "Read the weekly-strategy-research skill with read_skill, then follow it for {{account}} ({{url}}).",
+  },
+  // Growth for small accounts: people asking to connect, and a weekly post inviting
+  // them. Bigger accounts are told once that they can pause these.
+  {
+    kinds: ["x", "threads", "linkedin"],
+    title: "People to connect",
+    time: "11:00",
+    days: [1, 2, 3, 4, 5],
+    workType: "conversations",
+    skill: "people-to-connect",
+    instructions:
+      "Read the people-to-connect skill with read_skill, then follow it for {{account}} ({{url}}).",
+  },
+  {
+    kinds: ["x", "threads", "linkedin"],
+    title: "Connect post",
+    time: "10:00",
+    days: [3],
+    workType: "content",
+    skill: "connect-post",
+    instructions:
+      "Read the connect-post skill with read_skill, then follow it for {{account}} ({{url}}).",
+  },
+  // A fallback that keeps the account active: it skips days the founder already posted.
+  {
+    kinds: ["x", "threads", "instagram", "facebook", "linkedin"],
+    title: "Daily quote",
+    time: "18:00",
+    days: [1, 2, 3, 4, 5, 6, 7],
+    workType: "content",
+    skill: "daily-quote",
+    instructions:
+      "Read the daily-quote skill with read_skill, then follow it for {{account}} ({{url}}).",
   },
 ];
 
@@ -64,6 +111,7 @@ export const WORK_IDEAS_ROUTINE = {
   title: "Ideas from my work",
   time: "18:00",
   days: [1, 2, 3, 4, 5],
+  workType: "ideas" as WorkType,
   skill: "work-content-ideas",
   instructions:
     "Read the work-content-ideas skill with read_skill, then follow it for {{account}} ({{url}}).",

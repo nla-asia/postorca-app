@@ -612,11 +612,11 @@ test("completed profiles seed defaults once per social link after learning a val
   assert.deepEqual((await request("", "GET", undefined, a.token)).data, []);
   assert.equal((await timezone(a.token, "Asia/Bangkok")).status, 200);
   const seeded = (await request("", "GET", undefined, a.token)).data;
-  assert.equal(seeded.length, 5);
-  assert.equal(seeded.filter((item: any) => item.platform === "X").length, 3);
+  assert.equal(seeded.length, 9);
+  assert.equal(seeded.filter((item: any) => item.platform === "X").length, 6);
   assert.equal(
     seeded.filter((item: any) => item.platform === "Instagram").length,
-    2,
+    3,
   );
   assert.ok(
     seeded.every(
@@ -639,6 +639,34 @@ test("completed profiles seed defaults once per social link after learning a val
   );
   assert.equal(research.time, "10:00");
   assert.deepEqual(research.days, [1]);
+  // Each default carries its work type, so the app labels its deliverables.
+  assert.deepEqual(
+    Object.fromEntries(
+      seeded
+        .filter((item: any) => item.platform === "X")
+        .map((item: any) => [item.title, item.work_type]),
+    ),
+    {
+      "Content ideas": "ideas",
+      "Conversations to join": "conversations",
+      "Weekly strategy research": "strategy",
+      "People to connect": "conversations",
+      "Connect post": "content",
+      "Daily quote": "content",
+    },
+  );
+  const quote = seeded.find(
+    (item: any) => item.platform === "Instagram" && item.title === "Daily quote",
+  );
+  assert.equal(quote.time, "18:00");
+  assert.deepEqual(quote.days, [1, 2, 3, 4, 5, 6, 7]);
+  assert.ok(
+    !seeded.some(
+      (item: any) =>
+        item.platform === "Instagram" &&
+        ["People to connect", "Connect post"].includes(item.title),
+    ),
+  );
   // Editing/deleting defaults and learning a different zone must not recreate them.
   await request(
     `/${research.id}`,
@@ -650,7 +678,7 @@ test("completed profiles seed defaults once per social link after learning a val
   await profile(a.token, { topics: "AI products" });
   await timezone(a.token, "Europe/Berlin");
   const kept = (await request("", "GET", undefined, a.token)).data;
-  assert.equal(kept.length, 4);
+  assert.equal(kept.length, 8);
   assert.equal(
     kept.find((item: any) => item.id === research.id).instructions,
     "My own research process",
@@ -674,15 +702,15 @@ test("completed profiles seed defaults once per social link after learning a val
     200,
   );
   const added = (await request("", "GET", undefined, a.token)).data;
-  assert.equal(added.length, 10);
+  assert.equal(added.length, 20);
   assert.equal(
     added.filter((item: any) => item.platform === "LinkedIn").length,
-    3,
+    6,
   );
   assert.equal(
     added.filter((item: any) => item.instructions.includes("Product on X"))
       .length,
-    3,
+    6,
   );
   assert.ok(
     added
@@ -722,7 +750,7 @@ test("known-zone profile completion is idempotent under concurrent saves and ign
   assert.ok(results.every((result) => result.status === 200));
   await timezone(a.token, "UTC");
   await profile(a.token, { voice: "Direct and clear" });
-  assert.equal((await request("", "GET", undefined, a.token)).data.length, 3);
+  assert.equal((await request("", "GET", undefined, a.token)).data.length, 6);
   assert.equal(
     (await request("?once=true", "GET", undefined, a.token)).data.length,
     0,
@@ -758,7 +786,7 @@ test("removing a profile link pauses only its routines and clears their link ref
       [a.id],
     )
   ).rows;
-  assert.equal(rows.length, 7);
+  assert.equal(rows.length, 13);
   assert.ok(
     rows
       .filter((item) => item.platform === "X")
@@ -772,7 +800,7 @@ test("removing a profile link pauses only its routines and clears their link ref
       .filter((item) => item.platform === "Threads")
       .every((item) => item.active && item.next_run_at),
   );
-  assert.equal(rows.filter((item) => item.link_id !== null).length, 3);
+  assert.equal(rows.filter((item) => item.link_id !== null).length, 6);
   assert.ok(
     (await request("", "GET", undefined, a.token)).data.find(
       (item: any) => item.id === manual.id,
@@ -785,11 +813,11 @@ test("seeding respects the shared cap and defers a whole account's defaults unti
   await timezone(a.token, "UTC");
   await fixture.db.query(
     `INSERT INTO routines(user_id,platform,title,instructions,time_of_day,days,timezone,active)
-    SELECT $1,'Threads','Manual '||n,'Find ideas','09:00',ARRAY[1]::smallint[],'UTC',false FROM generate_series(1,48) n`,
+    SELECT $1,'Threads','Manual '||n,'Find ideas','09:00',ARRAY[1]::smallint[],'UTC',false FROM generate_series(1,45) n`,
     [a.id],
   );
   assert.equal((await profile(a.token, completeProfile)).status, 200);
-  assert.equal((await request("", "GET", undefined, a.token)).data.length, 48);
+  assert.equal((await request("", "GET", undefined, a.token)).data.length, 45);
   assert.equal(
     (
       await fixture.db.query(
@@ -810,7 +838,7 @@ test("seeding respects the shared cap and defers a whole account's defaults unti
         [a.id],
       )
     ).rowCount,
-    3,
+    6,
   );
   assert.ok(
     (
@@ -865,5 +893,66 @@ test("failed seeding rolls back both profile completion and newly learned timezo
     );
   }
   assert.equal((await timezone(b.token, "UTC")).status, 200);
-  assert.equal((await request("", "GET", undefined, b.token)).data.length, 3);
+  assert.equal((await request("", "GET", undefined, b.token)).data.length, 6);
+});
+
+test("migrate gives links seeded before new defaults only the ones they are missing", async () => {
+  const a = await account();
+  await timezone(a.token, "UTC");
+  await profile(a.token, completeProfile);
+  const seeded = (await request("", "GET", undefined, a.token)).data;
+  assert.equal(seeded.length, 6);
+  // Back to how the account looked before the growth defaults existed, with the
+  // founder having deleted Content ideas and added their own People to connect.
+  await fixture.db.query(
+    "DELETE FROM routines WHERE user_id=$1 AND title = ANY($2)",
+    [a.id, ["People to connect", "Connect post", "Daily quote", "Content ideas"]],
+  );
+  await fixture.db.query(
+    `UPDATE brand_profile_links SET seeded_routines =
+       ARRAY['find-content-ideas','conversations-to-join','weekly-strategy-research']
+     WHERE user_id=$1`,
+    [a.id],
+  );
+  await fixture.db.query(
+    `INSERT INTO routines(user_id,platform,title,instructions,time_of_day,days,timezone,active,next_run_at,link_id)
+     SELECT $1,'X','My connects','Read the people-to-connect skill with read_skill, then follow it my way.','08:00',ARRAY[1]::smallint[],'UTC',true,
+       routine_next_run('08:00'::time,ARRAY[1]::smallint[],'UTC',now()),id
+     FROM brand_profile_links WHERE user_id=$1`,
+    [a.id],
+  );
+  await migrate(fixture.db);
+  const titles = (await request("", "GET", undefined, a.token)).data
+    .map((item: any) => item.title)
+    .sort();
+  assert.deepEqual(titles, [
+    "Connect post",
+    "Conversations to join",
+    "Daily quote",
+    "My connects",
+    "Weekly strategy research",
+  ]);
+  assert.deepEqual(
+    (
+      await fixture.db.query(
+        "SELECT seeded_routines FROM brand_profile_links WHERE user_id=$1",
+        [a.id],
+      )
+    ).rows[0].seeded_routines.sort(),
+    [
+      "connect-post",
+      "conversations-to-join",
+      "daily-quote",
+      "find-content-ideas",
+      "people-to-connect",
+      "weekly-strategy-research",
+    ],
+  );
+  // Running it again, or deleting a backfilled default, creates nothing more.
+  const quote = (await request("", "GET", undefined, a.token)).data.find(
+    (item: any) => item.title === "Daily quote",
+  );
+  await request(`/${quote.id}`, "DELETE", undefined, a.token);
+  await migrate(fixture.db);
+  assert.equal((await request("", "GET", undefined, a.token)).data.length, 4);
 });
