@@ -4,7 +4,7 @@ After=network.target postgresql.service pba-connectors.service
 Requires=postgresql.service
 
 [Service]
-User=nika
+User=__SERVICE_USER__
 WorkingDirectory=/opt/postorca/apps/api
 Environment=NODE_ENV=production
 ExecStart=/usr/bin/node /opt/postorca/apps/api/dist/index.js
