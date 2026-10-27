@@ -9,7 +9,6 @@ import {
   tokenStore,
   type AuthUser,
 } from "./lib/api";
-import { clearSchedulePreview } from "./lib/previewSchedules";
 import { useTheme } from "./lib/useTheme";
 
 export default function App() {
@@ -19,7 +18,6 @@ export default function App() {
   const [theme, setTheme] = useTheme();
   const signOut = useCallback(() => {
     tokenStore.clear();
-    clearSchedulePreview();
     setUser(null);
   }, []);
 
@@ -78,7 +76,6 @@ export default function App() {
         notice={notice}
         onComplete={(account) => {
           setNotice("");
-          clearSchedulePreview();
           setUser(account);
         }}
       />

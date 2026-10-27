@@ -42,7 +42,7 @@ npm run db:migrate
 npm run api:dev
 ```
 
-It listens on `http://127.0.0.1:3001` after checking the database connection. `GET /api/health` queries PostgreSQL before returning `{ "ok": true }`. The desktop uses the account and Brand Profile endpoints. Agent execution is not connected yet; scheduling pages continue to use local previews.
+It listens on `http://127.0.0.1:3001` after checking the database connection. `GET /api/health` queries PostgreSQL before returning `{ "ok": true }`. The desktop uses the account, Brand Profile, and scheduling endpoints. Agent execution is not connected yet; saved schedules do not run.
 
 `DATABASE_URL` and `JWT_SECRET` are required. `PORT` and `CLIENT_ORIGINS` are optional. Origins are comma-separated HTTP(S) origins without paths or trailing slashes. Local renderer origins are allowed by default; the `null` origin used by packaged Electron windows is also allowed. The API binds to loopback only.
 
@@ -64,7 +64,7 @@ User tokens use HS256, expire after 12 hours, and are scoped to the PostOrca des
 
 The desktop opens with Log in and provides a Sign up form. Successful sign-in opens the workspace and shows the account name/email in the sidebar. Electron encrypts the token and API URL with `safeStorage` in the app's data directory. On restart, the saved token is validated through `/auth/me`. If OS encryption is unavailable, the session stays in memory for that launch. The preload bridge exposes only session get/set/clear to the app's top frame; renderer Node access remains disabled.
 
-Log out clears the current session, removes the saved session file, and clears session-only routine previews. Saved Calendar schedules stay with the account. A rejected token returns to Log in and removes the saved session; a network failure retains it for a later retry. Plain-browser development uses `sessionStorage` instead of desktop persistence. Opening the desktop again focuses the existing window rather than starting another process for the same profile.
+Log out clears the current session and removes the saved session file. Saved Calendar schedules and Routines stay with the account. A rejected token returns to Log in and removes the saved session; a network failure retains it for a later retry. Plain-browser development uses `sessionStorage` instead of desktop persistence. Opening the desktop again focuses the existing window rather than starting another process for the same profile.
 
 The renderer uses `http://127.0.0.1:3001/api` by default. To change it, copy `apps/desktop/.env.example` to `apps/desktop/.env`, set `VITE_API_URL`, and restart development or rebuild. Only this API origin is added to the renderer's connection policy. Start the API before signing in.
 
@@ -79,7 +79,7 @@ Both endpoints require `Authorization: Bearer <token>` and use the signed-in acc
 
 Omitted fields keep their saved values. A supplied `links` array replaces the account's links; existing IDs retain their identity and omitted publishing metadata. Changing a link URL resets its access status to `not_granted`. Foreign or duplicate link IDs are rejected. Names, context, and links save in one transaction.
 
-Colors accept optional `background`, `text`, and `highlight` values in `#RRGGBB` format. Links accept HTTP(S) URLs, a platform kind, publishing method/instructions, and access status. Completing onboarding requires company context, primary topics, and at least one social account link. Completing a profile does not create routines yet.
+Colors accept optional `background`, `text`, and `highlight` values in `#RRGGBB` format. Links accept HTTP(S) URLs, a platform kind, publishing method/instructions, and access status. Completing onboarding requires company context, primary topics, and at least one social account link. Completing a profile creates default routines for its social accounts once the account's timezone is known.
 
 The desktop loads saved data whenever Brand Profile opens and offers a retry if loading fails. General, Audience, Voice, Colours, and Links remain read-only; editing through Orca will follow with chat integration. HTTP(S) links open in the system browser.
 
@@ -101,9 +101,15 @@ One-time schedules accept `title`, `instructions`, `timezone`, an optional nulla
 
 Each account can have up to 50 recurring routines and pending one-time schedules combined; paused recurring routines count toward this limit. Creation is serialized per account to enforce the limit during concurrent requests. Responses include the latest run's task ID, trigger, and live status when available. Deleting a routine keeps any work it previously produced.
 
-The API stores schedules but does not execute them yet. Default routines are not seeded automatically. Calendar uses these endpoints; Routines still uses its local desktop preview adapter.
+The API stores schedules but does not execute them yet. Both Calendar and Routines use these endpoints. Run now stays disabled in the desktop until execution is connected.
 
 Calendar saves one-time tasks to the signed-in account, including edits and confirmed cancellation. Schedules survive logout and app restarts. Dates are entered and displayed in the device's local timezone and sent as absolute timestamps with the timezone name. Calendar refreshes every ten seconds, or every two seconds while work is queued or running. Failed loads offer a retry, and failed saves keep the form open. Inbox work links will be connected when execution and review are available.
+
+Routines saves recurring work, weekday/timezone settings, pause/resume, and confirmed deletion. Cards show the next run in the routine's timezone. The list refreshes every thirty seconds, or every two seconds while work is queued or running. Failed loads offer a retry; failed edits preserve the form.
+
+After profile completion, each social account receives its defaults once: Content ideas at 09:00 on weekdays and Weekly strategy research at 10:00 on Mondays. X, Threads, and LinkedIn also receive Conversations to join at 13:00 on weekdays. Each uses the account's timezone at creation. Website and other links have no defaults. A missing timezone postpones seeding until a valid timezone is learned through authentication.
+
+Editing, pausing, or deleting a default does not recreate it on later profile saves or timezone changes. Social accounts added later receive their own defaults. Removing a profile link pauses its routines and clears their link reference. Seeding respects the shared 50-schedule cap and defers a link's entire set of defaults if there is insufficient room; a later profile save or timezone change can retry it.
 
 ## Workspace
 
@@ -117,9 +123,9 @@ The desktop includes five sections:
 - **Agent:** chat welcome screen and draft composer. Messages are not sent yet.
 - **Inbox:** review, approved, and activity filters with empty work lists.
 - **Calendar:** month navigation and persistent one-time task creation, editing, and cancellation.
-- **Routines:** recurring routine cards, weekday/timezone editor, pause, and delete.
+- **Routines:** persistent recurring routines, weekday/timezone editor, next-run times, pause/resume, and confirmed deletion.
 - **Brand Profile:** read-only General, Audience, Voice, Colours, and Links tabs showing saved account data.
 
-Routines uses a temporary in-memory preview adapter. Its changes last until logout, reload, or restart and make no server requests. No scheduled tasks or routines execute yet. Agent execution and Routines integration are coming soon.
+Calendar and Routines persist their settings on the server. No scheduled tasks or routines execute yet. Agent execution and Inbox integration are coming soon.
 
 Settings provides light, dark, and system appearance, saved on this device.

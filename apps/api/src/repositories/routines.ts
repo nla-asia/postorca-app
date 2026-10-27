@@ -1,5 +1,10 @@
 import { transaction, type Database, type Queryable } from "../db.js";
 import { HttpError } from "../handlers/errors.js";
+import {
+  DEFAULT_ROUTINES,
+  PLATFORM_BY_KIND,
+  type LinkKind,
+} from "../seeds/default-routines.js";
 
 export type RoutineFields = {
   platform: string;
@@ -135,6 +140,94 @@ export async function createRoutine(
     );
     return created.id;
   });
+}
+
+/**
+ * Creates the default routines (seeds/default-routines.ts) for each social link not
+ * seeded yet, once onboarding is completed and the founder's time zone is known.
+ * Runs inside the caller's transaction after profile, link, or time zone writes.
+ * A link is seeded whole or not at all, so the per-user cap can leave it for later.
+ */
+export async function seedDefaultRoutines(db: Queryable, userId: string) {
+  const {
+    rows: [user],
+  } = await db.query(
+    `SELECT u.timezone FROM users u JOIN brand_profiles p ON p.user_id = u.id
+     WHERE u.id = $1 AND p.onboarding_status = 'completed' AND u.timezone IS NOT NULL
+     FOR UPDATE OF u`,
+    [userId],
+  );
+  if (!user) return [];
+  const { rows: links } = await db.query(
+    `SELECT id, name, url, kind FROM brand_profile_links
+     WHERE user_id = $1 AND routines_seeded_at IS NULL AND kind = ANY($2)
+     ORDER BY name, id FOR UPDATE`,
+    [userId, Object.keys(PLATFORM_BY_KIND)],
+  );
+  if (!links.length) return [];
+  const {
+    rows: [{ count }],
+  } = await db.query(
+    "SELECT count(*)::int AS count FROM routines WHERE user_id = $1 AND (run_at IS NULL OR active)",
+    [userId],
+  );
+  let room = MAX_ROUTINES - count;
+  const created: { title: string; platform: string; account: string }[] = [];
+  for (const link of links) {
+    const kind = link.kind as LinkKind;
+    const defaults = DEFAULT_ROUTINES.filter((d) => d.kinds.includes(kind));
+    if (defaults.length > room) break;
+    for (const routine of defaults) {
+      const values: Record<string, string> = {
+        account: link.name,
+        url: link.url,
+      };
+      await db.query(
+        `INSERT INTO routines(user_id, platform, title, instructions, time_of_day, days, timezone, active, next_run_at, link_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, true,
+           routine_next_run($5::time, $6::smallint[], $7, now()), $8)`,
+        [
+          userId,
+          PLATFORM_BY_KIND[kind],
+          routine.title,
+          routine.instructions.replace(/{{(\w+)}}/g, (_, key) => values[key]),
+          routine.time,
+          routine.days,
+          user.timezone,
+          link.id,
+        ],
+      );
+      created.push({
+        title: routine.title,
+        platform: PLATFORM_BY_KIND[kind],
+        account: link.name,
+      });
+    }
+    room -= defaults.length;
+    await db.query(
+      "UPDATE brand_profile_links SET routines_seeded_at = now() WHERE id = $1",
+      [link.id],
+    );
+  }
+  return created;
+}
+
+/**
+ * Pauses the routines working on links that are about to be deleted. Call before
+ * the delete; the foreign key then clears link_id. Returns how many were paused.
+ */
+export async function pauseLinkRoutines(
+  db: Queryable,
+  userId: string,
+  linkIds: string[],
+) {
+  if (!linkIds.length) return 0;
+  const paused = await db.query(
+    `UPDATE routines SET active = false, next_run_at = NULL
+     WHERE user_id = $1 AND link_id = ANY($2::uuid[]) AND active`,
+    [userId, linkIds],
+  );
+  return paused.rowCount ?? 0;
 }
 
 /**

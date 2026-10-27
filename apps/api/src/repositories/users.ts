@@ -1,6 +1,7 @@
 import { randomBytes, scrypt as derive, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { transaction, type Database, type Queryable } from "../db.js";
+import { seedDefaultRoutines } from "./routines.js";
 const scrypt = promisify(derive);
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -57,7 +58,7 @@ export async function findUser(db: Queryable, userId: string) {
 }
 /**
  * Records the founder's IANA time zone as reported by their client. Unknown zones
- * are ignored.
+ * are ignored. Learning it can seed default routines held back for lack of one.
  */
 export async function saveTimezone(
   db: Database,
@@ -66,10 +67,11 @@ export async function saveTimezone(
 ) {
   if (!timezone) return;
   await transaction(db, async (client) => {
-    await client.query(
+    const updated = await client.query(
       `UPDATE users SET timezone = $2 WHERE id = $1 AND timezone IS DISTINCT FROM $2
        AND EXISTS (SELECT 1 FROM pg_timezone_names WHERE name = $2)`,
       [userId, timezone],
     );
+    if (updated.rowCount) await seedDefaultRoutines(client, userId);
   });
 }

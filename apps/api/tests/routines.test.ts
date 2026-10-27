@@ -564,3 +564,306 @@ test("run-now reports unavailable execution and never creates queued work", asyn
     0,
   );
 });
+
+async function profile(token: string, body?: unknown) {
+  const response = await fetch(url.replace(/\/routines$/, "/brand-profile"), {
+    method: body === undefined ? "GET" : "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+  return { status: response.status, data: (await response.json()) as any };
+}
+async function timezone(token: string, zone: string) {
+  return fetch(url.replace(/\/routines$/, "/auth/me"), {
+    headers: { Authorization: `Bearer ${token}`, "X-Timezone": zone },
+  });
+}
+const completeProfile = {
+  company: "Building a product",
+  topics: "Product development",
+  onboarding_status: "completed",
+  links: [{ name: "Founder on X", url: "https://x.com/founder", kind: "x" }],
+};
+
+test("completed profiles seed defaults once per social link after learning a valid timezone", async () => {
+  const a = await account();
+  assert.equal(
+    (
+      await profile(a.token, {
+        ...completeProfile,
+        links: [
+          ...completeProfile.links,
+          {
+            name: "Founder IG",
+            url: "https://instagram.com/founder",
+            kind: "instagram",
+          },
+          { name: "Website", url: "https://example.com", kind: "website" },
+        ],
+      })
+    ).status,
+    200,
+  );
+  assert.deepEqual((await request("", "GET", undefined, a.token)).data, []);
+  await timezone(a.token, "Not/AZone");
+  assert.deepEqual((await request("", "GET", undefined, a.token)).data, []);
+  assert.equal((await timezone(a.token, "Asia/Bangkok")).status, 200);
+  const seeded = (await request("", "GET", undefined, a.token)).data;
+  assert.equal(seeded.length, 5);
+  assert.equal(seeded.filter((item: any) => item.platform === "X").length, 3);
+  assert.equal(
+    seeded.filter((item: any) => item.platform === "Instagram").length,
+    2,
+  );
+  assert.ok(
+    seeded.every(
+      (item: any) =>
+        item.timezone === "Asia/Bangkok" && item.active && item.next_run_at,
+    ),
+  );
+  const ideas = seeded.find(
+    (item: any) => item.platform === "X" && item.title === "Content ideas",
+  );
+  assert.equal(
+    ideas.instructions,
+    "Read the find-content-ideas skill with read_skill, then follow it for Founder on X (https://x.com/founder).",
+  );
+  assert.equal(ideas.time, "09:00");
+  assert.deepEqual(ideas.days, [1, 2, 3, 4, 5]);
+  const research = seeded.find(
+    (item: any) =>
+      item.platform === "X" && item.title === "Weekly strategy research",
+  );
+  assert.equal(research.time, "10:00");
+  assert.deepEqual(research.days, [1]);
+  // Editing/deleting defaults and learning a different zone must not recreate them.
+  await request(
+    `/${research.id}`,
+    "PATCH",
+    { instructions: "My own research process", active: false },
+    a.token,
+  );
+  await request(`/${ideas.id}`, "DELETE", undefined, a.token);
+  await profile(a.token, { topics: "AI products" });
+  await timezone(a.token, "Europe/Berlin");
+  const kept = (await request("", "GET", undefined, a.token)).data;
+  assert.equal(kept.length, 4);
+  assert.equal(
+    kept.find((item: any) => item.id === research.id).instructions,
+    "My own research process",
+  );
+  assert.ok(kept.every((item: any) => item.timezone === "Asia/Bangkok"));
+  const current = (await profile(a.token)).data;
+  assert.equal(
+    (
+      await profile(a.token, {
+        links: [
+          ...current.links,
+          {
+            name: "Founder LinkedIn",
+            url: "https://linkedin.com/in/founder",
+            kind: "linkedin",
+          },
+          { name: "Product on X", url: "https://x.com/product", kind: "x" },
+        ],
+      })
+    ).status,
+    200,
+  );
+  const added = (await request("", "GET", undefined, a.token)).data;
+  assert.equal(added.length, 10);
+  assert.equal(
+    added.filter((item: any) => item.platform === "LinkedIn").length,
+    3,
+  );
+  assert.equal(
+    added.filter((item: any) => item.instructions.includes("Product on X"))
+      .length,
+    3,
+  );
+  assert.ok(
+    added
+      .filter((item: any) => item.platform === "LinkedIn")
+      .every((item: any) => item.timezone === "Europe/Berlin"),
+  );
+  const markers = (
+    await fixture.db.query(
+      "SELECT kind,routines_seeded_at FROM brand_profile_links WHERE user_id=$1",
+      [a.id],
+    )
+  ).rows;
+  assert.equal(markers.filter((item) => item.routines_seeded_at).length, 4);
+  assert.equal(
+    markers.find((item) => item.kind === "website")!.routines_seeded_at,
+    null,
+  );
+});
+
+test("known-zone profile completion is idempotent under concurrent saves and ignores incomplete profiles", async () => {
+  const a = await account();
+  await timezone(a.token, "UTC");
+  assert.equal(
+    (
+      await profile(a.token, {
+        ...completeProfile,
+        onboarding_status: "in_progress",
+      })
+    ).status,
+    200,
+  );
+  assert.deepEqual((await request("", "GET", undefined, a.token)).data, []);
+  const results = await Promise.all([
+    profile(a.token, { onboarding_status: "completed" }),
+    profile(a.token, { onboarding_status: "completed" }),
+  ]);
+  assert.ok(results.every((result) => result.status === 200));
+  await timezone(a.token, "UTC");
+  await profile(a.token, { voice: "Direct and clear" });
+  assert.equal((await request("", "GET", undefined, a.token)).data.length, 3);
+  assert.equal(
+    (await request("?once=true", "GET", undefined, a.token)).data.length,
+    0,
+  );
+});
+
+test("removing a profile link pauses only its routines and clears their link references", async () => {
+  const a = await account();
+  await timezone(a.token, "UTC");
+  await profile(a.token, {
+    ...completeProfile,
+    links: [
+      ...completeProfile.links,
+      { name: "Threads", url: "https://threads.net/@founder", kind: "threads" },
+    ],
+  });
+  const manual = (await request("", "POST", routine, a.token)).data;
+  const current = (await profile(a.token)).data;
+  const x = current.links.find((link: any) => link.kind === "x");
+  const foreign = await account();
+  assert.equal((await profile(foreign.token, { links: [x] })).status, 404);
+  assert.equal(
+    (
+      await profile(a.token, {
+        links: current.links.filter((link: any) => link.id !== x.id),
+      })
+    ).status,
+    200,
+  );
+  const rows = (
+    await fixture.db.query(
+      "SELECT platform,active,next_run_at,link_id FROM routines WHERE user_id=$1",
+      [a.id],
+    )
+  ).rows;
+  assert.equal(rows.length, 7);
+  assert.ok(
+    rows
+      .filter((item) => item.platform === "X")
+      .every(
+        (item) =>
+          !item.active && item.next_run_at === null && item.link_id === null,
+      ),
+  );
+  assert.ok(
+    rows
+      .filter((item) => item.platform === "Threads")
+      .every((item) => item.active && item.next_run_at),
+  );
+  assert.equal(rows.filter((item) => item.link_id !== null).length, 3);
+  assert.ok(
+    (await request("", "GET", undefined, a.token)).data.find(
+      (item: any) => item.id === manual.id,
+    ).active,
+  );
+});
+
+test("seeding respects the shared cap and defers a whole account's defaults until there is room", async () => {
+  const a = await account();
+  await timezone(a.token, "UTC");
+  await fixture.db.query(
+    `INSERT INTO routines(user_id,platform,title,instructions,time_of_day,days,timezone,active)
+    SELECT $1,'Threads','Manual '||n,'Find ideas','09:00',ARRAY[1]::smallint[],'UTC',false FROM generate_series(1,48) n`,
+    [a.id],
+  );
+  assert.equal((await profile(a.token, completeProfile)).status, 200);
+  assert.equal((await request("", "GET", undefined, a.token)).data.length, 48);
+  assert.equal(
+    (
+      await fixture.db.query(
+        "SELECT routines_seeded_at FROM brand_profile_links WHERE user_id=$1",
+        [a.id],
+      )
+    ).rows[0].routines_seeded_at,
+    null,
+  );
+  const first = (await request("", "GET", undefined, a.token)).data[0];
+  await request(`/${first.id}`, "DELETE", undefined, a.token);
+  assert.equal((await profile(a.token, { topics: "More ideas" })).status, 200);
+  assert.equal((await request("", "GET", undefined, a.token)).data.length, 50);
+  assert.equal(
+    (
+      await fixture.db.query(
+        "SELECT 1 FROM routines WHERE user_id=$1 AND link_id IS NOT NULL",
+        [a.id],
+      )
+    ).rowCount,
+    3,
+  );
+  assert.ok(
+    (
+      await fixture.db.query(
+        "SELECT routines_seeded_at FROM brand_profile_links WHERE user_id=$1",
+        [a.id],
+      )
+    ).rows[0].routines_seeded_at,
+  );
+  assert.equal((await request("", "POST", onceTask(), a.token)).status, 409);
+});
+
+test("failed seeding rolls back both profile completion and newly learned timezone", async (context) => {
+  context.mock.method(console, "error", () => {});
+  const a = await account(),
+    b = await account();
+  await timezone(a.token, "UTC");
+  await profile(b.token, completeProfile);
+  await fixture.db.query(
+    "CREATE FUNCTION reject_default() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test-only failure'; END; $$; CREATE TRIGGER reject_default BEFORE INSERT ON routines FOR EACH ROW EXECUTE FUNCTION reject_default()",
+  );
+  try {
+    assert.equal(
+      (await profile(a.token, { ...completeProfile, name: "Must roll back" }))
+        .status,
+      500,
+    );
+    const unchanged = (await profile(a.token)).data;
+    assert.equal(unchanged.name, "Founder");
+    assert.equal(unchanged.company, "");
+    assert.equal(unchanged.onboarding_status, "not_started");
+    assert.deepEqual(unchanged.links, []);
+    assert.equal((await timezone(b.token, "UTC")).status, 500);
+    assert.equal(
+      (await fixture.db.query("SELECT timezone FROM users WHERE id=$1", [b.id]))
+        .rows[0].timezone,
+      null,
+    );
+    assert.equal(
+      (
+        await fixture.db.query(
+          "SELECT routines_seeded_at FROM brand_profile_links WHERE user_id=$1",
+          [b.id],
+        )
+      ).rows[0].routines_seeded_at,
+      null,
+    );
+    assert.equal((await request("", "GET", undefined, b.token)).data.length, 0);
+  } finally {
+    await fixture.db.query(
+      "DROP TRIGGER reject_default ON routines; DROP FUNCTION reject_default()",
+    );
+  }
+  assert.equal((await timezone(b.token, "UTC")).status, 200);
+  assert.equal((await request("", "GET", undefined, b.token)).data.length, 3);
+});

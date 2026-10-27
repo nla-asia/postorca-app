@@ -1,9 +1,11 @@
 import { transaction, type Database, type Queryable } from "../db.js";
 import { HttpError } from "../handlers/errors.js";
 import type { BrandLinkInput, ProfileInput } from "../schemas/brand.js";
+import { PLATFORM_BY_KIND } from "../seeds/default-routines.js";
+import { pauseLinkRoutines, seedDefaultRoutines } from "./routines.js";
 
 /** Link kinds that are social accounts; onboarding needs at least one. */
-const SOCIAL_KINDS = ["x", "threads", "instagram", "facebook", "linkedin"];
+const SOCIAL_KINDS = Object.keys(PLATFORM_BY_KIND);
 export async function getProfile(db: Database, userId: string) {
   const {
     rows: [profile],
@@ -24,7 +26,7 @@ export async function saveProfile(
   data: ProfileInput,
   options: { saveLinks?: boolean } = {},
 ) {
-  await transaction(db, async (client) => {
+  const createdRoutines = await transaction(db, async (client) => {
     await client.query(
       "SELECT user_id FROM brand_profiles WHERE user_id=$1 FOR UPDATE",
       [userId],
@@ -80,14 +82,16 @@ export async function saveProfile(
         [userId, ids],
       );
       const removedIds = removed.map((link) => link.id);
+      await pauseLinkRoutines(client, userId, removedIds);
       await client.query(
         "DELETE FROM brand_profile_links WHERE id=ANY($1::uuid[])",
         [removedIds],
       );
       for (const link of data.links) await saveLinkRow(client, userId, link);
     }
+    return seedDefaultRoutines(client, userId);
   });
-  return { profile: await getProfile(db, userId), createdRoutines: [] };
+  return { profile: await getProfile(db, userId), createdRoutines };
 }
 /** The founder's saved brand colours ({} when none are set). */
 export async function brandColors(

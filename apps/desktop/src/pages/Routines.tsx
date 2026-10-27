@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowRight,
@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button, Modal, Pill, Platform } from "../components/ui";
-import { previewScheduleRequest as api } from "../lib/previewSchedules";
+import { api } from "../lib/api";
 import {
   PLATFORMS,
   type PlatformName,
@@ -61,27 +61,63 @@ function formatWhen(value: string, timeZone: string) {
     minute: "2-digit",
   });
 }
-function useRoutines(onError: (message: string) => void) {
+function useRoutines() {
   const [routines, setRoutines] = useState<Routine[] | null>(null);
+  const [error, setError] = useState("");
+  const requestController = useRef<AbortController | null>(null);
   const reload = useCallback(async () => {
+    requestController.current?.abort();
+    const controller = new AbortController();
+    requestController.current = controller;
     try {
-      setRoutines(await api<Routine[]>("/routines"));
-    } catch (error) {
-      onError(
-        error instanceof Error ? error.message : "Unable to load routines.",
+      const saved = await api<Routine[]>("/routines", {
+        signal: AbortSignal.any([
+          controller.signal,
+          AbortSignal.timeout(15000),
+        ]),
+      });
+      if (controller.signal.aborted) return;
+      setRoutines(saved);
+      setError("");
+    } catch (failure) {
+      if (controller.signal.aborted) return;
+      setError(
+        failure instanceof Error ? failure.message : "Unable to load routines.",
       );
+    } finally {
+      if (requestController.current === controller)
+        requestController.current = null;
     }
-  }, [onError]);
+  }, []);
   useEffect(() => {
     void reload();
+    return () => requestController.current?.abort();
   }, [reload]);
-  const replace = (routine: Routine) =>
+  const busy = !!routines?.some((routine) =>
+    ["queued", "running"].includes(routine.last_run_status ?? ""),
+  );
+  useEffect(() => {
+    const timer = setInterval(
+      () => {
+        if (!requestController.current) void reload();
+      },
+      busy ? 2000 : 30000,
+    );
+    return () => clearInterval(timer);
+  }, [busy, reload]);
+  const replace = (routine: Routine) => {
+    requestController.current?.abort();
     setRoutines((items) =>
       items?.some((item) => item.id === routine.id)
         ? items.map((item) => (item.id === routine.id ? routine : item))
         : [...(items ?? []), routine],
     );
-  return { routines, reload, replace, setRoutines };
+  };
+  const remove = (id: string) => {
+    requestController.current?.abort();
+    setRoutines((items) => items?.filter((item) => item.id !== id) ?? null);
+  };
+  return { routines, error, reload, replace, remove };
 }
 
 export default function Routines({
@@ -91,7 +127,7 @@ export default function Routines({
   notify: (message: string) => void;
   onOpenWork: (taskId: string) => void;
 }) {
-  const { routines, replace, setRoutines } = useRoutines(notify);
+  const { routines, error, reload, replace, remove } = useRoutines();
   const [editing, setEditing] = useState<Routine | "new" | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const act = async (id: string, work: () => Promise<void>) => {
@@ -126,8 +162,8 @@ export default function Routines({
             })()}
           </strong>
           <span>
-            Preview · Changes last until the app restarts. Routines do not run
-            yet.
+            Routines are saved to your account. Automatic execution is coming
+            soon.
           </span>
         </div>
         <Button variant="primary" onClick={() => setEditing("new")}>
@@ -135,10 +171,20 @@ export default function Routines({
           New routine
         </Button>
       </div>
-      {routines === null ? (
-        <div className="chat-loading" role="status">
-          Loading…
+      {error && (
+        <div className="routine-load-error">
+          <p className="auth-error" role="alert">
+            {error}
+          </p>
+          <Button onClick={() => void reload()}>Try again</Button>
         </div>
+      )}
+      {routines === null ? (
+        !error && (
+          <div className="chat-loading" role="status">
+            Loading…
+          </div>
+        )
       ) : routines.length === 0 ? (
         <div className="empty-state">
           <Clock3 size={30} />
@@ -222,7 +268,10 @@ export default function Routines({
                       </span>
                     </span>
                     <span className="muted">
-                      · {routine.active ? "Not scheduled in preview" : "Paused"}
+                      ·{" "}
+                      {routine.active && routine.next_run_at
+                        ? `Next ${formatWhen(routine.next_run_at, routine.timezone)}`
+                        : "Paused"}
                     </span>
                   </div>
                   <div className="routine-actions">
@@ -251,7 +300,7 @@ export default function Routines({
           if (!open) setEditing(null);
         }}
         title={editing === "new" ? "New routine" : "Edit routine"}
-        description="Preview this routine’s settings. Nothing will run until scheduling is connected."
+        description="Save a recurring routine to your account. Automatic execution is coming soon."
       >
         {editing !== null && (
           <RoutineEditor
@@ -259,14 +308,12 @@ export default function Routines({
             onSaved={(routine) => {
               replace(routine);
               setEditing(null);
-              notify("Preview routine saved for this session.");
+              notify("Routine saved.");
             }}
             onDeleted={(id) => {
-              setRoutines(
-                (items) => items?.filter((item) => item.id !== id) ?? null,
-              );
+              remove(id);
               setEditing(null);
-              notify("Preview routine deleted.");
+              notify("Routine deleted.");
             }}
           />
         )}

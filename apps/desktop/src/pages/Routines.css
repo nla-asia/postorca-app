@@ -160,3 +160,7 @@
   font-size: 12px;
   color: var(--secondary);
 }
+
+.routine-load-error {
+  margin-bottom: 16px;
+}
