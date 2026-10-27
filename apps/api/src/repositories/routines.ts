@@ -301,10 +301,11 @@ export async function createRoutine(
 }
 
 /**
- * Creates the default routines (seeds/default-routines.ts) for each social link not
- * seeded yet, once onboarding is completed and the founder's time zone is known.
- * Runs inside the caller's transaction after profile, link, or time zone writes.
- * A link is seeded whole or not at all, so the per-user cap can leave it for later.
+ * Creates the default routines (seeds/default-routines.ts) each social link hasn't
+ * been given yet, once onboarding is completed and the founder's time zone is known.
+ * Runs inside the caller's transaction after profile, link, or time zone writes, and
+ * on migrate, so defaults added later reach existing links. A link gets its missing
+ * defaults whole or not at all, so the per-user cap can leave them for later.
  */
 export async function seedDefaultRoutines(db: Queryable, userId: string) {
   const {
@@ -317,12 +318,22 @@ export async function seedDefaultRoutines(db: Queryable, userId: string) {
   );
   if (!user) return [];
   const { rows: links } = await db.query(
-    `SELECT id, name, url, kind FROM brand_profile_links
-     WHERE user_id = $1 AND routines_seeded_at IS NULL AND kind = ANY($2)
+    `SELECT id, name, url, kind, seeded_routines FROM brand_profile_links
+     WHERE user_id = $1 AND kind = ANY($2)
      ORDER BY name, id FOR UPDATE`,
     [userId, Object.keys(PLATFORM_BY_KIND)],
   );
-  if (!links.length) return [];
+  const pending = links
+    .map((link) => ({
+      link,
+      defaults: DEFAULT_ROUTINES.filter(
+        (d) =>
+          d.kinds.includes(link.kind as LinkKind) &&
+          !link.seeded_routines.includes(d.skill),
+      ),
+    }))
+    .filter((item) => item.defaults.length);
+  if (!pending.length) return [];
   const {
     rows: [{ count }],
   } = await db.query(
@@ -331,11 +342,19 @@ export async function seedDefaultRoutines(db: Queryable, userId: string) {
   );
   let room = MAX_ROUTINES - count;
   const created: { title: string; platform: string; account: string }[] = [];
-  for (const link of links) {
+  for (const { link, defaults } of pending) {
     const kind = link.kind as LinkKind;
-    const defaults = DEFAULT_ROUTINES.filter((d) => d.kinds.includes(kind));
-    if (defaults.length > room) break;
-    for (const routine of defaults) {
+    // A routine the founder already runs on this link for the same skill counts.
+    const { rows: existing } = await db.query(
+      "SELECT instructions FROM routines WHERE link_id = $1",
+      [link.id],
+    );
+    const missing = defaults.filter(
+      (d) =>
+        !existing.some((row) => row.instructions.includes(`${d.skill} skill`)),
+    );
+    if (missing.length > room) break;
+    for (const routine of missing) {
       const values: Record<string, string> = {
         account: link.name,
         url: link.url,
@@ -362,13 +381,26 @@ export async function seedDefaultRoutines(db: Queryable, userId: string) {
         account: link.name,
       });
     }
-    room -= defaults.length;
+    room -= missing.length;
     await db.query(
-      "UPDATE brand_profile_links SET routines_seeded_at = now() WHERE id = $1",
-      [link.id],
+      `UPDATE brand_profile_links
+       SET routines_seeded_at = coalesce(routines_seeded_at, now()),
+         seeded_routines = seeded_routines || $2::text[]
+       WHERE id = $1`,
+      [link.id, defaults.map((d) => d.skill)],
     );
   }
   return created;
+}
+
+/** Gives every founder's links the defaults they are missing; run on migrate. */
+export async function seedAllDefaultRoutines(db: Queryable) {
+  const { rows } = await db.query(
+    `SELECT p.user_id FROM brand_profiles p JOIN users u ON u.id = p.user_id
+     WHERE p.onboarding_status = 'completed' AND u.timezone IS NOT NULL
+     ORDER BY p.user_id`,
+  );
+  for (const { user_id } of rows) await seedDefaultRoutines(db, user_id);
 }
 
 /**

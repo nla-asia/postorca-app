@@ -895,3 +895,64 @@ test("failed seeding rolls back both profile completion and newly learned timezo
   assert.equal((await timezone(b.token, "UTC")).status, 200);
   assert.equal((await request("", "GET", undefined, b.token)).data.length, 6);
 });
+
+test("migrate gives links seeded before new defaults only the ones they are missing", async () => {
+  const a = await account();
+  await timezone(a.token, "UTC");
+  await profile(a.token, completeProfile);
+  const seeded = (await request("", "GET", undefined, a.token)).data;
+  assert.equal(seeded.length, 6);
+  // Back to how the account looked before the growth defaults existed, with the
+  // founder having deleted Content ideas and added their own People to connect.
+  await fixture.db.query(
+    "DELETE FROM routines WHERE user_id=$1 AND title = ANY($2)",
+    [a.id, ["People to connect", "Connect post", "Daily quote", "Content ideas"]],
+  );
+  await fixture.db.query(
+    `UPDATE brand_profile_links SET seeded_routines =
+       ARRAY['find-content-ideas','conversations-to-join','weekly-strategy-research']
+     WHERE user_id=$1`,
+    [a.id],
+  );
+  await fixture.db.query(
+    `INSERT INTO routines(user_id,platform,title,instructions,time_of_day,days,timezone,active,next_run_at,link_id)
+     SELECT $1,'X','My connects','Read the people-to-connect skill with read_skill, then follow it my way.','08:00',ARRAY[1]::smallint[],'UTC',true,
+       routine_next_run('08:00'::time,ARRAY[1]::smallint[],'UTC',now()),id
+     FROM brand_profile_links WHERE user_id=$1`,
+    [a.id],
+  );
+  await migrate(fixture.db);
+  const titles = (await request("", "GET", undefined, a.token)).data
+    .map((item: any) => item.title)
+    .sort();
+  assert.deepEqual(titles, [
+    "Connect post",
+    "Conversations to join",
+    "Daily quote",
+    "My connects",
+    "Weekly strategy research",
+  ]);
+  assert.deepEqual(
+    (
+      await fixture.db.query(
+        "SELECT seeded_routines FROM brand_profile_links WHERE user_id=$1",
+        [a.id],
+      )
+    ).rows[0].seeded_routines.sort(),
+    [
+      "connect-post",
+      "conversations-to-join",
+      "daily-quote",
+      "find-content-ideas",
+      "people-to-connect",
+      "weekly-strategy-research",
+    ],
+  );
+  // Running it again, or deleting a backfilled default, creates nothing more.
+  const quote = (await request("", "GET", undefined, a.token)).data.find(
+    (item: any) => item.title === "Daily quote",
+  );
+  await request(`/${quote.id}`, "DELETE", undefined, a.token);
+  await migrate(fixture.db);
+  assert.equal((await request("", "GET", undefined, a.token)).data.length, 4);
+});
