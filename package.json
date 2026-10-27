@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "apps/website"
   ],
   "scripts": {
     "dev": "npm run dev --workspace @postorca/desktop",
@@ -18,6 +19,9 @@
     "connectors:test": "npm run test --workspace @postorca/connectors",
     "test": "npm run test --workspaces --if-present",
     "db:local": "npm run db:local --workspace @postorca/api",
-    "db:migrate": "npm run db:migrate --workspace @postorca/api"
+    "db:migrate": "npm run db:migrate --workspace @postorca/api",
+    "web:dev": "npm run dev --workspace @postorca/website",
+    "web:build": "npm run build --workspace @postorca/website",
+    "web:start": "npm run start --workspace @postorca/website"
   }
 }
