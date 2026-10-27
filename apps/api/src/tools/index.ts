@@ -5,6 +5,7 @@ import { artifactTools } from "./artifacts.js";
 import { brandTools } from "./brand.js";
 import { memoryTools } from "./memory.js";
 import { questionTool } from "./questions.js";
+import { skillTools } from "./skills.js";
 import type { DispatchTask, Tool, ToolContext } from "./shared.js";
 import { taskTools } from "./tasks.js";
 
@@ -18,6 +19,7 @@ const tools: Tool[] = [
   ...memoryTools,
   ...taskTools,
   questionTool,
+  ...skillTools,
 ];
 const byName = new Map(tools.map((tool) => [tool.definition.name, tool]));
 

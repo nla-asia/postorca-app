@@ -3,7 +3,7 @@
  * kind is listed in `kinds` gets its own copy, scheduled in the founder's time zone
  * on that link's platform. Founders edit, pause, or delete them like any routine.
  *
- * Instructions name the core skill (server/skills) that holds the process, with
+ * Instructions name the core skill (src/skills) that holds the process, with
  * {{account}} (the link's name) and {{url}}; the brand profile itself is already in
  * Orca's context for every run.
  */
