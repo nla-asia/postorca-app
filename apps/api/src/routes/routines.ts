@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import type { AgentRouter } from "../agent/router.js";
 import type { Database } from "../db.js";
 import { HttpError } from "../handlers/errors.js";
 import {
@@ -8,6 +9,7 @@ import {
   deleteRoutine,
   getRoutine,
   listRoutines,
+  startManualRun,
   updateRoutine,
 } from "../repositories/routines.js";
 import { platforms } from "../schemas/platforms.js";
@@ -41,7 +43,7 @@ const onceFields = fields
     run_at: runAt,
   })
   .strict();
-export function routineRoutes(db: Database) {
+export function routineRoutes(db: Database, agent: AgentRouter | null) {
   const router = Router();
   router.get("/", async (req, res) => {
     const query = z
@@ -75,10 +77,17 @@ export function routineRoutes(db: Database) {
     await deleteRoutine(db, res.locals.userId, id.parse(req.params.id));
     res.status(204).end();
   });
-  // Execution is unavailable until the model provider and worker are connected.
-  router.post("/:id/run", async (req, _res) => {
-    id.parse(req.params.id);
-    throw new HttpError(503, "Orca’s model provider is not configured.");
+  // Run once now, outside the schedule. Does not change next_run_at.
+  router.post("/:id/run", async (req, res) => {
+    const routineId = id.parse(req.params.id);
+    if (!agent)
+      throw new HttpError(503, "Orca’s model provider is not configured.");
+    const run = await startManualRun(db, res.locals.userId, routineId);
+    agent.dispatch(run.taskId, run.turnId, run.userId);
+    res.status(202).json({
+      taskId: run.taskId,
+      routine: await getRoutine(db, res.locals.userId, routineId),
+    });
   });
   return router;
 }

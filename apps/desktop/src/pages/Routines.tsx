@@ -149,6 +149,17 @@ export default function Routines({
         }),
       );
     });
+  const runNow = (routine: Routine) =>
+    act(routine.id, async () => {
+      const result = await api<{ taskId: string; routine: Routine }>(
+        `/routines/${routine.id}/run`,
+        { method: "POST", body: "{}" },
+      );
+      replace(result.routine);
+      notify(
+        "Orca started this routine. The result will appear in your Inbox.",
+      );
+    });
   return (
     <div className="page-content schedules-page">
       <div className="schedule-toolbar">
@@ -162,8 +173,7 @@ export default function Routines({
             })()}
           </strong>
           <span>
-            Routines are saved to your account. Automatic execution is coming
-            soon.
+            Orca runs these on the server, even when this app is closed.
           </span>
         </div>
         <Button variant="primary" onClick={() => setEditing("new")}>
@@ -277,8 +287,8 @@ export default function Routines({
                   <div className="routine-actions">
                     <Button
                       variant="ghost"
-                      disabled
-                      title="Running routines is coming soon"
+                      disabled={pending === routine.id || running}
+                      onClick={() => void runNow(routine)}
                     >
                       <Play size={13} />
                       Run now
@@ -300,7 +310,7 @@ export default function Routines({
           if (!open) setEditing(null);
         }}
         title={editing === "new" ? "New routine" : "Edit routine"}
-        description="Save a recurring routine to your account. Automatic execution is coming soon."
+        description="Orca starts this work at the set time and puts the result in your Inbox."
       >
         {editing !== null && (
           <RoutineEditor

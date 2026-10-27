@@ -190,9 +190,6 @@ export default function Inbox({
           </div>
         )}
       </div>
-      <p className="preview-note">
-        Saved work appears here. Automatic execution is coming soon.
-      </p>
     </div>
   );
 }

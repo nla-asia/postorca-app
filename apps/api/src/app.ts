@@ -41,7 +41,7 @@ export function createApp(
     authenticate(config.jwtSecret),
     brandRoutes(db),
   );
-  app.use("/api/routines", authenticate(config.jwtSecret), routineRoutes(db));
+  app.use("/api/routines", authenticate(config.jwtSecret), routineRoutes(db, agent));
   app.use("/api/tasks", authenticate(config.jwtSecret), taskRoutes(db, agent));
   app.use((_req, res) => {
     res.status(404).json({ error: "Endpoint not found." });

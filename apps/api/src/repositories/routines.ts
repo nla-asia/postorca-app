@@ -1,11 +1,20 @@
 import { transaction, type Database, type Queryable } from "../db.js";
 import { HttpError } from "../handlers/errors.js";
+import { appendMessage } from "./tasks.js";
 import {
   DEFAULT_ROUTINES,
   PLATFORM_BY_KIND,
   type LinkKind,
 } from "../seeds/default-routines.js";
 
+export type RoutineRow = {
+  id: string;
+  user_id: string;
+  platform: string | null;
+  title: string;
+  instructions: string;
+  run_at?: Date | string | null;
+};
 export type RoutineFields = {
   platform: string;
   title: string;
@@ -14,6 +23,12 @@ export type RoutineFields = {
   days: number[];
   timezone: string;
   active: boolean;
+};
+export type StartedRun = {
+  runId: string;
+  taskId: string;
+  turnId: string;
+  userId: string;
 };
 export type OnceFields = {
   title: string;
@@ -36,6 +51,65 @@ const routineSelect = `
   ) lr ON true
   LEFT JOIN tasks t ON t.id = lr.task_id
   LEFT JOIN turns lt ON lt.id = t.current_turn_id`;
+
+/** The work request Orca receives when a routine or Calendar task runs. */
+export function routinePrompt(
+  routine: Pick<RoutineRow, "platform" | "title" | "instructions" | "run_at">,
+) {
+  return `${routine.run_at ? "Scheduled task" : "Routine"}: ${routine.title}${routine.platform ? ` (${routine.platform})` : ""}\n\n${routine.instructions}`;
+}
+
+/**
+ * Records a run and creates its Inbox work task with a queued first turn, inside
+ * the caller's transaction. Returns null when this scheduled occurrence already
+ * started, so duplicate ticks are harmless. The caller dispatches Orca only after
+ * committing.
+ */
+export async function startRoutineRun(
+  client: Queryable,
+  routine: RoutineRow,
+  trigger: "schedule" | "manual",
+  scheduledFor: Date | string,
+): Promise<StartedRun | null> {
+  const {
+    rows: [run],
+  } = await client.query(
+    `INSERT INTO routine_runs(routine_id, trigger, scheduled_for) VALUES ($1, $2, $3)
+     ON CONFLICT (routine_id, scheduled_for) WHERE trigger = 'schedule' DO NOTHING
+     RETURNING id`,
+    [routine.id, trigger, scheduledFor],
+  );
+  if (!run) return null;
+  const {
+    rows: [task],
+  } = await client.query(
+    "INSERT INTO tasks(user_id, kind, title, platform) VALUES ($1, 'work', $2, $3) RETURNING id",
+    [routine.user_id, routine.title, routine.platform],
+  );
+  const {
+    rows: [turn],
+  } = await client.query(
+    "INSERT INTO turns(task_id) VALUES ($1) RETURNING id",
+    [task.id],
+  );
+  await appendMessage(client, turn.id, "user", {
+    text: routinePrompt(routine),
+  });
+  await client.query("UPDATE tasks SET current_turn_id = $2 WHERE id = $1", [
+    task.id,
+    turn.id,
+  ]);
+  await client.query("UPDATE routine_runs SET task_id = $2 WHERE id = $1", [
+    run.id,
+    task.id,
+  ]);
+  return {
+    runId: run.id,
+    taskId: task.id,
+    turnId: turn.id,
+    userId: routine.user_id,
+  };
+}
 
 const MAX_ROUTINES = 50;
 // SQL for next_run_at given the parameter positions of active/time/days/timezone.
@@ -314,5 +388,71 @@ export async function deleteRoutine(
     if (current.run_at && !current.active)
       throw new HttpError(409, "This scheduled task has already started.");
     await client.query("DELETE FROM routines WHERE id=$1", [routineId]);
+  });
+}
+
+/** Run once now, outside the schedule. Does not change next_run_at. */
+export async function startManualRun(
+  db: Database,
+  userId: string,
+  routineId: string,
+): Promise<StartedRun> {
+  return transaction(db, async (client) => {
+    const {
+      rows: [routine],
+    } = await client.query(
+      "SELECT id, user_id, platform, title, instructions, run_at FROM routines WHERE id = $1 AND user_id = $2 FOR UPDATE",
+      [routineId, userId],
+    );
+    if (!routine) throw new HttpError(404, "Routine not found.");
+    if (routine.run_at)
+      throw new HttpError(400, "Calendar tasks run once at their scheduled time.");
+    const {
+      rows: [busy],
+    } = await client.query(
+      `SELECT 1 FROM routine_runs rr JOIN tasks t ON t.id = rr.task_id JOIN turns r ON r.id = t.current_turn_id
+       WHERE rr.routine_id = $1 AND r.status IN ('queued', 'running') LIMIT 1`,
+      [routineId],
+    );
+    if (busy) throw new HttpError(409, "This routine is already running.");
+    // Manual runs never conflict, so a run is always started.
+    return (await startRoutineRun(client, routine, "manual", new Date()))!;
+  });
+}
+
+/**
+ * Claims up to `limit` due schedules (SKIP LOCKED), starts each occurrence, and
+ * advances next_run_at, all in one transaction. A Calendar task finishes after its
+ * one run. The caller dispatches after commit.
+ */
+export async function startDueRuns(db: Database, limit: number) {
+  return transaction(db, async (client) => {
+    const { rows: due } = await client.query(
+      `SELECT id, user_id, platform, title, instructions, next_run_at, run_at FROM routines
+       WHERE active AND next_run_at <= now()
+       ORDER BY next_run_at FOR UPDATE SKIP LOCKED LIMIT $1`,
+      [limit],
+    );
+    const runs: StartedRun[] = [];
+    for (const routine of due) {
+      const run = await startRoutineRun(
+        client,
+        routine,
+        "schedule",
+        routine.next_run_at,
+      );
+      if (run) runs.push(run);
+      if (routine.run_at)
+        await client.query(
+          "UPDATE routines SET active=false,next_run_at=NULL WHERE id=$1",
+          [routine.id],
+        );
+      else
+        await client.query(
+          "UPDATE routines SET next_run_at = routine_next_run(time_of_day, days, timezone, now()) WHERE id = $1",
+          [routine.id],
+        );
+    }
+    return { runs, claimed: due.length };
   });
 }

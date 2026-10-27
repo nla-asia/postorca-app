@@ -156,9 +156,6 @@ export default function Calendar({
           </button>
         </div>
       </div>
-      <p className="preview-note calendar-note">
-        Schedules are saved to your account. Automatic execution is coming soon.
-      </p>
       {error && (
         <div className="calendar-load-error">
           <p className="auth-error" role="alert">
@@ -252,7 +249,7 @@ export default function Calendar({
         </div>
       </div>
       <Modal
-        description="Save a one-time task to your account. Automatic execution is coming soon."
+        description="Orca starts this work once at the set time and puts the result in your Inbox."
         open={editing !== null}
         onOpenChange={(open) => {
           if (!open) setEditing(null);

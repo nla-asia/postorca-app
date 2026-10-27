@@ -1,0 +1,337 @@
+import { after, before, test } from "node:test";
+import assert from "node:assert/strict";
+import { once } from "node:events";
+import { mkdtemp, rm } from "node:fs/promises";
+import type { Server } from "node:http";
+import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createApp } from "../src/app.js";
+import { createAgent, type AgentRouter } from "../src/agent/router.js";
+import { configFromEnv } from "../src/config.js";
+import { transaction } from "../src/db.js";
+import { migrate } from "../src/migrate.js";
+import { issueToken } from "../src/middleware/auth.js";
+import type { Provider } from "../src/providers/types.js";
+import { startRoutineRun } from "../src/repositories/routines.js";
+import { createUser } from "../src/repositories/users.js";
+import { Scheduler } from "../src/scheduler.js";
+import { temporaryPostgres } from "./postgres.js";
+
+const secret = "runs-test-secret-at-least-32-characters";
+let fixture: Awaited<ReturnType<typeof temporaryPostgres>>;
+let storage: string;
+const previousStorage = process.env.STORAGE_DIR;
+let agent: AgentRouter;
+let server: Server;
+let url: string;
+let accountNumber = 0;
+const provider: Provider = {
+  async respond() {
+    return { text: "Here are three ideas.", calls: [] };
+  },
+};
+
+before(async () => {
+  fixture = await temporaryPostgres();
+  await migrate(fixture.db);
+  storage = await mkdtemp(join(tmpdir(), "postorca-runs-storage-"));
+  process.env.STORAGE_DIR = storage;
+  agent = createAgent(fixture.db, provider);
+  server = createApp(
+    fixture.db,
+    configFromEnv({ DATABASE_URL: fixture.url, JWT_SECRET: secret }),
+    agent,
+  ).listen(0, "127.0.0.1");
+  await once(server, "listening");
+  url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
+});
+after(async () => {
+  await agent?.shutdown();
+  if (server)
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  if (previousStorage === undefined) delete process.env.STORAGE_DIR;
+  else process.env.STORAGE_DIR = previousStorage;
+  await rm(storage, { recursive: true, force: true });
+  await fixture?.close();
+});
+
+async function account() {
+  const user = await createUser(
+    fixture.db,
+    "Founder",
+    `runs-${++accountNumber}@example.com`,
+    "runs-test-password",
+  );
+  return { id: user.id as string, token: issueToken(user.id, secret) };
+}
+async function request(
+  path: string,
+  method = "GET",
+  body?: unknown,
+  token?: string,
+) {
+  const response = await fetch(url + path, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+  return {
+    status: response.status,
+    data: response.status === 204 ? null : ((await response.json()) as any),
+  };
+}
+const routine = {
+  platform: "Threads",
+  title: "Find fresh ideas",
+  instructions: "Propose three post ideas for this week.",
+  time: "09:00",
+  days: [5, 1, 3, 1],
+  timezone: "Asia/Bangkok",
+  active: true,
+};
+async function waitFor<T>(check: () => Promise<T | undefined>) {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const value = await check();
+    if (value) return value;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error("Timed out");
+}
+const runCount = async (routineId: string) =>
+  (
+    await fixture.db.query("SELECT 1 FROM routine_runs WHERE routine_id=$1", [
+      routineId,
+    ])
+  ).rowCount;
+
+test("a due routine runs exactly once, creates Inbox work, and advances", async () => {
+  const a = await account();
+  const { data: created } = await request("/routines", "POST", routine, a.token);
+  await fixture.db.query(
+    "UPDATE routines SET next_run_at = now() - interval '5 minutes' WHERE id = $1",
+    [created.id],
+  );
+  const scheduler = new Scheduler(fixture.db, agent, 60_000);
+  const other = new Scheduler(fixture.db, agent, 60_000);
+  // Two schedulers (as if two processes) racing on the same due routine.
+  await Promise.all([scheduler.tick(), other.tick(), scheduler.tick()]);
+  const runs = (
+    await fixture.db.query("SELECT * FROM routine_runs WHERE routine_id = $1", [
+      created.id,
+    ])
+  ).rows;
+  assert.equal(runs.length, 1);
+  assert.equal(runs[0].trigger, "schedule");
+  const listed = await waitFor(async () => {
+    const [work] = (await request("/tasks?kind=work", "GET", undefined, a.token))
+      .data;
+    return work?.status === "completed" ? work : undefined;
+  });
+  assert.equal(listed.id, runs[0].task_id);
+  assert.equal(listed.platform, "Threads");
+  assert.equal(listed.routine_title, "Find fresh ideas");
+  assert.equal(listed.summary, "Here are three ideas.");
+  const detail = (await request(`/tasks/${listed.id}`, "GET", undefined, a.token))
+    .data;
+  assert.equal(
+    detail.turns[0].messages[0].content.text,
+    "Routine: Find fresh ideas (Threads)\n\nPropose three post ideas for this week.",
+  );
+  const [after] = (await request("/routines", "GET", undefined, a.token)).data;
+  assert.ok(new Date(after.next_run_at) > new Date());
+  assert.equal(after.last_task_id, listed.id);
+  assert.equal(after.last_run_status, "completed");
+  await scheduler.tick();
+  assert.equal(await runCount(created.id), 1);
+  await Promise.all([scheduler.stop(), other.stop()]);
+});
+
+test("a scheduled occurrence cannot start twice; run now is manual and on demand", async () => {
+  const a = await account();
+  const { data: created } = await request(
+    "/routines",
+    "POST",
+    { ...routine, active: false },
+    a.token,
+  );
+  const row = { ...created, user_id: a.id };
+  const at = new Date("2026-10-21T02:00:00Z");
+  const first = await transaction(fixture.db, (client) =>
+    startRoutineRun(client, row, "schedule", at),
+  );
+  const second = await transaction(fixture.db, (client) =>
+    startRoutineRun(client, row, "schedule", at),
+  );
+  assert.ok(first);
+  assert.equal(second, null);
+  // While that run is still queued, another run is refused.
+  const busy = await request(`/routines/${created.id}/run`, "POST", {}, a.token);
+  assert.equal(busy.status, 409);
+  assert.equal(busy.data.error, "This routine is already running.");
+  await fixture.db.query("UPDATE turns SET status = 'completed' WHERE id = $1", [
+    first!.turnId,
+  ]);
+  const run = await request(`/routines/${created.id}/run`, "POST", {}, a.token);
+  assert.equal(run.status, 202);
+  assert.ok(run.data.taskId);
+  assert.equal(run.data.routine.last_task_id, run.data.taskId);
+  assert.equal(run.data.routine.last_run_trigger, "manual");
+  // A paused routine stays paused: running it now does not schedule it.
+  assert.equal(run.data.routine.next_run_at, null);
+  await waitFor(async () => {
+    const detail = (
+      await request(`/tasks/${run.data.taskId}`, "GET", undefined, a.token)
+    ).data;
+    return detail.turns[0].status === "completed" ? detail : undefined;
+  });
+  // Another founder cannot run it, and unknown routines are not found.
+  const b = await account();
+  assert.equal(
+    (await request(`/routines/${created.id}/run`, "POST", {}, b.token)).status,
+    404,
+  );
+  // Deleting a routine keeps the work it already produced.
+  await request(`/routines/${created.id}`, "DELETE", undefined, a.token);
+  assert.equal(
+    (await request(`/tasks/${run.data.taskId}`, "GET", undefined, a.token))
+      .status,
+    200,
+  );
+});
+
+test("one-time schedules fire once through the shared scheduler, catch up after downtime, and retain follow-ups", async () => {
+  const a = await account();
+  const { data: scheduled } = await request(
+    "/routines",
+    "POST",
+    {
+      title: "One-time research",
+      instructions: "Find launch ideas.",
+      timezone: "Asia/Bangkok",
+      run_at: new Date(Date.now() + 3600_000).toISOString(),
+    },
+    a.token,
+  );
+  // Calendar tasks only run at their time, never on demand.
+  assert.equal(
+    (await request(`/routines/${scheduled.id}/run`, "POST", {}, a.token))
+      .status,
+    400,
+  );
+  const scheduler = new Scheduler(fixture.db, agent, 60_000);
+  const other = new Scheduler(fixture.db, agent, 60_000);
+  await scheduler.tick();
+  assert.equal(await runCount(scheduled.id), 0);
+  // Simulate a time that passed while the server was offline.
+  await fixture.db.query(
+    "UPDATE routines SET run_at=now()-interval '2 hours',next_run_at=now()-interval '2 hours' WHERE id=$1",
+    [scheduled.id],
+  );
+  await Promise.all([scheduler.tick(), other.tick(), scheduler.tick()]);
+  const runs = (
+    await fixture.db.query("SELECT * FROM routine_runs WHERE routine_id=$1", [
+      scheduled.id,
+    ])
+  ).rows;
+  assert.equal(runs.length, 1);
+  const task = await waitFor(async () => {
+    const result = (
+      await request(`/tasks/${runs[0].task_id}`, "GET", undefined, a.token)
+    ).data;
+    return result.status === "completed" ? result : undefined;
+  });
+  assert.equal(task.kind, "work");
+  assert.equal(task.platform, null);
+  const listed = (await request("/tasks?kind=work", "GET", undefined, a.token))
+    .data;
+  assert.equal(
+    listed.find((item: { id: string }) => item.id === task.id).routine_title,
+    null,
+  );
+  assert.match(
+    task.turns[0].messages[0].content.text,
+    /^Scheduled task: One-time research\n\nFind launch ideas\./,
+  );
+  const [after] = (await request("/routines?once=true", "GET", undefined, a.token))
+    .data;
+  assert.equal(after.active, false);
+  assert.equal(after.next_run_at, null);
+  assert.equal(after.last_task_id, task.id);
+  assert.equal(
+    (await request(`/routines/${scheduled.id}`, "DELETE", undefined, a.token))
+      .status,
+    409,
+  );
+  await scheduler.tick();
+  assert.equal(await runCount(scheduled.id), 1);
+  assert.equal(
+    (
+      await request(
+        `/tasks/${task.id}/turns`,
+        "POST",
+        { message: "Refine those ideas." },
+        a.token,
+      )
+    ).status,
+    202,
+  );
+  await waitFor(async () => {
+    const result = (await request(`/tasks/${task.id}`, "GET", undefined, a.token))
+      .data;
+    return result.turns.length === 2 && result.status === "completed"
+      ? result
+      : undefined;
+  });
+  await Promise.all([scheduler.stop(), other.stop()]);
+});
+
+test("a turn left queued by a crash is picked up again by the next tick", async () => {
+  const a = await account();
+  const { data: created } = await request(
+    "/routines",
+    "POST",
+    { ...routine, active: false },
+    a.token,
+  );
+  // Committed but never dispatched, as if the process stopped in between.
+  const run = await transaction(fixture.db, (client) =>
+    startRoutineRun(client, { ...created, user_id: a.id }, "manual", new Date()),
+  );
+  const scheduler = new Scheduler(fixture.db, agent, 60_000);
+  await scheduler.tick();
+  const status = async () =>
+    (
+      await fixture.db.query("SELECT status FROM turns WHERE id=$1", [
+        run!.turnId,
+      ])
+    ).rows[0].status;
+  // A turn queued moments ago may still be on its way to the agent.
+  assert.equal(await status(), "queued");
+  await fixture.db.query(
+    "UPDATE turns SET started_at = now() - interval '2 minutes' WHERE id=$1",
+    [run!.turnId],
+  );
+  await scheduler.tick();
+  await waitFor(async () => ((await status()) === "completed" ? true : undefined));
+  await scheduler.stop();
+});
+
+test("stopping the scheduler waits for its tick and starts nothing more", async () => {
+  const a = await account();
+  const { data: created } = await request("/routines", "POST", routine, a.token);
+  const scheduler = new Scheduler(fixture.db, agent, 10);
+  scheduler.start();
+  await scheduler.stop();
+  await fixture.db.query(
+    "UPDATE routines SET next_run_at = now() - interval '1 minute' WHERE id = $1",
+    [created.id],
+  );
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.equal(await runCount(created.id), 0);
+});

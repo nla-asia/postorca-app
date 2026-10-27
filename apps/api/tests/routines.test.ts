@@ -543,7 +543,7 @@ test("database constraints protect schedule shape, current-turn ownership and oc
   );
 });
 
-test("run-now reports unavailable execution and never creates queued work", async () => {
+test("without a model, run-now is refused and never creates queued work", async () => {
   const a = await account();
   const item = (await request("", "POST", routine, a.token)).data;
   const run = await request(`/${item.id}/run`, "POST", {}, a.token);

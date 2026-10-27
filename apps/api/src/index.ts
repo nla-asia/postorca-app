@@ -5,6 +5,7 @@ import { configFromEnv } from "./config.js";
 import { createDatabase, ping } from "./db.js";
 import { OpenAIProvider } from "./providers/openai.js";
 import { failInterruptedTurns } from "./repositories/turns.js";
+import { Scheduler } from "./scheduler.js";
 
 const config = configFromEnv();
 const db = createDatabase(config.databaseUrl);
@@ -24,11 +25,15 @@ const agent = config.openai
   : null;
 if (!agent)
   console.warn(
-    "Orca is off: set OPENAI_API_KEY and OPENAI_MODEL to run Agent chat and work.",
+    "Orca is off: set OPENAI_API_KEY and OPENAI_MODEL to run Agent chat, work and routines.",
   );
+// Routines run only when Orca can execute them; otherwise they stay due and run
+// once on the first tick after a model is configured.
+const scheduler = agent ? new Scheduler(db, agent) : null;
 const app = createApp(db, config, agent);
 const server = app.listen(config.port, "127.0.0.1", () => {
   console.log(`PostOrca API listening on http://127.0.0.1:${config.port}`);
+  scheduler?.start();
 });
 server.on("error", (error) => {
   console.error("API failed to start:", error.message);
@@ -40,6 +45,8 @@ let stopping = false;
 function stop() {
   if (stopping) return;
   stopping = true;
+  // No new runs start while open requests finish.
+  const scheduled = scheduler?.stop();
   const deadline = setTimeout(() => server.closeAllConnections(), 10_000);
   deadline.unref();
   server.close(async (error) => {
@@ -48,6 +55,7 @@ function stop() {
       console.error("API shutdown failed:", error.message);
       process.exitCode = 1;
     }
+    await scheduled;
     // Running turns fail with a follow-up message before their database goes away.
     await agent?.shutdown();
     await db.end();
