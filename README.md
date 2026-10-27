@@ -158,7 +158,20 @@ Individual tool results are capped at 80,000 characters in the model view. Compa
 
 Recent PNG/JPEG tool attachments are loaded only from files owned by the task's user. Their image payloads appear for one assistant step by default, then only their references and descriptions remain. `AGENT_IMAGE_STEPS` can extend this window. Original downloads are not automatically loaded as model images, and missing files are skipped. Short file references are scoped to each user's files; ambiguous references do not resolve.
 
-File helpers use `STORAGE_DIR` or default to `apps/api/storage/`, which is ignored by Git. The build copies prompt files as well as SQL migrations. File delivery routes, tools, and the agent loop are not connected yet, so these helpers do not enable model calls or scheduled execution from the desktop.
+File helpers use `STORAGE_DIR` or default to `apps/api/storage/`, which is ignored by Git. The build copies prompt files as well as SQL migrations. File delivery routes and the agent loop are not connected yet, so these helpers do not enable model calls or scheduled execution from the desktop.
+
+## Orca's tools
+
+`apps/api/src/tools` defines the tools Orca can call and runs them for the signed-in founder's task. Each tool keeps its JSON Schema definition next to its handler; arguments are validated again on the server, and refusals come back as messages Orca can act on.
+
+| Group | Tools | Behavior |
+| --- | --- | --- |
+| Brand Profile | `read_brand_profile`, `update_brand_profile`, `save_brand_link`, `delete_brand_link` | Profile updates never touch links. Links are saved or deleted one at a time with owned IDs; a changed URL resets access. Completing the profile or adding a social link seeds default routines; deleting a link pauses its routines, and deleting the last link reopens onboarding. |
+| Artifacts | `create_artifact`, `read_artifact`, `edit_document`, `delete_artifact`, `list_content_ideas` | Documents, ideas, and HTTP(S) links belong to the calling task. Documents are revised in place with exact find/replace edits that must each match once, or replaced whole; a failed edit saves nothing. Ideas list the founder's recent, unarchived ideas and whether content is queued. |
+| Memory | `search_memory`, `read_memory`, `save_memory`, `delete_memory` | Markdown files per founder under `STORAGE_DIR/users/<id>/memory/`, each starting with a description line. Search works like `grep -i`. Paths are lowercase, at most three levels deep, and files are written atomically. |
+| Chat only | `start_task`, `get_task`, `follow_up_task`, `request_user_input` | Agent chat and onboarding can start background work, read it, send it a follow-up, or ask one multiple-choice question. Background work is never offered these tools. Starting or following up work requires a running worker and otherwise returns 503. |
+
+Image, audio, and video artifacts arrive with file tools. These tools are not yet called by a model; the agent loop that offers them is next.
 
 ## Workspace
 

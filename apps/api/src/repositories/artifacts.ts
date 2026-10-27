@@ -78,3 +78,25 @@ export async function deleteArtifact(
   );
   return artifact;
 }
+
+/**
+ * The founder's recent content ideas (idea artifacts on work that isn't archived),
+ * newest first, with whether content is already queued for each.
+ */
+export async function recentIdeas(
+  db: Queryable,
+  userId: string,
+  options: { days: number; limit: number; platform?: string },
+) {
+  const { rows } = await db.query(
+    `SELECT a.id AS idea_id, a.title, left(a.content, 2000) AS content, t.platform,
+       a.created_at, EXISTS (SELECT 1 FROM routines r WHERE r.source_artifact_id = a.id) AS content_queued
+     FROM artifacts a JOIN tasks t ON t.id = a.task_id
+     WHERE t.user_id = $1 AND a.kind = 'idea' AND t.archived_at IS NULL
+       AND a.created_at > now() - make_interval(days => $2)
+       AND ($3::text IS NULL OR t.platform = $3)
+     ORDER BY a.created_at DESC, a.id DESC LIMIT $4`,
+    [userId, options.days, options.platform ?? null, options.limit],
+  );
+  return rows;
+}

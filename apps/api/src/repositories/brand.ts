@@ -152,3 +152,62 @@ async function saveLinkRow(
     )
   ).rows[0];
 }
+/** Creates or updates one link (Orca's single-link tool), seeding defaults a new social link earns. */
+export async function saveBrandLink(
+  db: Database,
+  userId: string,
+  data: BrandLinkInput,
+) {
+  return transaction(db, async (client) => {
+    await client.query(
+      "SELECT user_id FROM brand_profiles WHERE user_id=$1 FOR UPDATE",
+      [userId],
+    );
+    if (!data.id) {
+      const {
+        rows: [count],
+      } = await client.query(
+        "SELECT count(*)::int AS total FROM brand_profile_links WHERE user_id=$1",
+        [userId],
+      );
+      if (count.total >= 50)
+        throw new HttpError(400, "A brand profile can have at most 50 links.");
+    }
+    const link = await saveLinkRow(client, userId, data);
+    // A link added after onboarding gets its default routines right away.
+    const created = await seedDefaultRoutines(client, userId);
+    return created.length
+      ? { ...link, default_routines_created: created }
+      : link;
+  });
+}
+/**
+ * Deletes one link and pauses its routines. Removing the last link reopens onboarding,
+ * since a completed profile needs at least one.
+ */
+export async function deleteBrandLink(
+  db: Database,
+  userId: string,
+  id: string,
+) {
+  return transaction(db, async (client) => {
+    await client.query(
+      "SELECT user_id FROM brand_profiles WHERE user_id=$1 FOR UPDATE",
+      [userId],
+    );
+    const paused = await pauseLinkRoutines(client, userId, [id]);
+    const removed = await client.query(
+      "DELETE FROM brand_profile_links WHERE user_id=$1 AND id=$2 RETURNING id",
+      [userId, id],
+    );
+    if (!removed.rowCount) throw new HttpError(404, "Profile link not found.");
+    await client.query(
+      `UPDATE brand_profiles SET onboarding_status='in_progress' WHERE user_id=$1 AND onboarding_status='completed'
+       AND NOT EXISTS (SELECT 1 FROM brand_profile_links WHERE user_id=$1)`,
+      [userId],
+    );
+    return paused
+      ? { id, deleted: true, routines_paused: paused }
+      : { id, deleted: true };
+  });
+}
