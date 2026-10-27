@@ -67,7 +67,7 @@ export function computerCase(
       id,
       name: "Notepad use",
       manualReview: false,
-      brief: `Open desktop Notepad and create a new tab for the exact document below, preserving any existing tabs. Enter it as plain text, check the heading at the beginning, then use mouse-wheel scrolling down until the final line is visible. Leave the new tab open without saving over any file, and include a screenshot of its ending here. Don't use files, a browser, or cross-task memory as a substitute.\n\n${text}`,
+      brief: `Open desktop Notepad and create a new tab for the exact document below, preserving any existing tabs. Enter it as plain text, press Ctrl+Home to move to the beginning and check the heading, then use mouse-wheel scrolling down until the final line is visible. Leave the new tab open without saving over any file, and include a screenshot of its ending here. Don't use files, a browser, or cross-task memory as a substitute.\n\n${text}`,
       expected: {
         text,
         heading: `PostOrca desktop evaluation ${nonce}`,
