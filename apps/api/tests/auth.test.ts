@@ -15,7 +15,12 @@ import { temporaryPostgres } from "./postgres.js";
 const secret = "auth-test-secret-at-least-32-characters";
 const password = "secure-test-password";
 type User = { id: string; name: string; email: string };
-type Body = { user?: User; token?: string; error?: string };
+type Body = {
+  user?: User;
+  token?: string;
+  refreshToken?: string;
+  error?: string;
+};
 let fixture: Awaited<ReturnType<typeof temporaryPostgres>>;
 let server: Server;
 let url: string;
@@ -53,7 +58,8 @@ async function request(
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
-  return { status: response.status, data: (await response.json()) as Body };
+  const text = await response.text();
+  return { status: response.status, data: (text ? JSON.parse(text) : {}) as Body };
 }
 async function register(email: string, timezone?: string) {
   const result = await request(
@@ -64,8 +70,12 @@ async function register(email: string, timezone?: string) {
     timezone,
   );
   assert.equal(result.status, 201);
-  assert.ok(result.data.user && result.data.token);
-  return { user: result.data.user, token: result.data.token };
+  assert.ok(result.data.user && result.data.token && result.data.refreshToken);
+  return {
+    user: result.data.user,
+    token: result.data.token,
+    refreshToken: result.data.refreshToken,
+  };
 }
 
 test("passwords use independent scrypt salts and reject incorrect or missing hashes", async () => {
@@ -78,7 +88,7 @@ test("passwords use independent scrypt salts and reject incorrect or missing has
   assert.equal(await verifyPassword(password), false);
 });
 
-test("registration normalizes identity, creates a profile, and returns a 12-hour user token", async () => {
+test("registration normalizes identity, creates a profile, and returns a 15-minute user token and a refresh token", async () => {
   const account = await register(" Case@Example.com ");
   assert.equal(account.user.name, "Founder");
   assert.equal(account.user.email, "case@example.com");
@@ -104,7 +114,68 @@ test("registration normalizes identity, creates a profile, and returns a 12-hour
   });
   assert.ok(typeof claims !== "string");
   assert.equal(claims.sub, account.user.id);
-  assert.equal(claims.exp! - claims.iat!, 12 * 60 * 60);
+  assert.equal(claims.exp! - claims.iat!, 15 * 60);
+});
+
+test("refresh tokens rotate, tolerate a retried refresh, and revoke a reused session", async () => {
+  const account = await register("refresh@example.com");
+  const refresh = (refreshToken: string) =>
+    request("/auth/refresh", "POST", { refreshToken });
+  const signIn = async () =>
+    (
+      await request("/auth/login", "POST", {
+        email: "refresh@example.com",
+        password,
+      })
+    ).data.refreshToken!;
+  const ownSessions =
+    "session_id IN (SELECT id FROM auth_sessions WHERE user_id = $1)";
+  const first = await refresh(account.refreshToken);
+  assert.equal(first.status, 200);
+  assert.notEqual(first.data.refreshToken, account.refreshToken);
+  assert.equal(
+    (await request("/auth/me", "GET", undefined, first.data.token)).data.user
+      ?.id,
+    account.user.id,
+  );
+  // A client that lost the response retries with the same token at once.
+  const retried = await refresh(account.refreshToken);
+  assert.equal(retried.status, 200);
+  assert.equal((await refresh(retried.data.refreshToken!)).status, 200);
+  // A spent token presented after the grace window was copied: it ends the
+  // session, including the token issued after it.
+  const copied = await signIn();
+  const next = (await refresh(copied)).data.refreshToken!;
+  await fixture.db.query(
+    `UPDATE refresh_tokens SET used_at = now() - interval '2 minutes'
+      WHERE ${ownSessions} AND used_at IS NOT NULL`,
+    [account.user.id],
+  );
+  assert.equal((await refresh(copied)).status, 401);
+  assert.equal((await refresh(next)).status, 401);
+  // Logout ends one session; expired and unknown tokens are refused.
+  const other = await signIn();
+  assert.equal(
+    (await request("/auth/logout", "POST", { refreshToken: other })).status,
+    204,
+  );
+  assert.equal((await refresh(other)).status, 401);
+  const expiring = await signIn();
+  await fixture.db.query(
+    `UPDATE refresh_tokens SET expires_at = now()
+      WHERE ${ownSessions} AND used_at IS NULL`,
+    [account.user.id],
+  );
+  assert.equal((await refresh(expiring)).status, 401);
+  assert.equal((await refresh("unknown-token")).status, 401);
+  assert.equal((await request("/auth/refresh", "POST", {})).status, 400);
+  // Only token hashes are stored.
+  const stored = await fixture.db.query(
+    `SELECT token_hash FROM refresh_tokens WHERE ${ownSessions}`,
+    [account.user.id],
+  );
+  assert.ok(stored.rowCount);
+  for (const row of stored.rows) assert.equal(row.token_hash.length, 32);
 });
 
 test("registration validates input before creating accounts", async () => {

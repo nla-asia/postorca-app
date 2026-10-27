@@ -10,6 +10,11 @@ import {
   verifyPassword,
 } from "../repositories/users.js";
 import { authenticate, issueToken } from "../middleware/auth.js";
+import {
+  endSession,
+  rotateSession,
+  startSession,
+} from "../repositories/sessions.js";
 import { HttpError } from "../handlers/errors.js";
 const login = z.object({
   email: z
@@ -20,8 +25,14 @@ const login = z.object({
     .transform((s) => s.toLowerCase()),
   password: z.string().min(1).max(256),
 });
+const refresh = z.object({ refreshToken: z.string().min(1).max(200) });
 export function authRoutes(db: Database, secret: string) {
   const router = Router();
+  // A login is a short-lived access token plus a rotating refresh token.
+  const signIn = async (userId: string) => ({
+    token: issueToken(userId, secret),
+    refreshToken: await startSession(db, userId),
+  });
   router.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
@@ -40,7 +51,7 @@ export function authRoutes(db: Database, secret: string) {
       .parse(req.body);
     const user = await createUser(db, data.name, data.email, data.password);
     await saveTimezone(db, user.id, req.get("X-Timezone"));
-    res.status(201).json({ user, token: issueToken(user.id, secret) });
+    res.status(201).json({ user, ...(await signIn(user.id)) });
   });
   router.post("/login", async (req, res) => {
     const data = login.parse(req.body);
@@ -50,8 +61,21 @@ export function authRoutes(db: Database, secret: string) {
     await saveTimezone(db, user.id, req.get("X-Timezone"));
     res.json({
       user: { id: user.id, name: user.name, email: user.email },
-      token: issueToken(user.id, secret),
+      ...(await signIn(user.id)),
     });
+  });
+  router.post("/refresh", async (req, res) => {
+    const session = await rotateSession(db, refresh.parse(req.body).refreshToken);
+    if (!session)
+      throw new HttpError(401, "Your session has ended. Please log in again.");
+    res.json({
+      token: issueToken(session.userId, secret),
+      refreshToken: session.refreshToken,
+    });
+  });
+  router.post("/logout", async (req, res) => {
+    await endSession(db, refresh.parse(req.body).refreshToken);
+    res.status(204).end();
   });
   router.get("/me", authenticate(secret), async (req, res) => {
     const user = await findUser(db, res.locals.userId);
