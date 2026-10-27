@@ -7,6 +7,7 @@ import { ping, type Database } from "./db.js";
 import { authRoutes } from "./routes/auth.js";
 import { authenticate } from "./middleware/auth.js";
 import { brandRoutes } from "./routes/brand.js";
+import { desktopRoutes } from "./routes/desktop.js";
 import { routineRoutes } from "./routes/routines.js";
 import { taskRoutes } from "./routes/tasks.js";
 
@@ -36,6 +37,8 @@ export function createApp(
     res.json({ ok: true });
   });
   app.use("/api/auth", authRoutes(db, config.jwtSecret));
+  // Desktop routes authenticate themselves (most take a device token).
+  app.use("/api/desktop", desktopRoutes(config.jwtSecret));
   app.use(
     "/api/brand-profile",
     authenticate(config.jwtSecret),

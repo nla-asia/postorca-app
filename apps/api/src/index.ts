@@ -1,8 +1,10 @@
 import "./env.js";
 import { createAgent } from "./agent/router.js";
 import { createApp } from "./app.js";
+import { attachDesktopSocket } from "./desktop/connections.js";
 import { configFromEnv } from "./config.js";
 import { createDatabase, ping } from "./db.js";
+import { catalogDrift } from "./plugins/catalog.js";
 import { OpenAIProvider } from "./providers/openai.js";
 import { failInterruptedTurns } from "./repositories/turns.js";
 import { Scheduler } from "./scheduler.js";
@@ -13,6 +15,11 @@ try {
   await ping(db);
   // Turns left queued or running by the previous process never resume on their own.
   await failInterruptedTurns(db);
+  const drift = await catalogDrift(db);
+  if (drift.length)
+    console.warn(
+      `The tool catalog in the database is out of date (${drift.join("; ")}). Run npm run db:migrate: Orca sees the database's tools.`,
+    );
 } catch (error) {
   await db.end();
   throw error;
@@ -35,6 +42,7 @@ const server = app.listen(config.port, "127.0.0.1", () => {
   console.log(`PostOrca API listening on http://127.0.0.1:${config.port}`);
   scheduler?.start();
 });
+const desktopSocket = attachDesktopSocket(server, config.jwtSecret);
 server.on("error", (error) => {
   console.error("API failed to start:", error.message);
   process.exitCode = 1;
@@ -47,6 +55,8 @@ function stop() {
   stopping = true;
   // No new runs start while open requests finish.
   const scheduled = scheduler?.stop();
+  // Desktops reconnect to the next server process on their own.
+  desktopSocket.close();
   const deadline = setTimeout(() => server.closeAllConnections(), 10_000);
   deadline.unref();
   server.close(async (error) => {

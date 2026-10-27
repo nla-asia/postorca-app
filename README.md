@@ -42,11 +42,11 @@ npm run db:migrate
 npm run api:dev
 ```
 
-It listens on `http://127.0.0.1:3001` after checking the database connection. `GET /api/health` queries PostgreSQL before returning `{ "ok": true }`. The desktop uses the account, Brand Profile, scheduling, and task endpoints. With a model configured, task follow-ups run Orca (see [Agent loop](#agent-loop)); saved schedules do not run yet.
+It listens on `http://127.0.0.1:3001` after checking the database connection. `GET /api/health` queries PostgreSQL before returning `{ "ok": true }`. The desktop uses the account, Brand Profile, scheduling, task, and desktop endpoints. With a model configured, messages and follow-ups run Orca (see [Agent loop](#agent-loop)) and saved schedules run on time.
 
 `DATABASE_URL` and `JWT_SECRET` are required. `PORT` and `CLIENT_ORIGINS` are optional. Origins are comma-separated HTTP(S) origins without paths or trailing slashes. Local renderer origins are allowed by default; the `null` origin used by packaged Electron windows is also allowed. The API binds to loopback only.
 
-Migrations run in filename order within one transaction and an advisory lock; applied files are recorded in `schema_migrations`. The initial schema includes `users` and `brand_profiles`, with profiles keyed by user ID and cascading profile deletion. Run migrations explicitly when setting up or updating the database.
+Migrations run in filename order within one transaction and an advisory lock; applied files are recorded in `schema_migrations`. The initial schema includes `users` and `brand_profiles`, with profiles keyed by user ID and cascading profile deletion. Each migration run also syncs the plugin and skill catalog from code (see [Skills and plugins](#skills-and-plugins)). Run migrations explicitly when setting up or updating the database.
 
 `npm run build` builds both workspaces, including the API's SQL files. After building, `npm run api:start` runs the compiled API; `node apps/api/dist/migrate.js` runs compiled migrations. `npm test` checks the API and database against isolated temporary PostgreSQL instances, including concurrent migrations, constraints, and rollback. Tests do not use your configured database.
 
@@ -93,7 +93,7 @@ Recurring routines and one-time Calendar schedules share `/api/routines`. All en
 | POST | `/api/routines` | Creates a recurring routine or a one-time schedule and returns it. |
 | PATCH | `/api/routines/:id` | Saves a partial update and returns the schedule. |
 | DELETE | `/api/routines/:id` | Deletes a recurring routine or cancels a pending one-time schedule. |
-| POST | `/api/routines/:id/run` | Returns 503 while execution is unavailable; creates no work. |
+| POST | `/api/routines/:id/run` | Runs a recurring routine once now (202 with its task); 409 while it is still running, 400 for one-time schedules, 503 without a model. |
 
 Recurring routines accept `platform` (`X`, `Threads`, `Instagram`, `Facebook`, or `LinkedIn`), `title`, `instructions`, `time` (`HH:MM`), `days` (ISO weekdays 1–7), `timezone`, and optional `active` (defaults to true). Days are deduplicated and sorted. PostgreSQL computes `next_run_at` strictly after now in the chosen timezone, including daylight-saving changes. Pausing clears the next run; resuming recalculates it from now.
 
@@ -101,7 +101,7 @@ One-time schedules accept `title`, `instructions`, `timezone`, an optional nulla
 
 Each account can have up to 50 recurring routines and pending one-time schedules combined; paused recurring routines count toward this limit. Creation is serialized per account to enforce the limit during concurrent requests. Responses include the latest run's task ID, trigger, and live status when available. Deleting a routine keeps any work it previously produced.
 
-The API stores schedules but does not execute them yet. Both Calendar and Routines use these endpoints. Run now stays disabled in the desktop until execution is connected.
+When a model is configured, the API's scheduler checks every 30 seconds for due routines and one-time schedules. Each occurrence runs once, even with several schedulers racing: it creates an Inbox work task whose first message is the routine's title, platform, and instructions, then moves the routine to its next run. A one-time schedule runs once and is then finished, including one whose time passed while the server was off. Turns left queued for over a minute (a crash between saving and starting) are started again. Run now starts a routine immediately without changing its schedule. Both Calendar and Routines use these endpoints.
 
 Calendar saves one-time tasks to the signed-in account, including edits and confirmed cancellation. Schedules survive logout and app restarts. Dates are entered and displayed in the device's local timezone and sent as absolute timestamps with the timezone name. Calendar refreshes every ten seconds, or every two seconds while work is queued or running. Failed loads offer a retry, and failed saves keep the form open. Calendar and Routines work links open the corresponding Inbox detail.
 
@@ -128,9 +128,9 @@ Each account has one chat and one onboarding conversation. Repeated creation reu
 
 Task lists include live status, the latest nonempty assistant text (up to 280 characters), and the recurring routine's title when applicable. Task details expose assistant text without provider replay data. Messages and artifacts stay associated with their own turns; document edits retain the artifact ID.
 
-Queued or running work cannot be approved or archived. Only completed work can be approved. Repeated review actions retain their first timestamp. The turn repository permits one active turn per task, clears approval when a follow-up starts, and rejects follow-ups to archived tasks. Model-backed follow-ups and scheduled execution are not enabled yet.
+Queued or running work cannot be approved or archived. Only completed work can be approved. Repeated review actions retain their first timestamp. The turn repository permits one active turn per task, clears approval when a follow-up starts, and rejects follow-ups to archived tasks.
 
-Inbox uses these endpoints for saved work, details, document editing, and review. Agent chat and onboarding have not yet been connected in the desktop. Artifact generation and idea-to-content queue actions will follow with execution.
+Inbox uses these endpoints for saved work, details, document editing, and review; Agent chat and onboarding use them for their conversations. Inbox follow-ups and idea-to-content actions will follow.
 
 ## Inbox
 
@@ -158,7 +158,7 @@ Individual tool results are capped at 80,000 characters in the model view. Compa
 
 Recent PNG/JPEG tool attachments are loaded only from files owned by the task's user. Their image payloads appear for one assistant step by default, then only their references and descriptions remain. `AGENT_IMAGE_STEPS` can extend this window. Original downloads are not automatically loaded as model images, and missing files are skipped. Short file references are scoped to each user's files; ambiguous references do not resolve.
 
-File helpers use `STORAGE_DIR` or default to `apps/api/storage/`, which is ignored by Git. The build copies prompt files as well as SQL migrations. File delivery routes are not connected yet.
+File helpers use `STORAGE_DIR` or default to `apps/api/storage/`, which is ignored by Git. The build copies prompt files and skill folders as well as SQL migrations. File delivery routes are not connected yet.
 
 ## Orca's tools
 
@@ -173,15 +173,25 @@ File helpers use `STORAGE_DIR` or default to `apps/api/storage/`, which is ignor
 
 Image, audio, and video artifacts arrive with file tools.
 
+## Skills and plugins
+
+A skill is a folder with a `SKILL.md` (YAML frontmatter with its name and description, then Markdown instructions) and optional reference files. Core skills live in `apps/api/src/skills`: `find-content-ideas`, `conversations-to-join`, `weekly-strategy-research`, and `create-content`. The default routines name the skill to follow. Orca's instructions list every core skill, and `read_skill` returns a skill's instructions and lists its other files, which it can also read. Only text files inside the skill's own folder can be read.
+
+A plugin bundles tools with the skills that explain them, defined in code in `apps/api/src/plugins` (none are registered yet). Each migration projects the plugins and core skills into the `tools`, `skills`, `plugins`, `plugin_tools`, and `plugin_skills` tables and disables rows that are no longer defined; at startup the API warns when the database catalog differs from the code. Orca sees the available plugins' codes and descriptions, activates one per task with `activate_plugin` (or `null` to return to its own tools), and from its next response is offered that plugin's tools and can read its skills. Calls to an inactive plugin's tools are refused before they run.
+
+A plugin tool runs either on the server or on the founder's desktop. Desktop tools go over the desktop connection: the signed-in desktop exchanges its session token for a one-hour token bound to its install ID (`POST /api/desktop/device-token`), opens a WebSocket at `/api/desktop/socket`, and receives each call there. It runs the tool in Electron's main process, so tools keep working with the window closed, and posts the result to `POST /api/desktop/tool-result`. Only the device a call was sent to can answer it. Calls go to the founder's most recently connected desktop and fail clearly when none is connected, when the desktop reports an error, or when the call times out. A device can upload JPEG or PNG screenshots to `POST /api/desktop/files` and return their file keys. The desktop reconnects with backoff and pings every 30 seconds; a reconnecting device replaces its previous connection.
+
+To add a plugin, define it in `apps/api/src/plugins/<code>/`, list it in `apps/api/src/plugins/catalog.ts`, and implement its desktop tools under the same names in `apps/desktop/electron/plugins/<code>/`, listed in `apps/desktop/electron/plugins/index.cjs`.
+
 ## Agent loop
 
-`apps/api/src/agent/loop.ts` runs one turn: it claims the queued turn (so repeated dispatches run it once), builds Orca's instructions, asks the model for a response, saves it, runs each tool call, and saves each result, repeating until Orca answers without calling tools. A `request_user_input` question also ends the turn until the founder replies. Instructions combine `agent/prompts/system.md` with the brand profile (re-read each step), the founder's memory index (read once per turn), and the chat, onboarding, or work section for the task.
+`apps/api/src/agent/loop.ts` runs one turn: it claims the queued turn (so repeated dispatches run it once), builds Orca's instructions, asks the model for a response, saves it, runs each tool call, and saves each result, repeating until Orca answers without calling tools. A `request_user_input` question also ends the turn until the founder replies. Instructions combine `agent/prompts/system.md` with the skills and plugins available to the task and the brand profile (both re-read each step), the founder's memory index (read once per turn), and the chat, onboarding, or work section for the task.
 
 Chat and onboarding turns allow 30 responses in 6 minutes; Inbox work allows 100 in 45 minutes. The last response is offered no tools and told to report what is unfinished, so long turns end with an answer. Tool refusals, invalid arguments, and malformed JSON go back to Orca as messages it can correct; other tool failures stay generic. If the model reports a context-length error, the loop compacts down to the current step and retries once.
 
 A failed turn saves a short message for the founder (time limit, action limit, restart, or a generic failure) and writes the cause to the local turn trace. The router runs turns in the background after their turn is committed. On shutdown it stops running turns, which fail asking for a follow-up; on startup, turns left queued or running by the previous process are marked failed.
 
-Agent chat and onboarding are not yet connected in the desktop, routine runs and the scheduler are not connected, and desktop notifications for finished work are not implemented.
+Desktop notifications for finished work are not implemented yet.
 
 ## Workspace
 
@@ -192,12 +202,12 @@ Agent chat and onboarding are not yet connected in the desktop, routine runs and
 
 The desktop includes five sections:
 
-- **Agent:** chat welcome screen and draft composer. Messages are not sent yet.
+- **Agent:** chat with Orca, showing its tool steps as they run, replies, question cards, delivered documents and links, and failed turns.
 - **Inbox:** saved work filters, task details, document editing, approval, and archive.
 - **Calendar:** month navigation and persistent one-time task creation, editing, and cancellation.
-- **Routines:** persistent recurring routines, weekday/timezone editor, next-run times, pause/resume, and confirmed deletion.
+- **Routines:** persistent recurring routines, weekday/timezone editor, next-run times, pause/resume, Run now, and confirmed deletion.
 - **Brand Profile:** read-only General, Audience, Voice, Colours, and Links tabs showing saved account data.
 
-Calendar and Routines persist their settings on the server. Inbox displays saved work. No scheduled tasks or routines execute yet; agent execution is coming soon.
+New accounts first set up their brand in a full-screen conversation with Orca, then see their saved profile and schedule before entering the workspace. Calendar and Routines persist their settings on the server, and Orca runs them on schedule. Inbox displays the work they produce.
 
 Settings provides light, dark, and system appearance, saved on this device.

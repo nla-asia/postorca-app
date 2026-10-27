@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { TaskKind } from "../repositories/tasks.js";
-import { coreSkills } from "../skills/index.js";
+import { pluginPrompt, type PluginState } from "../plugins/service.js";
 
 /**
  * Orca's system instructions. The prose lives in prompts/*.md so it can be read and
@@ -20,14 +20,10 @@ const prompts = {
   lastStep: load("last-step"),
 };
 
-// Core skills are fixed for the life of the process, so their list is built once.
-const skillList = `
-Skills: when a task names a skill, or its work matches one, read it with read_skill first and follow it.
-${coreSkills.map((skill) => `- ${skill.name}: ${skill.description}`).join("\n")}`;
-
 export function systemPrompt(step: {
   task: { kind: TaskKind; platform: string | null };
   profile: { onboarding_status: string };
+  plugins: PluginState;
   /** memoryIndex(): one line per memory file, read at the start of the turn. */
   memory: string;
   lastStep: boolean;
@@ -48,7 +44,7 @@ export function systemPrompt(step: {
   ];
   return (
     prompts.system +
-    skillList +
+    pluginPrompt(step.plugins) +
     sections
       .filter(Boolean)
       .map((section) => `\n${section}`)

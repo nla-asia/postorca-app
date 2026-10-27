@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { Database } from "../db.js";
 import { HttpError } from "../handlers/errors.js";
 import { memoryIndex } from "../memory.js";
+import { loadPluginState } from "../plugins/service.js";
 import { ContextTooLongError, type Provider } from "../providers/types.js";
 import { getProfile } from "../repositories/brand.js";
 import { appendMessage, taskKind } from "../repositories/tasks.js";
@@ -88,9 +89,17 @@ export class AgentLoop {
         controller.signal.throwIfAborted();
         // Re-read each step: tools such as update_brand_profile change it mid-turn.
         const profile = await getProfile(this.db, userId);
+        // Activation changes the task's plugin mid-turn, so it is re-read too.
+        const plugins = await loadPluginState(this.db, taskId);
         const lastStep = step === limits.responses;
         const trace = { taskId, turnId, step };
-        const instructions = systemPrompt({ task, profile, memory, lastStep });
+        const instructions = systemPrompt({
+          task,
+          profile,
+          plugins,
+          memory,
+          lastStep,
+        });
         const respond = async () =>
           this.provider.respond({
             instructions,
@@ -100,7 +109,7 @@ export class AgentLoop {
               { taskId, userId },
               { instructions, signal: controller.signal, trace },
             ),
-            tools: lastStep ? [] : toolsForTask(task.kind),
+            tools: lastStep ? [] : toolsForTask(task.kind, plugins),
             cacheKey: taskId,
             signal: controller.signal,
             trace,
@@ -134,7 +143,7 @@ export class AgentLoop {
             controller.signal.throwIfAborted();
             result = await executeTool(
               this.db,
-              { userId, taskId, turnId, signal: controller.signal },
+              { userId, taskId, turnId, signal: controller.signal, plugins },
               call.name,
               JSON.parse(call.arguments),
               this.dispatchTask,

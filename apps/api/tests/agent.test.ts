@@ -372,3 +372,29 @@ test("a context-length error compacts down to the latest step and retries once",
   await new AgentLoop(fixture.db, provider).run(fresh.task.id, fresh.turn.id, founder.id);
   assert.equal((await settled(founder.id, fresh.task.id)).turns[0].status, "failed");
 });
+
+test("with no plugins installed, routine work can still read core skills", async () => {
+  const founder = await account();
+  const { task, turn: queued } = await createWorkTask(
+    fixture.db,
+    founder.id,
+    "Find fresh ideas",
+    "Read the find-content-ideas skill with read_skill, then follow it.",
+  );
+  requests.length = 0;
+  script = async (request) =>
+    lastMessage(request).kind === "user"
+      ? { text: "", calls: [call("read_skill", { name: "find-content-ideas" })] }
+      : reply("Read it.");
+  agent.dispatch(task.id, queued.id, founder.id);
+  const turn = (await settled(founder.id, task.id)).turns[0];
+  assert.match(turn.messages[3].content.result.content, /^# Find content ideas\n/);
+  const tools = toolNames(requests[0]);
+  assert.ok(tools.includes("read_skill"));
+  assert.ok(!tools.includes("activate_plugin"));
+  assert.match(
+    requests[0].instructions,
+    /\nSkills: when a task names a skill, or its work matches one, read it with read_skill first and follow it\.\n- conversations-to-join: [^\n]+\n- create-content: [^\n]+\n- find-content-ideas: Find up to five content ideas/,
+  );
+  assert.doesNotMatch(requests[0].instructions, /Plugins:/);
+});

@@ -3,6 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { createDatabase, transaction, type Database } from "./db.js";
 import { configFromEnv } from "./config.js";
+import { syncCatalog } from "./plugins/catalog.js";
 export async function migrate(db: Database) {
   await transaction(db, async (client) => {
     await client.query("SELECT pg_advisory_xact_lock(171901)");
@@ -27,6 +28,8 @@ export async function migrate(db: Database) {
         name,
       ]);
     }
+    // Project the code-defined plugin catalog and core skills into their tables.
+    await syncCatalog(client);
   });
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

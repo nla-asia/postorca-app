@@ -1,6 +1,9 @@
 const { app, BrowserWindow, ipcMain, safeStorage, shell } = require("electron");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
+const { DesktopConnection } = require("./connection.cjs");
+const plugins = require("./plugins/index.cjs");
 
 // Persist the session with the OS keychain. Without encryption, keep it in memory.
 const sessionFile = () => path.join(app.getPath("userData"), "session.bin");
@@ -31,6 +34,19 @@ function clearSession() {
   session = null;
   fs.rmSync(sessionFile(), { force: true });
 }
+// Stable per-install device ID; the server binds it into this device's token.
+function installId() {
+  const file = path.join(app.getPath("userData"), "install-id");
+  try {
+    const id = fs.readFileSync(file, "utf8").trim();
+    if (/^[0-9a-f-]{36}$/.test(id)) return id;
+  } catch {}
+  const id = crypto.randomUUID();
+  fs.writeFileSync(file, id);
+  return id;
+}
+// The server reaches this computer through it, for tools that run here.
+let desktop;
 // Only an app window's top frame may access its session.
 function trusted(event) {
   return (
@@ -50,10 +66,13 @@ ipcMain.handle("session:set", (event, value) => {
     /^https?:\/\/[^\s]+$/.test(value.apiUrl)
   ) {
     writeSession({ token: value.token, apiUrl: value.apiUrl });
+    desktop?.setSession(session);
   }
 });
 ipcMain.handle("session:clear", (event) => {
-  if (trusted(event)) clearSession();
+  if (!trusted(event)) return;
+  clearSession();
+  desktop?.setSession(null);
 });
 
 function createWindow() {
@@ -99,11 +118,20 @@ app.on("second-instance", () => {
 });
 
 app.whenReady().then(() => {
+  desktop = new DesktopConnection(installId());
   session = readSession();
+  desktop.setSession(session);
+  plugins.start();
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+// Quitting takes this computer offline right away; the saved session stays.
+app.on("before-quit", () => {
+  desktop?.setSession(null);
+  plugins.shutdown();
 });
 
 app.on("window-all-closed", () => {
