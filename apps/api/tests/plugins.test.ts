@@ -258,6 +258,7 @@ test("migrate projects the code-defined plugin catalog and core skills into the 
     { name: "demo-use", dir: "../tests/fixtures/plugins/demo-use", plugin_code: "demo" },
     { name: "find-content-ideas", dir: "skills/find-content-ideas", plugin_code: null },
     { name: "media-create", dir: "plugins/media/skills/media-create", plugin_code: "media" },
+    { name: "product-demo-capture", dir: "skills/product-demo-capture", plugin_code: null },
     { name: "publish-post", dir: "skills/publish-post", plugin_code: null },
     { name: "video-build-log", dir: "plugins/video/skills/video-build-log", plugin_code: "video" },
     { name: "video-create", dir: "plugins/video/skills/video-create", plugin_code: "video" },

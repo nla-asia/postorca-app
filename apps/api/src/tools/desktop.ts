@@ -24,7 +24,89 @@ const projectPath = {
     "A project folder (absolute path from the brand profile) or a folder inside one.",
 };
 
+/** What a capture tool captures: a display, one app window, or the iOS Simulator. */
+const captureTarget = {
+  type: "object",
+  description:
+    'What to capture: {"type": "screen"} (optionally "display"), {"type": "window", "window_id"} or {"type": "simulator"} (optionally "udid"), with ids from list_capture_targets.',
+  properties: {
+    type: { type: "string", enum: ["screen", "window", "simulator"] },
+    display: {
+      type: "integer",
+      minimum: 1,
+      description: "screen: display number. Omit for the main display.",
+    },
+    window_id: { type: "integer", description: "window: its window_id." },
+    udid: {
+      type: "string",
+      description: "simulator: its udid. Omit for the booted one.",
+    },
+  },
+  required: ["type"],
+  additionalProperties: false,
+};
+const captureTargetArgs = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal("screen"),
+      display: z.number().int().min(1).max(16).optional(),
+    })
+    .strict(),
+  z
+    .object({ type: z.literal("window"), window_id: z.number().int().positive() })
+    .strict(),
+  z
+    .object({
+      type: z.literal("simulator"),
+      udid: z.string().regex(/^[0-9A-F-]{36}$/i).optional(),
+    })
+    .strict(),
+]);
+
 const desktopTools: DesktopTool[] = [
+  {
+    definition: {
+      name: "list_capture_targets",
+      description:
+        "List what screen_capture and screen_record_start can capture on the founder's Mac: displays, the app windows on screen (window_id, app, title, size) and booted iOS Simulators. Says when the app lacks the Screen Recording permission. Needs the desktop app on macOS.",
+      parameters: object({}, []),
+    },
+    args: z.object({}).strict(),
+    timeoutMs: 30_000,
+  },
+  {
+    definition: {
+      name: "screen_capture",
+      description:
+        "Take a screenshot on the founder's Mac of a display, one app window (without others on top of it) or the iOS Simulator's screen. Returns a PNG attachment ref and its size in pixels. Needs the desktop app on macOS and, except for the Simulator, its Screen Recording permission.",
+      parameters: object({ target: captureTarget }, ["target"]),
+    },
+    args: z.object({ target: captureTargetArgs }).strict(),
+    timeoutMs: 60_000,
+  },
+  {
+    definition: {
+      name: "screen_record_start",
+      description:
+        "Start recording video (no sound) of a display, one app window or the iOS Simulator's screen on the founder's Mac. Returns a recording id for screen_record_stop. One recording at a time; it can't pause, so record separate short clips. While it records, the founder sees it in the menu bar and can stop it there; it stops by itself after max_seconds (3 minutes). Needs the desktop app on macOS and, except for the Simulator, its Screen Recording permission.",
+      parameters: object({ target: captureTarget }, ["target"]),
+    },
+    args: z.object({ target: captureTargetArgs }).strict(),
+    timeoutMs: 30_000,
+  },
+  {
+    definition: {
+      name: "screen_record_stop",
+      description:
+        "Stop a recording from screen_record_start (or collect one that already stopped) and save it as an MP4 (H.264) to the founder's media. Returns its attachment ref, duration_seconds, size and stopped_by: tool, founder (from the menu bar), max_duration, or ended (its window closed).",
+      parameters: object(
+        { id: { type: "string", description: "The recording id." } },
+        ["id"],
+      ),
+    },
+    args: z.object({ id: z.string().min(1).max(100) }).strict(),
+    timeoutMs: 360_000,
+  },
   {
     definition: {
       name: "desktop_status",

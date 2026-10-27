@@ -12,4 +12,5 @@ export const coreSkills = [
   "conversations-to-join",
   "work-content-ideas",
   "publish-post",
+  "product-demo-capture",
 ].map((name) => loadSkill(new URL(`./${name}/`, import.meta.url)));

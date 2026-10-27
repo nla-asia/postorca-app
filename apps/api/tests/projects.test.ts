@@ -326,3 +326,76 @@ test("desktop file tools read only the founder's project folders; desktop_status
     ws.close();
   }
 });
+
+test("capture tools check their target and reach the desktop without project folders", async () => {
+  const founder = await onboarded([
+    { name: "Founder on X", url: "https://x.com/capture-founder", kind: "x" },
+  ]);
+  await request(
+    "/brand-profile/projects",
+    "POST",
+    { name: "App", path: "/Users/founder/app" },
+    founder.token,
+  );
+  const task = await createTask(fixture.db, founder.id, "work", "Demo shots");
+  const turn = await createTurn(fixture.db, founder.id, task.id, "Capture the demo");
+  const context = { userId: founder.id, taskId: task.id, turnId: turn.id };
+  const run = (name: string, args: unknown) =>
+    executeTool(fixture.db, context, name, args) as Promise<any>;
+  const names = ["list_capture_targets", "screen_capture", "screen_record_start", "screen_record_stop"];
+  for (const kind of ["chat", "onboarding", "work"] as const)
+    for (const name of names)
+      assert.ok(toolsForTask(kind).some((tool) => tool.name === name), name);
+  await assert.rejects(
+    run("screen_capture", { target: { type: "screen" } }),
+    /The desktop app is not connected/,
+  );
+
+  const deviceToken = (
+    await request("/desktop/device-token", "POST", { deviceId: randomUUID() }, founder.token)
+  ).data.token;
+  const ws = new WebSocket(
+    `${base.replace(/^http/, "ws")}/desktop/socket?token=${encodeURIComponent(deviceToken)}`,
+  );
+  const calls: any[] = [];
+  ws.on("message", async (raw) => {
+    const { data: call } = JSON.parse(raw.toString());
+    calls.push(call);
+    await request(
+      "/desktop/tool-result",
+      "POST",
+      { executionId: call.executionId, ok: true, result: { tool: call.tool } },
+      deviceToken,
+    );
+  });
+  await once(ws, "open");
+  try {
+    await run("list_capture_targets", {});
+    await run("screen_capture", { target: { type: "window", window_id: 42 } });
+    await run("screen_record_start", { target: { type: "simulator" } });
+    await run("screen_record_stop", { id: "rec_1234abcd" });
+    assert.deepEqual(
+      calls.map((call) => [call.tool, call.arguments, call.timeoutMs]),
+      [
+        ["list_capture_targets", {}, 30_000],
+        ["screen_capture", { target: { type: "window", window_id: 42 } }, 60_000],
+        ["screen_record_start", { target: { type: "simulator" } }, 30_000],
+        ["screen_record_stop", { id: "rec_1234abcd" }, 360_000],
+      ],
+    );
+    // Targets are checked before anything reaches the desktop.
+    for (const target of [
+      { type: "camera" },
+      { type: "window" },
+      { type: "window", window_id: "42; rm -rf ~" },
+      { type: "screen", display: 0 },
+      { type: "simulator", udid: "--help" },
+      { type: "screen", window_id: 42 },
+    ])
+      await assert.rejects(run("screen_record_start", { target }));
+    await assert.rejects(run("screen_record_stop", {}));
+    assert.equal(calls.length, 4);
+  } finally {
+    ws.close();
+  }
+});

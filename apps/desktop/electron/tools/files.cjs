@@ -82,7 +82,8 @@ const AUDIO = new Set([
   ".mov",
 ]);
 
-function audioBinary(name) {
+/** ffmpeg or ffprobe from the Remotion compositor that ships with the app. */
+function mediaBinary(name) {
   const suffix = process.platform === "win32" ? "-msvc" : "";
   let directory = path.dirname(
     require.resolve(
@@ -101,7 +102,7 @@ function audioBinary(name) {
 }
 
 async function readAudio(file, startSeconds, durationSeconds, context) {
-  const probe = audioBinary("ffprobe");
+  const probe = mediaBinary("ffprobe");
   const { stdout } = await runBinary(
     probe.filename,
     ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file],
@@ -112,7 +113,7 @@ async function readAudio(file, startSeconds, durationSeconds, context) {
   const length = Math.min(durationSeconds ?? total - start, total - start, 300);
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "postorca-audio-"));
   try {
-    const encoder = audioBinary("ffmpeg");
+    const encoder = mediaBinary("ffmpeg");
     const output = path.join(temporary, "audio.mp3");
     await runBinary(
       encoder.filename,
@@ -264,4 +265,5 @@ module.exports = {
   read_file: readFile,
   allowed,
   isSecret,
+  mediaBinary,
 };
