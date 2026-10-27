@@ -140,6 +140,16 @@ Opening work shows its request, ordered replies, tool activity, status, and arti
 
 Approve and Archive save through the task API and refresh the lists. Load failures offer a retry. The Inbox list refreshes every twenty seconds, or every three seconds while work is active; an active detail refreshes every 1.5 seconds. Saved reviews and document edits survive logout and app restarts. New accounts have an empty Inbox until work is created; no example results are inserted automatically.
 
+## Model provider
+
+The API package includes an OpenAI Responses adapter using the pinned `openai@7.39.0` SDK. It accepts an explicit API key and model, timestamps founder messages, preserves response replay and function-call outputs, and returns text plus tool calls. Requests use `store: false` with encrypted reasoning replay, consistent with the [official Responses guidance](https://developers.openai.com/api/docs/guides/migrate-to-responses).
+
+The adapter retains a three-minute request timeout and three SDK retries for transient failures, accepts an abort signal, distinguishes context-length failures, and rejects incomplete responses. Token statistics use a rough text estimate or the provider's reported input count against the application's 100,000-token context budget.
+
+When a turn trace is supplied, local request/result diagnostics are written under `apps/api/.data/agent-traces/<taskId>/<turnId>/`. Traces include the prompt, conversation input, tools, usage, and short failure metadata; SDK credentials and HTTP headers are omitted. Diagnostic write failures do not interrupt execution. This directory is ignored by Git.
+
+The adapter is not yet connected to the API entry point or task dispatch. Follow-ups and Run now remain unavailable, and schedules do not execute. Provider tests mock the HTTP transport and require no live credentials or model calls.
+
 ## Workspace
 
 - `apps/desktop/electron`: Electron main process and window.
