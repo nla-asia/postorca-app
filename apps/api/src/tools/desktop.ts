@@ -63,7 +63,7 @@ const desktopTools: DesktopTool[] = [
     definition: {
       name: "read_file",
       description:
-        "Read a file in one of the founder's project folders on their computer. Text and code files return their text; secrets (.env files, keys, credentials) are never read. PNG and JPEG images are saved to the founder's files and returned as an attachment you can see. Needs the desktop app.",
+        "Read a file in one of the founder's project folders. Text/code return text; PNG/JPEG return saved images. Audio (or a video's sound) returns a saved MP3 ref; audio longer than 300 seconds is an excerpt. Set start_seconds/duration_seconds to select an excerpt. Secrets are never read. Needs the desktop app.",
       parameters: object(
         {
           path: {
@@ -71,11 +71,28 @@ const desktopTools: DesktopTool[] = [
             description:
               "The file: absolute, or relative to the first project folder.",
           },
+          start_seconds: {
+            type: "number",
+            minimum: 0,
+            description: "Audio excerpt start; default 0.",
+          },
+          duration_seconds: {
+            type: "number",
+            minimum: 1,
+            maximum: 300,
+            description: "Audio excerpt length, at most 300 seconds.",
+          },
         },
         ["path"],
       ),
     },
-    args: z.object({ path: z.string().min(1).max(1000) }).strict(),
+    args: z
+      .object({
+        path: z.string().min(1).max(1000),
+        start_seconds: z.number().min(0).optional(),
+        duration_seconds: z.number().min(1).max(300).optional(),
+      })
+      .strict(),
     timeoutMs: 120_000,
     readsProjects: true,
   },

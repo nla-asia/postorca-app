@@ -234,6 +234,8 @@ test("migrate projects the code-defined plugin catalog and core skills into the 
     { code: "browser", enabled: true },
     { code: "computer", enabled: true },
     { code: "demo", enabled: true },
+    { code: "media", enabled: true },
+    { code: "video", enabled: true },
   ]);
   const { rows: tools } = await fixture.db.query(
     `SELECT t.name,t.runs_on,t.timeout_ms FROM plugin_tools p JOIN tools t ON t.name=p.tool_name
@@ -255,7 +257,17 @@ test("migrate projects the code-defined plugin catalog and core skills into the 
     { name: "create-content", dir: "skills/create-content", plugin_code: null },
     { name: "demo-use", dir: "../tests/fixtures/plugins/demo-use", plugin_code: "demo" },
     { name: "find-content-ideas", dir: "skills/find-content-ideas", plugin_code: null },
+    { name: "media-create", dir: "plugins/media/skills/media-create", plugin_code: "media" },
     { name: "publish-post", dir: "skills/publish-post", plugin_code: null },
+    { name: "video-build-log", dir: "plugins/video/skills/video-build-log", plugin_code: "video" },
+    { name: "video-create", dir: "plugins/video/skills/video-create", plugin_code: "video" },
+    { name: "video-event-invite", dir: "plugins/video/skills/video-event-invite", plugin_code: "video" },
+    { name: "video-lesson", dir: "plugins/video/skills/video-lesson", plugin_code: "video" },
+    { name: "video-music", dir: "plugins/video/skills/video-music", plugin_code: "video" },
+    { name: "video-post-to-video", dir: "plugins/video/skills/video-post-to-video", plugin_code: "video" },
+    { name: "video-pov-storytime", dir: "plugins/video/skills/video-pov-storytime", plugin_code: "video" },
+    { name: "video-product-demo", dir: "plugins/video/skills/video-product-demo", plugin_code: "video" },
+    { name: "video-product-update", dir: "plugins/video/skills/video-product-update", plugin_code: "video" },
     { name: "weekly-strategy-research", dir: "skills/weekly-strategy-research", plugin_code: null },
     { name: "work-content-ideas", dir: "skills/work-content-ideas", plugin_code: null },
   ]);
@@ -294,7 +306,7 @@ test("plugin tools and skills are available only while the task's plugin is acti
     assert.equal(install.calls.length, 0);
     assert.match(
       prompts[0],
-      /Plugins: activate the plugin[\s\S]*Active plugin: none\nAvailable:\n- browser: Use the founder's own web browser[^\n]*\n- computer: [^\n]*\n- demo: Open demo pages on the founder's computer\.\nSkills: when a task names a skill[\s\S]*- find-content-ideas: /,
+      /Plugins: activate the plugin[\s\S]*Active plugin: none\nAvailable:\n- browser: Use the founder's own web browser[^\n]*\n- computer: [^\n]*\n- demo: Open demo pages on the founder's computer\.\n- media: [^\n]*\n- video: [^\n]*\nSkills: when a task names a skill[\s\S]*- find-content-ideas: /,
     );
 
     // Activation is task state; tools and skills are offered from the next response.

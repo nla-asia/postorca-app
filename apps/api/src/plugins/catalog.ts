@@ -3,6 +3,8 @@ import { writeCatalog } from "../repositories/plugins.js";
 import { coreSkills } from "../skills/index.js";
 import { browserPlugin } from "./browser/index.js";
 import { computerPlugin } from "./computer/index.js";
+import { mediaPlugin } from "./media/index.js";
+import { videoPlugin } from "./video/index.js";
 import { gmailPlugin, drivePlugin } from "./google/index.js";
 import type { PluginDefinition, PluginToolDefinition } from "./types.js";
 
@@ -20,7 +22,12 @@ export { gmailPlugin, drivePlugin } from "./google/index.js";
  * here, and implement its desktop tools under the same names in the desktop app's
  * electron/plugins/<code>/.
  */
-export const pluginDefinitions: PluginDefinition[] = [browserPlugin, computerPlugin];
+export const pluginDefinitions: PluginDefinition[] = [
+  browserPlugin,
+  computerPlugin,
+  mediaPlugin,
+  videoPlugin,
+];
 
 /** Every plugin tool by name; throws when two plugins define different tools or skills under one name. */
 function indexCatalog() {
@@ -32,12 +39,16 @@ function indexCatalog() {
       // share a name.
       const existing = tools.get(tool.name);
       if (existing && existing !== tool)
-        throw new Error(`Tool ${tool.name} is defined by more than one plugin.`);
+        throw new Error(
+          `Tool ${tool.name} is defined by more than one plugin.`,
+        );
       tools.set(tool.name, tool);
     }
     for (const skill of plugin.skills) {
       if (skills.has(skill.name))
-        throw new Error(`Skill ${skill.name} is defined by more than one plugin.`);
+        throw new Error(
+          `Skill ${skill.name} is defined by more than one plugin.`,
+        );
       skills.add(skill.name);
     }
   }

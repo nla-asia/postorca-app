@@ -21,10 +21,20 @@ const shortUrl = (value: unknown) => {
     return String(value ?? "a page");
   }
 };
+/** The last part of a file or folder path. */
+const folder = (value: unknown) =>
+  String(value ?? "").split(/[\\\/]/).filter(Boolean).at(-1) ?? "";
 const clip = (value: unknown, length = 40) => {
   const text = String(value ?? "");
   return text.length > length ? `${text.slice(0, length)}…` : text;
 };
+
+const captureTarget = (target: { type?: string } | undefined) =>
+  target?.type === "window"
+    ? "a window"
+    : target?.type === "simulator"
+      ? "the Simulator"
+      : "the screen";
 
 function describe(
   name: string,
@@ -76,6 +86,26 @@ function describe(
       return "Sent feedback to background work";
     case "desktop_status":
       return "Checked the desktop app";
+    case "list_dir":
+      return `Looked in ${folder(args.path) || "the working folder"}`;
+    case "read_file":
+      return `Read ${folder(args.path)}`;
+    case "git_activity":
+      return args.commit
+        ? `Read the changes in commit ${String(args.commit).slice(0, 7)}`
+        : `Checked recent work in ${folder(args.path)}`;
+    case "recent_files":
+      return `Checked recently changed files in ${folder(args.path)}`;
+    case "list_capture_targets":
+      return "Checked which windows can be captured";
+    case "screen_capture":
+      return `Took a screenshot of ${captureTarget(args.target)}`;
+    case "screen_record_start":
+      return `Started recording ${captureTarget(args.target)}`;
+    case "screen_record_stop":
+      return result?.duration_seconds
+        ? `Saved a ${Math.round(result.duration_seconds)} s screen recording`
+        : "Stopped a screen recording";
     case "activate_plugin":
       return args.code
         ? `Activated the ${args.code} plugin`

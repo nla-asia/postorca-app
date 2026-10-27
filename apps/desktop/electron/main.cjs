@@ -42,6 +42,37 @@ function clearSession() {
   session = null;
   fs.rmSync(sessionFile(), { force: true });
 }
+let refreshing = null;
+/**
+ * Renews the login with its refresh token, once for all concurrent callers (the
+ * window and the desktop connection). Resolves to the new access token, or null
+ * when the server ended the session; rejects when the server cannot be reached.
+ */
+function refreshSession() {
+  refreshing ??= (async () => {
+    const current = session;
+    if (!current?.refreshToken) return null;
+    const response = await fetch(`${current.apiUrl}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken: current.refreshToken }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    // Signed out or in again meanwhile: that login stands.
+    if (current !== session) return session?.token ?? null;
+    if (response.status === 401) {
+      clearSession();
+      return null;
+    }
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const { token, refreshToken } = await response.json();
+    // Same login with new tokens: updated in place.
+    Object.assign(current, { token, refreshToken });
+    writeSession(current);
+    return token;
+  })().finally(() => (refreshing = null));
+  return refreshing;
+}
 // Stable per-install device ID; the server binds it into this device's token.
 function installId() {
   const file = path.join(app.getPath("userData"), "install-id");
@@ -70,15 +101,32 @@ ipcMain.handle("session:set", (event, value) => {
     trusted(event) &&
     typeof value?.token === "string" &&
     value.token.length < 4096 &&
+    typeof value.refreshToken === "string" &&
+    value.refreshToken.length < 256 &&
     typeof value.apiUrl === "string" &&
     /^https?:\/\/[^\s]+$/.test(value.apiUrl)
   ) {
-    writeSession({ token: value.token, apiUrl: value.apiUrl });
+    writeSession({
+      token: value.token,
+      refreshToken: value.refreshToken,
+      apiUrl: value.apiUrl,
+    });
     desktop?.setSession(session);
   }
 });
+ipcMain.handle("session:refresh", (event) =>
+  trusted(event) ? refreshSession() : null,
+);
 ipcMain.handle("session:clear", (event) => {
   if (!trusted(event)) return;
+  // Ends the session on the server too, so its refresh token stops working.
+  if (session?.refreshToken)
+    void fetch(`${session.apiUrl}/auth/logout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken: session.refreshToken }),
+      signal: AbortSignal.timeout(15_000),
+    }).catch(() => {});
   clearSession();
   desktop?.setSession(null);
 });

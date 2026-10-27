@@ -12,7 +12,9 @@
     "db:local": "tsx src/local-db.ts",
     "db:migrate": "tsx src/migrate.ts",
     "computer:eval": "tsx src/scripts/computer-eval.ts",
-    "test:computer-eval": "tsx --test tests/computer-eval*.test.ts"
+    "test:computer-eval": "tsx --test tests/computer-eval*.test.ts",
+    "media:smoke": "tsx src/scripts/media-smoke.ts",
+    "video:eval": "tsx src/scripts/video-eval.ts"
   },
   "dependencies": {
     "cors": "2.8.6",

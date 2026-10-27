@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld("postorca", {
   session: {
     get: () => ipcRenderer.invoke("session:get"),
     set: (session) => ipcRenderer.invoke("session:set", session),
+    refresh: () => ipcRenderer.invoke("session:refresh"),
     clear: () => ipcRenderer.invoke("session:clear"),
   },
   projectFolder: {

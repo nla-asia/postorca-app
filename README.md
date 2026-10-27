@@ -265,3 +265,70 @@ npm run computer:eval -- regrade <run-folder>
 ```
 
 Each case needs three consecutive passes on the same runtime before the next case unlocks. The runner uses the production agent and authenticated desktop connection, saves evidence under `.data/computer-evals/`, and independently reads the app after the turn. Conversation and search cases also need an observer review; mechanical failures cannot be overridden. Regrading retains the original result and does not execute the agent. Run-folder arguments can be absolute or relative to the repository root. Model or execution-code changes reset pass streaks; grader-only changes allow retained evidence to be regraded.
+
+## Media creation suite
+
+The `media` plugin provides OpenAI image generation/editing plus ElevenLabs voice
+search, speech, music, sound effects and transcription. Add `OPENAI_IMAGE_API_KEY`
+and `ELEVENLABS_API_KEY` to `apps/api/.env` as needed. Both are optional at startup;
+missing credentials produce a tool error. Images use their own credential, with
+no fallback to the conversation key. Model choices match the original suite:
+`gpt-image-2.5-flare`, `eleven_multilingual_v2`, `music_v1`,
+`eleven_text_to_sound_v2` and `scribe_v2`. Account/model access must be verified
+with the providers before claiming live availability. Paid requests have no
+automatic retries, including after timeouts.
+
+The `video` plugin adds `video_preview_frames` and `video_export` and shares the
+media tools needed to make its assets. It composes saved images and text scenes
+in Remotion, with optional speech, automatic word-highlighted captions, music
+looping/fades/ducking, screenshot framing (browser/laptop/phone), focus regions,
+highlights and saved brand colours. Formats are 9:16 (1080×1920), 4:5
+(1080×1350), 1:1 (1080×1080) and 16:9 (1920×1080), all at 30 fps. Clips are
+limited to 90 seconds and 40 scenes. Previews show up to eight half-resolution
+frames; exports produce H.264/AAC MP4s. This is the original agent-driven
+composer, without an interactive timeline or video-footage scene inputs.
+
+The API checks file ownership and prepares timing, then uses the existing desktop
+connection to render in Electron. Remotion drives Chrome Headless Shell and its
+compositor in child processes; only one render runs at a time. The desktop
+prepares Headless Shell on startup (a first-use download of about 190 MB).
+Narrated clips require ElevenLabs transcription even when visible captions are
+disabled, because speech timing also controls duration and music ducking.
+Transcripts are cached per immutable file in the API process.
+
+`read_file` now also reads audio or the soundtrack of a video inside existing
+project folders. It saves an MP3 excerpt, capped at 300 seconds; optional
+`start_seconds` and `duration_seconds` select it. Text/image behavior and folder
+boundaries remain the same. Music selection for composed videos uses the
+founder's own tracks; if none is available, the agent reports it and avoids
+silently substituting generated music. Standalone music generation is available
+through the media plugin subject to provider access.
+
+All generated outputs use existing saved file refs, authenticated file reads and
+image/audio/video artifacts. Orca delivers each final asset with `create_artifact`;
+revisions retain earlier outputs. No new schema or binary persistence format is
+introduced. Apply the existing catalog sync with `npm run db:migrate`, then
+restart the API and desktop to load the plugins. Image/audio-only generation does
+not require a desktop connection.
+
+```sh
+npm run check
+npm test
+npm run build
+npm run video:smoke
+```
+
+The regular tests mock paid APIs and cover provider requests, ownership,
+artifact persistence, plugin activation and video transport/timing. The smoke
+check runs the actual Electron video plugin with synthetic screen/audio fixtures,
+previews and exports all four formats, then verifies codec, dimensions, frame
+rate, audio stream and duration with ffprobe. It spends no generation credits;
+outputs and a report are under `apps/desktop/.data/video-smoke/`. Preview frames
+do not establish voice quality or final music balance. Full signed-installer
+packaging remains outside the current app's configured build; the build does
+bundle the templates into `apps/desktop/build/remotion/`.
+
+Live verification follows the original repo: `npm run media:smoke` (paid provider
+check), then `npm run video:eval -- M1` (agent generation/revision), followed by
+one video case at a time. See [media eval instructions](MEDIA_EVALS.md) for
+account selection, all original case IDs, retained reports and acceptance limits.

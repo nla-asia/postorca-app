@@ -7,6 +7,8 @@
 const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
+const { execFile } = require("node:child_process");
+const runBinary = require("node:util").promisify(execFile);
 
 const TEXT = new Set([
   ".txt",
@@ -67,6 +69,95 @@ const IMAGE = {
 };
 const MAX_TEXT_BYTES = 200_000;
 const MAX_ENTRIES = 500;
+const AUDIO = new Set([
+  ".mp3",
+  ".m4a",
+  ".wav",
+  ".aac",
+  ".ogg",
+  ".opus",
+  ".flac",
+  ".webm",
+  ".mp4",
+  ".mov",
+]);
+
+function audioBinary(name) {
+  const suffix = process.platform === "win32" ? "-msvc" : "";
+  let directory = path.dirname(
+    require.resolve(
+      `@remotion/compositor-${process.platform}-${process.arch}${suffix}/package.json`,
+    ),
+  );
+  if (require("electron").app?.isPackaged)
+    directory = directory.replace(/\.asar(?=[\\/])/, ".asar.unpacked");
+  return {
+    directory,
+    filename: path.join(
+      directory,
+      name + (process.platform === "win32" ? ".exe" : ""),
+    ),
+  };
+}
+
+async function readAudio(file, startSeconds, durationSeconds, context) {
+  const probe = audioBinary("ffprobe");
+  const { stdout } = await runBinary(
+    probe.filename,
+    ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file],
+    { cwd: probe.directory, signal: context.signal },
+  );
+  const total = Number(stdout.trim()) || 0;
+  const start = Math.min(startSeconds ?? 0, Math.max(0, total - 1));
+  const length = Math.min(durationSeconds ?? total - start, total - start, 300);
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "postorca-audio-"));
+  try {
+    const encoder = audioBinary("ffmpeg");
+    const output = path.join(temporary, "audio.mp3");
+    await runBinary(
+      encoder.filename,
+      [
+        "-v",
+        "error",
+        "-ss",
+        String(start),
+        "-i",
+        file,
+        "-t",
+        String(length),
+        "-vn",
+        "-ac",
+        "2",
+        "-ar",
+        "44100",
+        "-c:a",
+        "libmp3lame",
+        "-b:a",
+        "192k",
+        "-y",
+        output,
+      ],
+      { cwd: encoder.directory, signal: context.signal },
+    );
+    const key = await context.upload(await fs.readFile(output), "audio/mpeg");
+    return {
+      path: file,
+      ref: path.basename(key).slice(0, 8),
+      duration_seconds: Math.round(total),
+      ...(length < total && {
+        excerpt: {
+          start_seconds: Math.round(start),
+          duration_seconds: Math.round(length),
+        },
+      }),
+      attachments: [
+        { file: key, mime_type: "audio/mpeg", title: path.basename(file) },
+      ],
+    };
+  } finally {
+    await fs.rm(temporary, { recursive: true, force: true });
+  }
+}
 
 function sharedFolders(roots = []) {
   return (Array.isArray(roots) ? roots : [])
@@ -136,7 +227,10 @@ const listDir = {
 };
 
 const readFile = {
-  run: async ({ path: requested, roots }, context) => {
+  run: async (
+    { path: requested, roots, start_seconds, duration_seconds },
+    context,
+  ) => {
     const file = await allowed(requested, roots);
     const ext = path.extname(file).toLowerCase();
     const title = path.basename(file);
@@ -157,8 +251,10 @@ const readFile = {
         attachments: [{ file: key, mime_type: IMAGE[ext], title }],
       };
     }
+    if (AUDIO.has(ext))
+      return readAudio(file, start_seconds, duration_seconds, context);
     throw new Error(
-      `Can't read ${ext || "this"} files: text, code and PNG or JPEG images only.`,
+      `Can't read ${ext || "this"} files: text, code, PNG/JPEG images and audio only.`,
     );
   },
 };

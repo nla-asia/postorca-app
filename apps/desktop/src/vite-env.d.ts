@@ -5,7 +5,8 @@ interface Window {
   postorca?: {
     session: {
       get(): Promise<string | null>;
-      set(session: { token: string; apiUrl: string }): Promise<void>;
+      set(session: { token: string; refreshToken: string; apiUrl: string }): Promise<void>;
+      refresh(): Promise<string | null>;
       clear(): Promise<void>;
     };
     /** Picks a folder for a Brand Profile project; doesn't save it. */

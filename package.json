@@ -27,6 +27,10 @@
     "test:computer": "npm run test:computer --workspace @postorca/desktop",
     "computer:live-check": "npm run computer:live-check --workspace @postorca/desktop",
     "computer:eval": "npm run computer:eval --workspace @postorca/api --",
-    "test:computer-eval": "npm run test:computer-eval --workspace @postorca/api"
+    "test:computer-eval": "npm run test:computer-eval --workspace @postorca/api",
+    "video:bundle": "npm run video:bundle --workspace @postorca/desktop",
+    "video:smoke": "npm run video:smoke --workspace @postorca/desktop",
+    "media:smoke": "npm run media:smoke --workspace @postorca/api",
+    "video:eval": "npm run video:eval --workspace @postorca/api --"
   }
 }
