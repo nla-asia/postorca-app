@@ -37,6 +37,8 @@
     "video:eval": "npm run video:eval --workspace @postorca/api --",
     "api:usage": "npm run api:usage --workspace @postorca/api --",
     "deploy": "bash scripts/deploy.sh",
-    "desktop:package:gcp": "VITE_API_URL=http://34.67.138.114/api npm run package --workspace @postorca/desktop -- --publish never"
+    "desktop:package:gcp": "VITE_API_URL=http://34.67.138.114/api npm run package --workspace @postorca/desktop -- --publish never",
+    "version:set": "node scripts/set-version.mjs",
+    "release": "bash scripts/release.sh"
   }
 }
