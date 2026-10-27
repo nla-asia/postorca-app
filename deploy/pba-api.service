@@ -1,0 +1,17 @@
+[Unit]
+Description=PostOrca API
+After=network.target postgresql.service pba-connectors.service
+Requires=postgresql.service
+
+[Service]
+User=nika
+WorkingDirectory=/opt/postorca/apps/api
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node /opt/postorca/apps/api/dist/index.js
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=70
+
+[Install]
+WantedBy=multi-user.target
