@@ -37,6 +37,7 @@ class DesktopConnection {
     if (session) void this.connect();
   }
   teardown() {
+    require("./plugins/computer/index.cjs").shutdown();
     clearTimeout(this.reconnectTimer);
     clearInterval(this.pingTimer);
     this.reconnectTimer = this.pingTimer = null;
@@ -113,6 +114,8 @@ class DesktopConnection {
     });
     socket.on("error", () => {});
     socket.on("close", () => {
+      if (socket === this.socket)
+        require("./plugins/computer/index.cjs").shutdown();
       clearInterval(this.pingTimer);
       if (socket === this.socket) this.reconnect(session);
     });
