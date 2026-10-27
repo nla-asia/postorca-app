@@ -11,6 +11,7 @@ import { desktopRoutes } from "./routes/desktop.js";
 import { fileRoutes } from "./routes/files.js";
 import { routineRoutes } from "./routes/routines.js";
 import { taskRoutes } from "./routes/tasks.js";
+import { connectorRoutes, connectorCallback } from "./routes/connectors.js";
 
 /** agent is null when no model provider is configured; turns then return 503. */
 export function createApp(
@@ -40,6 +41,8 @@ export function createApp(
   app.use("/api/auth", authRoutes(db, config.jwtSecret));
   // Desktop routes authenticate themselves (most take a device token).
   app.use("/api/desktop", desktopRoutes(config.jwtSecret));
+  // The public OAuth callback is not behind JWT auth — the one-use state binds it to a user.
+  app.use("/api/connectors/google/callback", connectorCallback(db));
   // The founder's saved files (screenshots, media, downloads), streamed by key.
   app.use("/api/files", authenticate(config.jwtSecret), fileRoutes());
   app.use(
@@ -47,6 +50,7 @@ export function createApp(
     authenticate(config.jwtSecret),
     brandRoutes(db),
   );
+  app.use("/api/connectors", authenticate(config.jwtSecret), connectorRoutes(db));
   app.use("/api/routines", authenticate(config.jwtSecret), routineRoutes(db, agent));
   app.use("/api/tasks", authenticate(config.jwtSecret), taskRoutes(db, agent));
   app.use((_req, res) => {

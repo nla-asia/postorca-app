@@ -2,7 +2,10 @@ import type { Queryable } from "../db.js";
 import { writeCatalog } from "../repositories/plugins.js";
 import { coreSkills } from "../skills/index.js";
 import { browserPlugin } from "./browser/index.js";
+import { gmailPlugin, drivePlugin } from "./google/index.js";
 import type { PluginDefinition, PluginToolDefinition } from "./types.js";
+
+export { gmailPlugin, drivePlugin } from "./google/index.js";
 
 /**
  * Plugins defined in code. Code is the source of truth: syncCatalog projects these
