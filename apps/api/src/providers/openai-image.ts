@@ -1,3 +1,4 @@
+import { usageFetch } from "../api-usage/ledger.js";
 import OpenAI, { toFile } from "openai";
 import { z } from "zod";
 
@@ -17,6 +18,7 @@ export class OpenAIImageProvider {
     if (!key.trim()) throw new Error("OPENAI_IMAGE_API_KEY is required.");
     this.#client = new OpenAI({
       apiKey: key.trim(),
+      fetch: usageFetch,
       maxRetries: 0,
       timeout: 300_000,
     });

@@ -16,7 +16,9 @@
     "computer:eval:mac": "tsx src/scripts/computer-eval-mac.ts",
     "test:computer-eval": "tsx --test tests/computer-eval*.test.ts",
     "media:smoke": "tsx src/scripts/media-smoke.ts",
-    "video:eval": "tsx src/scripts/video-eval.ts"
+    "video:eval": "tsx src/scripts/video-eval.ts",
+    "api:usage": "tsx src/scripts/api-usage.ts",
+    "db:upgrade-legacy": "tsx src/upgrade-legacy.ts"
   },
   "dependencies": {
     "cors": "2.8.6",
@@ -26,6 +28,7 @@
     "jsonwebtoken": "9.0.3",
     "openai": "7.39.0",
     "pg": "8.23.1",
+    "stripe": "20.4.1",
     "ws": "8.22.0",
     "yaml": "2.9.1",
     "zod": "4.6.7"

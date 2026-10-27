@@ -95,6 +95,12 @@ export function onUnauthorized(listener: (message: string) => void) {
   unauthorizedListeners.add(listener);
   return () => void unauthorizedListeners.delete(listener);
 }
+// Allowance failures keep the session and draft; the workspace opens its existing billing panel.
+const allowanceListeners = new Set<() => void>();
+export function onAllowanceRequired(listener: () => void) {
+  allowanceListeners.add(listener);
+  return () => void allowanceListeners.delete(listener);
+}
 async function apiResponse(
   path: string,
   options: RequestInit = {},
@@ -140,6 +146,8 @@ async function apiResponse(
     tokenStore.clear();
     for (const listener of unauthorizedListeners) listener(message);
   }
+  if (response.status === 402 && signedIn && !path.startsWith("/billing"))
+    for (const listener of allowanceListeners) listener();
   throw new ApiError(response.status, result.error ?? "The request failed.");
 }
 export async function api<T>(

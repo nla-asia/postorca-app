@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronRight, Sparkles, X } from "lucide-react";
 import Sidebar from "./Sidebar";
 import ConnectApps from "./ConnectApps";
-import SettingsModal from "./SettingsModal";
+import SettingsModal, { type SettingsTab } from "./SettingsModal";
 import type { Page } from "../navigation";
 import type { Theme } from "../lib/useTheme";
-import { api, type AuthUser } from "../lib/api";
+import { api, onAllowanceRequired, type AuthUser } from "../lib/api";
 import type { Brand } from "../lib/brand";
 import { useAgentChat } from "../lib/useAgentChat";
 import InAppNotifications from "./InAppNotifications";
@@ -32,6 +32,12 @@ export default function Workspace({
 }) {
   const [page, setPage] = useState<Page>("Inbox");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("General");
+  const openBilling = useCallback(() => {
+    setSettingsTab("Billing & Usage");
+    setSettingsOpen(true);
+  }, []);
+  useEffect(() => onAllowanceRequired(openBilling), [openBilling]);
   const [connectAppsOpen, setConnectAppsOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [profileName, setProfileName] = useState(user.name);
@@ -93,6 +99,26 @@ export default function Workspace({
     const timer = setTimeout(() => setNotice(""), 3500);
     return () => clearTimeout(timer);
   }, [notice]);
+  const settingsDialog = (
+    <SettingsModal
+      open={settingsOpen}
+      onOpenChange={setSettingsOpen}
+      tab={settingsTab}
+      onTabChange={setSettingsTab}
+      theme={theme}
+      onThemeChange={onThemeChange}
+      user={{ ...user, name: profileName }}
+      onLogOut={onLogOut}
+      onOpenBrandProfile={
+        completed && !setupDone
+          ? () => {
+              setSelected(null);
+              setPage("Brand Profile");
+            }
+          : undefined
+      }
+    />
+  );
   if (!brand)
     return (
       <div className="auth-screen">
@@ -118,17 +144,21 @@ export default function Workspace({
     );
   if (!completed || setupDone)
     return (
-      <Onboarding
-        chat={chat}
-        brand={brand}
-        completed={completed}
-        onFinish={() => {
-          setSetupDone(false);
-          setSelected(null);
-          setPage("Inbox");
-        }}
-        onLogOut={onLogOut}
-      />
+      <>
+        <Onboarding
+          chat={chat}
+          brand={brand}
+          completed={completed}
+          onFinish={() => {
+            setSetupDone(false);
+            setSelected(null);
+            setPage("Inbox");
+          }}
+          onLogOut={onLogOut}
+          onOpenBilling={openBilling}
+        />
+        {settingsDialog}
+      </>
     );
   return (
     <div className="app-shell">
@@ -141,7 +171,11 @@ export default function Workspace({
         }}
         reviewCount={work.attention}
         onOpenConnectApps={() => setConnectAppsOpen(true)}
-        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenBilling={openBilling}
+        onOpenSettings={() => {
+          setSettingsTab("General");
+          setSettingsOpen(true);
+        }}
       />
       <main className="workspace" aria-label={page}>
         <InAppNotifications onOpen={openWork} />
@@ -193,22 +227,8 @@ export default function Workspace({
           <BrandProfile onNameChange={setProfileName} notify={setNotice} />
         )}
       </main>
-      <ConnectApps
-        open={connectAppsOpen}
-        onOpenChange={setConnectAppsOpen}
-      />
-      <SettingsModal
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        theme={theme}
-        onThemeChange={onThemeChange}
-        user={{ ...user, name: profileName }}
-        onLogOut={onLogOut}
-        onOpenBrandProfile={() => {
-          setSelected(null);
-          setPage("Brand Profile");
-        }}
-      />
+      <ConnectApps open={connectAppsOpen} onOpenChange={setConnectAppsOpen} />
+      {settingsDialog}
       {notice && (
         <div className="toast" role="status">
           {notice}

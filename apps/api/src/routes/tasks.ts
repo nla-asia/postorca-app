@@ -1,3 +1,4 @@
+import { assertHasCredits } from "../billing/credits.js";
 import { Router } from "express";
 import { z } from "zod";
 import type { Database } from "../db.js";
@@ -48,6 +49,7 @@ export function taskRoutes(db: Database, agent: AgentRouter | null) {
     await ownedTask(db, res.locals.userId, taskId);
     if (!agent)
       throw new HttpError(503, "Orca’s model provider is not configured.");
+    await assertHasCredits(db, res.locals.userId);
     const turn = await createTurn(db, res.locals.userId, taskId, message);
     agent.dispatch(taskId, turn.id, res.locals.userId);
     res.status(202).json(turn);

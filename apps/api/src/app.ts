@@ -1,3 +1,8 @@
+import {
+  billingRoutes,
+  billingWebhook,
+  billingReturn,
+} from "./routes/billing.js";
 import express from "express";
 import cors from "cors";
 import type { AgentRouter } from "./agent/router.js";
@@ -33,7 +38,15 @@ export function createApp(
       },
     }),
   );
+  // Stripe signs raw bytes. Keep this route ahead of the ordinary JSON parser.
+  app.post(
+    "/api/billing/webhook",
+    express.raw({ type: "application/json", limit: "256kb" }),
+    billingWebhook(db),
+  );
+  app.get("/api/billing/return", billingReturn);
   app.use(express.json({ limit: "256kb" }));
+  app.use("/api/billing", authenticate(config.jwtSecret), billingRoutes(db));
 
   app.get("/api/health", async (_req, res) => {
     await ping(db);
@@ -51,8 +64,16 @@ export function createApp(
     authenticate(config.jwtSecret),
     brandRoutes(db),
   );
-  app.use("/api/connectors", authenticate(config.jwtSecret), connectorRoutes(db));
-  app.use("/api/routines", authenticate(config.jwtSecret), routineRoutes(db, agent));
+  app.use(
+    "/api/connectors",
+    authenticate(config.jwtSecret),
+    connectorRoutes(db),
+  );
+  app.use(
+    "/api/routines",
+    authenticate(config.jwtSecret),
+    routineRoutes(db, agent),
+  );
   app.use("/api/tasks", authenticate(config.jwtSecret), taskRoutes(db, agent));
   app.use(
     "/api/publications",

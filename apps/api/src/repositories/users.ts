@@ -1,3 +1,4 @@
+import { ensureWelcomeCredits } from "../billing/credits.js";
 import { randomBytes, scrypt as derive, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { transaction, type Database, type Queryable } from "../db.js";
@@ -38,6 +39,7 @@ export async function createUser(
     await client.query("INSERT INTO brand_profiles(user_id) VALUES ($1)", [
       user.id,
     ]);
+    await ensureWelcomeCredits(client, user.id);
     return user;
   });
 }

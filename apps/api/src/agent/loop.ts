@@ -1,3 +1,4 @@
+import { withApiUsage } from "../api-usage/ledger.js";
 import { z } from "zod";
 import type { Database } from "../db.js";
 import { desktopConnections } from "../desktop/connections.js";
@@ -67,7 +68,13 @@ export class AgentLoop {
     private dispatchTask?: DispatchTask,
   ) {}
 
-  async run(taskId: string, turnId: string, userId: string) {
+  run(taskId: string, turnId: string, userId: string) {
+    return withApiUsage({ db: this.db, taskId, turnId, userId }, () =>
+      this.runTurn(taskId, turnId, userId),
+    );
+  }
+
+  private async runTurn(taskId: string, turnId: string, userId: string) {
     // Another worker, or an earlier dispatch of the same turn, already has it.
     if (!(await claimQueuedTurn(this.db, taskId, turnId))) return;
     const controller = new AbortController();
@@ -187,9 +194,11 @@ export class AgentLoop {
     } catch (error) {
       const message = controller.signal.aborted
         ? String(controller.signal.reason)
-        : error instanceof ActionLimitError
+        : error instanceof HttpError && error.status === 402
           ? error.message
-          : FAILED;
+          : error instanceof ActionLimitError
+            ? error.message
+            : FAILED;
       // The founder sees the short message; the cause goes to the turn's trace.
       console.error(`Agent turn ${turnId} failed:`, error);
       await writeTurnTrace({ taskId, turnId, step: "turn" }, "error", {

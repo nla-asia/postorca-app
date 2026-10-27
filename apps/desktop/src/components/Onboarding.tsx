@@ -16,6 +16,7 @@ export default function Onboarding({
   completed,
   onFinish,
   onLogOut,
+  onOpenBilling,
 }: {
   chat: ReturnType<typeof useAgentChat>;
   brand: Brand;
@@ -23,12 +24,16 @@ export default function Onboarding({
   completed: boolean;
   onFinish: () => void;
   onLogOut: () => void;
+  onOpenBilling: () => void;
 }) {
   return (
     <div className="onboarding-screen">
       <header className="onboarding-header">
         <Mark small />
         <h1>Set up your brand</h1>
+        <Button variant="ghost" onClick={onOpenBilling}>
+          Billing &amp; Usage
+        </Button>
         {!completed && (
           <Button
             variant="ghost"
@@ -129,8 +134,8 @@ function OnboardingDone({
         </span>
         <h2>You’re all set</h2>
         <p className="onboarding-done-lead">
-          Orca now knows your brand and will start working on your accounts.
-          You can change any of this later in Brand Profile.
+          Orca now knows your brand and will start working on your accounts. You
+          can change any of this later in Brand Profile.
         </p>
         <section className="onboarding-card">
           <div className="onboarding-section">

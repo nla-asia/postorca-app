@@ -23,7 +23,7 @@ npm test
 npm start
 ```
 
-`npm start` opens the built interface, so run the build first. These commands run from the repository root on Windows, macOS, or Linux. Creating distributable installers is not configured yet.
+`npm start` opens the built interface, so run the build first. These commands run from the repository root on Windows, macOS, or Linux. `npm run desktop:package` builds local macOS installers. For the deployed GCP API, use `npm run desktop:package:gcp`; backend deployment is documented in [DEPLOY.md](DEPLOY.md).
 
 ## API
 
@@ -155,6 +155,65 @@ The adapter retains a three-minute request timeout and three SDK retries for tra
 When a turn trace is supplied, local request/result diagnostics are written under `apps/api/.data/agent-traces/<taskId>/<turnId>/`. Traces include the prompt, conversation input, tools, usage, and short failure metadata; SDK credentials and HTTP headers are omitted. Diagnostic write failures do not interrupt execution. This directory is ignored by Git.
 
 Set `OPENAI_API_KEY` and `OPENAI_MODEL` in `apps/api/.env` to enable it; both are required together, and without them the API starts with Orca off. Provider and loop tests use mocked transports or scripted providers and require no live credentials or model calls.
+
+## API usage and costs
+
+Provider HTTP attempts made by Orca are recorded in PostgreSQL `api_requests`, including chat, context compaction, images, speech, music, sound effects, transcription, and provider catalog reads. Run `npm run db:migrate` before restarting the API after this update. Accounting is scoped to each agent turn, so background routines and parallel conversations retain their own user/task/turn IDs. SDK retries are separate rows with `retry_count`; existing retry and upload behavior is preserved. Standalone provider calls outside the agent loop can opt in with `withApiUsage({ db }, work)` from `apps/api/src/api-usage/ledger.ts`; otherwise they are unmetered (including the standalone media smoke script).
+
+Rows are inserted before dispatch and finalized with HTTP outcome, upstream request/response IDs, duration, sanitized numeric usage, and a pricing snapshot. Accounting logs contain no prompts, response text, audio, images, credentials, or request URLs. Existing local agent traces remain separate. `succeeded` means an HTTP success: incomplete or unusable model/media results can still incur charges, so reported usage is retained even when the application rejects the result. Network failures and unfinished rows have unknown cost and may require provider reconciliation.
+
+```sh
+npm run api:usage
+npm run api:usage -- report --task <task-uuid>
+npm run api:usage -- report --user <user-uuid> --from 2026-10-27T00:00:00Z --to 2026-10-28T00:00:00Z
+npm run api:usage -- recover
+```
+
+Reports group by provider, exact model, operation, and currency, with attempts, retries, failures, unfinished calls, token counts, and the sum of stored estimates. `--turn` also filters a turn. Date ranges include `from` and exclude `to`. `unknown_cost` counts attempts that could not be priced; a null sum means no known estimate, and a sum with unknown attempts is only a partial total. Failed requests are not assumed to be free. This is an operator CLI using the configured database, not a public account endpoint.
+
+Rates live in `apps/api/src/providers/pricing.ts`, checked against [OpenAI pricing](https://developers.openai.com/api/docs/pricing) and [ElevenLabs API pricing](https://elevenlabs.io/pricing/api) on October 27, 2026. Defaults cover standard GPT-6 Luna (ordinary input, cache reads, cache writes, output, and the 272K long-context boundary), direct GPT Image 2.5 Flare calls, multilingual/v3 speech, music, Scribe v2 transcription, and explicit-duration ElevenLabs sound effects. Direct Images API calls for this model use standard input rates without cache discounts. Reasoning tokens are retained for inspection and are already included in output tokens. Missing required usage, unsupported models/service tiers/cache retention, and unverified prices stay unknown. ElevenLabs standard rates are $0.08 per 1,000 speech characters, $0.15 per music minute, $0.22 per Scribe v2 transcription hour, and $0.12 per sound-effect minute. Speech prefers provider character-cost, falling back to a tagged accepted Unicode-character estimate. Music uses the explicit duration of an accepted generation; rejected requests do not get an accepted-duration meter. Transcription requires known billed audio seconds and stays pending when duration is absent; the last word timestamp is never used as full duration. Custom voice/account rates require appropriate overrides or reconciliation; no subscription credits are treated as dollars. Disable a checked-in price card with `enabled: false` to keep it from matching future requests. Generated sound-effect duration uses the accepted requested duration as an estimate.
+
+`API_PRICING_FILE` optionally replaces defaults with a JSON array of price cards: `id`, `source`, `provider`, exact `model`, `operation`, `currency`, ISO `effectiveFrom`, optional exclusive `effectiveTo`, `settings` equality filters, optional `meterRanges`, and `prices: [{ meter, amount, perUnits }]`. Amounts are decimal strings. A calculation requires every priced meter. Rates are loaded before dispatch and the matching card is saved with each attempt; reports use stored costs, so later price changes do not rewrite history. Estimates use fixed-point decimal arithmetic and remain separate from provider invoices or account discounts.
+
+If the database is unavailable before dispatch, the provider call does not proceed. If it fails after dispatch, a sanitized completion patch is saved to ignored `apps/api/.data/api-usage-recovery/` and replayed before the next metered call or report. Paid results are returned without repeating the request. If both database and disk fail, an error identifies the unfinished row for reconciliation. A process crash leaves started rows visible; recovery never repeats a provider request.
+
+## Subscriptions and allowances
+
+The sidebar’s Billing & Usage shortcut opens Settings → Billing & Usage, which shows available credits, holds awaiting final costs, subscription status, top-ups, and credit activity. Account settings links to the same panel. Billing is also accessible during onboarding; a request rejected for insufficient allowance opens it automatically while preserving the message draft and signed-in session. The terms are **$20/month for 500 credits**, **$10 for a one-time 250-credit top-up**, and **250 welcome credits** once per account (`WELCOME_CREDITS`). One credit covers $0.03 of provider usage: the subscription includes a $15 generation allowance and a top-up includes $7.50. Unused credits accumulate without expiry, including after cancellation. Top-ups and welcome credits can be used without an active subscription. Display rounds to two decimal places; the ledger retains nine decimal places.
+
+Migration `015_billing_and_allowances.sql` adds the credit ledger, billing accounts, webhook deduplication, and reservation/settlement fields on existing `api_requests`. Signup creates its welcome grant within the account transaction. Existing accounts receive it idempotently on their first balance check or metered request. Historical API requests with no credit snapshot are never backcharged.
+
+Paid provider requests lock the user balance and reserve a temporary spending envelope before dispatch. Other concurrent requests cannot spend the same credits. Each SDK retry gets its own accounting row and reservation; an allowance rejection returns 402 without reaching the provider or triggering an SDK retry. Recorded USD costs settle the fractional charge once using saved conversion terms and release the unused hold. Accepted requests with missing prices/usage, network errors, 408s, and 5xx failures retain their hold pending reconciliation. Explicit non-timeout HTTP 4xx rejections release it. Envelopes live in `apps/api/src/billing/reservations.ts`; they are temporary budgets, not final prices or guaranteed maximums. Actual usage exceeding the envelope is fully charged and can leave a negative balance that blocks subsequent paid requests. New models require an explicit envelope. Media with unknown final prices remains pending; existing `API_PRICING_FILE` cards or operator reconciliation can settle it. Free provider catalog reads and existing file reads/downloads remain available without credits.
+
+Stripe runs in a **test-only** rollout. No live charges are enabled. Set these in `apps/api/.env` using PostOrca's Stripe test account/products:
+
+- `STRIPE_SECRET_KEY`: a test key beginning `sk_test_`.
+- `STRIPE_WEBHOOK_SECRET`: the signing secret for the PostOrca webhook.
+- `STRIPE_MEMBERSHIP_PRICE_ID`: an active, USD $20, monthly recurring, per-unit licensed price.
+- `STRIPE_EXTRA_PRICE_ID`: an active, USD $10, one-time per-unit price.
+- `BILLING_RETURN_URL`: an absolute HTTPS browser return page (HTTP loopback is allowed locally). Defaults to `http://127.0.0.1:3001/api/billing/return`; change the host/port for your API. The desktop opens Stripe in the system browser and refreshes billing when focus returns and every 15 seconds while the panel is open.
+
+Checkout verifies Stripe prices against the published packages, snapshots server-owned purchase terms, serializes checkout starts, reuses matching open sessions, and prevents duplicate active subscriptions. The customer portal manages payment methods and cancellation. Missing payment configuration disables checkout while credits and existing data remain accessible.
+
+| Method | Endpoint | Behavior |
+| --- | --- | --- |
+| GET | `/api/billing` | Authenticated account's subscription, packages, and credit summary. Private/no-store. |
+| POST | `/api/billing/checkout` | Authenticated `packageId` of `membership` or `extra`; returns a Stripe checkout URL. |
+| POST | `/api/billing/portal` | Authenticated account's short-lived Stripe customer portal URL. |
+| POST | `/api/billing/webhook` | Public raw-body endpoint; requires a valid Stripe signature and test-mode event. |
+| GET | `/api/billing/return` | Public browser return page; never grants credits or trusts checkout query parameters. |
+
+Register snapshot events for `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `invoice.paid`, `invoice.payment_failed`, and `customer.subscription.created/updated/deleted/paused/resumed`. The webhook is registered before Express's JSON parser so signatures use the original bytes, as required by [Stripe's webhook guidance](https://docs.stripe.com/webhooks). A public HTTPS API endpoint or Stripe CLI forwarding is required to receive events; the API continues to bind to loopback. For local testing, use `stripe listen --forward-to http://127.0.0.1:3001/api/billing/webhook` and configure the emitted signing secret. Configure the Stripe test customer portal separately.
+
+Only paid, validated renewal invoices grant monthly credits. Paid one-time sessions grant top-ups. Unique references deduplicate by subscription period or checkout session, so duplicate event IDs and different event IDs referring to the same payment cannot double-grant. A failed handler transaction leaves the event retryable. Subscription updates read current upstream state instead of trusting event order. Cancellations and failed payments add no new allowance and do not remove already-earned credits. Checkout redirects never grant credits.
+
+To settle a pending request against a verified provider invoice (or release a confirmed unused hold with `--cost 0`):
+
+```sh
+npm run api:usage -- reconcile --id <request-uuid> --cost 0.015 --currency USD --source "Provider invoice reference"
+```
+
+Reconciliation retains the estimate and adjusts only the difference from the prior debit, once. It does not charge historical unmetered requests. API accounting recovery also retries settlement without repeating provider work.
 
 ## Model context
 
@@ -358,7 +417,7 @@ do not establish voice quality or final music balance. Full signed-installer
 packaging remains outside the current app's configured build; the build does
 bundle the templates into `apps/desktop/build/remotion/`.
 
-Live verification follows the original repo: `npm run media:smoke` (paid provider
+Live verification: `npm run media:smoke` (paid provider
 check), then `npm run video:eval -- M1` (agent generation/revision), followed by
 one video case at a time. See [media eval instructions](MEDIA_EVALS.md) for
 account selection, all original case IDs, retained reports and acceptance limits.

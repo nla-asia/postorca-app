@@ -118,3 +118,27 @@ test("in a browser, the window renews with its own refresh token", async () => {
     ["/tasks", "/auth/refresh", "/tasks"],
   );
 });
+
+test("an allowance rejection opens billing without renewing the session or replaying paid work", async () => {
+  const bridge = desktopBridge("renewed");
+  const { api, tokenStore, onAllowanceRequired, ApiError } = await loadApi(bridge);
+  await tokenStore.load();
+  let opened = 0;
+  const unsubscribe = onAllowanceRequired(() => opened++);
+  const requests = serve(new Set(["expired"]), {
+    "/tasks/test/turns": () => Response.json({ error: "Not enough credits." }, { status: 402 }),
+    "/billing/checkout": () => Response.json({ error: "Payment unavailable." }, { status: 402 }),
+  });
+  await assert.rejects(api("/tasks/test/turns", { method: "POST", body: JSON.stringify({ message: "Keep my draft" }) }), error => error instanceof ApiError && error.status === 402);
+  assert.equal(opened, 1);
+  assert.equal(bridge.calls.refresh, 0);
+  assert.equal(bridge.calls.clear, 0);
+  assert.equal(tokenStore.get(), "expired");
+  assert.equal(requests.length, 1);
+  assert.equal(JSON.parse(requests[0].body).message, "Keep my draft");
+  await assert.rejects(api("/billing/checkout", { method: "POST", body: "{}" }));
+  assert.equal(opened, 1); // Payment actions must not reopen the panel over their own error.
+  unsubscribe();
+  await assert.rejects(api("/tasks/test/turns", { method: "POST", body: "{}" }));
+  assert.equal(opened, 1);
+});

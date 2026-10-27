@@ -1,3 +1,4 @@
+import { CreditError } from "../../billing/credits.js";
 import { createHash } from "node:crypto";
 import OpenAI from "openai";
 import { z } from "zod";
@@ -118,6 +119,21 @@ function mediaTool<T extends z.ZodObject>(
         return await run(context, input);
       } catch (error) {
         if (error instanceof HttpError) throw error;
+        if (
+          error instanceof OpenAI.APIError &&
+          error.status === 402 &&
+          [
+            "insufficient_credits",
+            "credit_configuration",
+            "credit_account",
+          ].includes(error.code ?? "")
+        )
+          throw new CreditError(
+            error.code as
+              | "insufficient_credits"
+              | "credit_configuration"
+              | "credit_account",
+          );
         if (error instanceof ElevenLabsError && error.code === "quota_exceeded")
           throw new HttpError(
             502,

@@ -1,3 +1,5 @@
+import { CreditError } from "../billing/credits.js";
+import { usageFetch } from "../api-usage/ledger.js";
 import OpenAI from "openai";
 import type { ResponseInputItem } from "openai/resources/responses/responses";
 import { toResponseInputItems } from "openai/lib/responses/ResponseInputItems";
@@ -13,7 +15,12 @@ export class OpenAIProvider implements Provider {
     // Model calls have no side effects, so connection drops, 429s and 5xxs are
     // retried with the SDK's backoff instead of failing the whole turn. A step with a
     // few images can take over a minute, so the timeout leaves room for that.
-    this.client = new OpenAI({ apiKey, timeout: 180_000, maxRetries: 3 });
+    this.client = new OpenAI({
+      apiKey,
+      timeout: 180_000,
+      maxRetries: 3,
+      fetch: usageFetch,
+    });
   }
   async respond({
     instructions,
@@ -129,6 +136,21 @@ export class OpenAIProvider implements Provider {
           : {}),
         context: contextWindowStats(request),
       });
+      if (
+        error instanceof OpenAI.APIError &&
+        error.status === 402 &&
+        [
+          "insufficient_credits",
+          "credit_configuration",
+          "credit_account",
+        ].includes(error.code ?? "")
+      )
+        throw new CreditError(
+          error.code as
+            | "insufficient_credits"
+            | "credit_configuration"
+            | "credit_account",
+        );
       if (
         error instanceof OpenAI.APIError &&
         error.code === "context_length_exceeded"

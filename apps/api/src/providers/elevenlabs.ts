@@ -1,3 +1,5 @@
+import { CreditError } from "../billing/credits.js";
+import { usageFetch } from "../api-usage/ledger.js";
 import { z } from "zod";
 
 const text = z.string().trim().min(1);
@@ -327,12 +329,27 @@ export class ElevenLabsProvider {
     signal.throwIfAborted();
     const headers = new Headers(init.headers);
     headers.set("xi-api-key", this.#key);
-    const response = await fetch(`https://api.elevenlabs.io${path}`, {
+    const response = await usageFetch(`https://api.elevenlabs.io${path}`, {
       ...init,
       headers,
       signal,
       redirect: "error",
     });
+    const creditCode = response.headers.get("x-postorca-credit-error");
+    if (
+      response.status === 402 &&
+      [
+        "insufficient_credits",
+        "credit_configuration",
+        "credit_account",
+      ].includes(creditCode ?? "")
+    )
+      throw new CreditError(
+        creditCode as
+          | "insufficient_credits"
+          | "credit_configuration"
+          | "credit_account",
+      );
     if (response.ok) return read(response);
     const body = (await response.json().catch(() => null)) as any;
     const code =

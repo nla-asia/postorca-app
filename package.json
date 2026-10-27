@@ -34,6 +34,9 @@
     "video:bundle": "npm run video:bundle --workspace @postorca/desktop",
     "video:smoke": "npm run video:smoke --workspace @postorca/desktop",
     "media:smoke": "npm run media:smoke --workspace @postorca/api",
-    "video:eval": "npm run video:eval --workspace @postorca/api --"
+    "video:eval": "npm run video:eval --workspace @postorca/api --",
+    "api:usage": "npm run api:usage --workspace @postorca/api --",
+    "deploy": "bash scripts/deploy.sh",
+    "desktop:package:gcp": "VITE_API_URL=http://34.67.138.114/api npm run package --workspace @postorca/desktop -- --publish never"
   }
 }

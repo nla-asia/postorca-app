@@ -1,3 +1,4 @@
+import BillingUsage from "./BillingUsage";
 import { useEffect, useState } from "react";
 import {
   CircleHelp,
@@ -7,10 +8,13 @@ import {
   Settings2,
   Sun,
   UserRound,
+  Wallet,
 } from "lucide-react";
 import type { Theme } from "../lib/useTheme";
 import type { AuthUser } from "../lib/api";
 import { Button, Modal } from "./ui";
+
+export type SettingsTab = "General" | "Account" | "Billing & Usage" | "Help";
 
 const themes = [
   { value: "light", label: "Light", icon: Sun },
@@ -26,6 +30,8 @@ export default function SettingsModal({
   user,
   onLogOut,
   onOpenBrandProfile,
+  tab,
+  onTabChange,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -34,8 +40,9 @@ export default function SettingsModal({
   user: AuthUser;
   onLogOut: () => void;
   onOpenBrandProfile?: () => void;
+  tab: SettingsTab;
+  onTabChange: (tab: SettingsTab) => void;
 }) {
-  const [tab, setTab] = useState<"General" | "Account" | "Help">("General");
   const [workingFolder, setWorkingFolder] = useState<string | null>(null);
   useEffect(() => {
     if (open) void window.postorca?.workingFolder.get().then(setWorkingFolder);
@@ -54,6 +61,7 @@ export default function SettingsModal({
           {[
             { label: "General" as const, icon: Settings2 },
             { label: "Account" as const, icon: UserRound },
+            { label: "Billing & Usage" as const, icon: Wallet },
             { label: "Help" as const, icon: CircleHelp },
           ].map(({ label, icon: Icon }) => (
             <button
@@ -61,7 +69,7 @@ export default function SettingsModal({
               key={label}
               className={tab === label ? "active" : ""}
               aria-current={tab === label ? "true" : undefined}
-              onClick={() => setTab(label)}
+              onClick={() => onTabChange(label)}
             >
               <Icon size={17} aria-hidden="true" />
               <span>{label}</span>
@@ -69,7 +77,7 @@ export default function SettingsModal({
           ))}
         </nav>
         <div className="settings-content">
-          <h3>{tab}</h3>
+          {tab !== "Billing & Usage" && <h3>{tab}</h3>}
 
           {tab === "General" && (
             <>
@@ -152,21 +160,32 @@ export default function SettingsModal({
           )}
 
           {tab === "Account" && (
-            <div className="settings-group">
-              <div className="setting-row">
-                <div>
-                  <strong>{user.name}</strong>
-                  <p>{user.email}</p>
+            <>
+              <div className="settings-group">
+                <div className="setting-row">
+                  <div>
+                    <strong>{user.name}</strong>
+                    <p>{user.email}</p>
+                  </div>
+                </div>
+                <div className="setting-row">
+                  <Button onClick={onLogOut}>
+                    <LogOut size={15} aria-hidden="true" />
+                    <span>Log out</span>
+                  </Button>
                 </div>
               </div>
-              <div className="setting-row">
-                <Button onClick={onLogOut}>
-                  <LogOut size={15} aria-hidden="true" />
-                  <span>Log out</span>
-                </Button>
-              </div>
-            </div>
+              <Button
+                className="account-billing-link"
+                onClick={() => onTabChange("Billing & Usage")}
+              >
+                <Wallet size={15} aria-hidden="true" />
+                Billing &amp; Usage
+              </Button>
+            </>
           )}
+
+          {tab === "Billing & Usage" && <BillingUsage />}
 
           {tab === "Help" && (
             <div className="settings-group">
