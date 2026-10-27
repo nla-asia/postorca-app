@@ -192,7 +192,7 @@ Chat and onboarding turns allow 30 responses in 6 minutes; Inbox work allows 100
 
 A failed turn saves a short message for the founder (time limit, action limit, restart, or a generic failure) and writes the cause to the local turn trace. The router runs turns in the background after their turn is committed. On shutdown it stops running turns, which fail asking for a follow-up; on startup, turns left queued or running by the previous process are marked failed.
 
-Desktop notifications for finished work are not implemented yet.
+When Inbox work finishes, needs input, or fails (other than by a server restart), every desktop the founder has signed in hears it over the desktop connection: a system notification titled with the work, saying "Ready for your review.", "Orca needs your input.", or why it failed. Clicking it brings the app forward and opens that work. When the operating system won't show it (notifications are off for the app), the app shows a banner with a chime instead, with Open and dismiss; the newest is shown first. Agent chat and onboarding never notify.
 
 ## Workspace
 

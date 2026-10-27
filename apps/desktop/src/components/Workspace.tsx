@@ -7,6 +7,7 @@ import type { Theme } from "../lib/useTheme";
 import { api, type AuthUser } from "../lib/api";
 import type { Brand } from "../lib/brand";
 import { useAgentChat } from "../lib/useAgentChat";
+import InAppNotifications from "./InAppNotifications";
 import Onboarding from "./Onboarding";
 import { Button } from "./ui";
 import Agent from "../pages/Agent";
@@ -78,7 +79,13 @@ export default function Workspace({
   const openWork = (id: string) => {
     setSelected(id);
     setPage("Inbox");
+    void work.reload();
   };
+  // Clicking a desktop notification (work finished) opens its task.
+  useEffect(
+    () => window.postorca?.onOpenTask((taskId) => openWork(taskId)),
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(""), 3500);
@@ -135,6 +142,7 @@ export default function Workspace({
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <main className="workspace" aria-label={page}>
+        <InAppNotifications onOpen={openWork} />
         {page !== "Agent" && !(page === "Inbox" && selected) && (
           <header className="topbar">
             <div className="breadcrumb">

@@ -1,0 +1,77 @@
+.in-app-notification {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 10px 16px 10px 32px;
+  background: var(--accent);
+  color: var(--bg);
+  animation: in-app-notification-in 0.25s ease-out;
+}
+.in-app-notification > svg {
+  flex-shrink: 0;
+}
+.in-app-notification p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.in-app-notification strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.in-app-notification p span {
+  opacity: 0.85;
+}
+.in-app-notification small {
+  flex-shrink: 0;
+  font-size: 12px;
+  opacity: 0.8;
+}
+.in-app-notification-open {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.in-app-notification-open:hover {
+  opacity: 0.9;
+}
+.in-app-notification-close {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  opacity: 0.8;
+  cursor: pointer;
+}
+.in-app-notification-close:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--bg) 15%, transparent);
+}
+@keyframes in-app-notification-in {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+}

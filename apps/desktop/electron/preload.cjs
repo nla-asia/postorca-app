@@ -7,4 +7,16 @@ contextBridge.exposeInMainWorld("postorca", {
     set: (session) => ipcRenderer.invoke("session:set", session),
     clear: () => ipcRenderer.invoke("session:clear"),
   },
+  /** Calls back with a notification the OS wouldn't show; returns unsubscribe. */
+  onNotification: (callback) => {
+    const listener = (_event, notification) => callback(notification);
+    ipcRenderer.on("notification:show", listener);
+    return () => ipcRenderer.removeListener("notification:show", listener);
+  },
+  /** Calls back with a task id when the founder clicks a notification for it. */
+  onOpenTask: (callback) => {
+    const listener = (_event, taskId) => callback(taskId);
+    ipcRenderer.on("task:open", listener);
+    return () => ipcRenderer.removeListener("task:open", listener);
+  },
 });

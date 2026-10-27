@@ -1,4 +1,11 @@
-const { app, BrowserWindow, ipcMain, safeStorage, shell } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  ipcMain,
+  Notification,
+  safeStorage,
+  shell,
+} = require("electron");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -75,6 +82,60 @@ ipcMain.handle("session:clear", (event) => {
   desktop?.setSession(null);
 });
 
+// Shown notifications are held until dismissed: one that is garbage-collected
+// stops answering clicks.
+const shownNotifications = new Set();
+/** The app's window, created when there is none; `send` waits until it has loaded. */
+function appWindow() {
+  const window = BrowserWindow.getAllWindows()[0] ?? createWindow();
+  return {
+    window,
+    send(channel, value) {
+      const send = () => window.webContents.send(channel, value);
+      if (window.webContents.isLoading())
+        window.webContents.once("did-finish-load", send);
+      else send();
+    },
+  };
+}
+/**
+ * A notification from the server (work finished or needs input); clicking it opens
+ * that task. When the OS won't show it (notifications are off for this app), the
+ * app shows it instead.
+ */
+function notifyFounder(data) {
+  if (typeof data?.title !== "string") return;
+  const note = {
+    title: data.title.slice(0, 120),
+    body: typeof data.body === "string" ? data.body.slice(0, 240) : "",
+    taskId:
+      typeof data.taskId === "string" && /^[0-9a-f-]{36}$/.test(data.taskId)
+        ? data.taskId
+        : undefined,
+  };
+  const showInApp = () => {
+    appWindow().send("notification:show", note);
+    if (process.platform === "darwin") app.dock?.bounce("informational");
+  };
+  if (!Notification.isSupported()) return showInApp();
+  const notification = new Notification({ title: note.title, body: note.body });
+  notification.on("click", () => {
+    shownNotifications.delete(notification);
+    const { window, send } = appWindow();
+    if (window.isMinimized()) window.restore();
+    window.show();
+    window.focus();
+    if (note.taskId) send("task:open", note.taskId);
+  });
+  notification.on("failed", () => {
+    shownNotifications.delete(notification);
+    showInApp();
+  });
+  notification.on("close", () => shownNotifications.delete(notification));
+  shownNotifications.add(notification);
+  notification.show();
+}
+
 function createWindow() {
   const window = new BrowserWindow({
     width: 1100,
@@ -106,6 +167,7 @@ function createWindow() {
     console.error("Unable to load the desktop interface:", error);
     app.quit();
   });
+  return window;
 }
 
 // One process owns the saved session for this desktop profile.
@@ -117,8 +179,10 @@ app.on("second-instance", () => {
   window.focus();
 });
 
+// Windows shows notifications only for an app with this ID.
+if (process.platform === "win32") app.setAppUserModelId("com.postorca.desktop");
 app.whenReady().then(() => {
-  desktop = new DesktopConnection(installId());
+  desktop = new DesktopConnection(installId(), notifyFounder);
   session = readSession();
   desktop.setSession(session);
   plugins.start();

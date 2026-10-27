@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Database } from "../db.js";
+import { desktopConnections } from "../desktop/connections.js";
 import { HttpError } from "../handlers/errors.js";
 import { memoryIndex } from "../memory.js";
 import { loadPluginState } from "../plugins/service.js";
@@ -75,9 +76,16 @@ export class AgentLoop {
       () => controller.abort(timedOut(LIMITS.chat.ms)),
       LIMITS.chat.ms,
     );
+    // Inbox work runs unattended, so the founder's desktops hear how it ended.
+    let work: { title: string } | undefined;
+    const notify = (body: string) => {
+      if (work)
+        desktopConnections.notify(userId, { title: work.title, body, taskId });
+    };
     try {
       const task = await taskKind(this.db, taskId);
       if (!task) throw new Error(`Task ${taskId} no longer exists.`);
+      if (task.kind === "work") work = task;
       const limits = task.kind === "work" ? LIMITS.work : LIMITS.chat;
       clearTimeout(deadline);
       deadline = setTimeout(
@@ -168,6 +176,9 @@ export class AgentLoop {
         // A question ends the turn until the founder answers.
         if (!response.calls.length || awaitingInput) {
           await completeTurn(this.db, turnId);
+          notify(
+            awaitingInput ? "Orca needs your input." : "Ready for your review.",
+          );
           return;
         }
       }
@@ -185,6 +196,8 @@ export class AgentLoop {
         stack: error instanceof Error ? error.stack : undefined,
       });
       await failTurn(this.db, turnId, message);
+      // A restart is the server's doing, not news about the work.
+      if (message !== SERVER_STOPPED) notify(message);
     } finally {
       clearTimeout(deadline);
       this.active.delete(turnId);

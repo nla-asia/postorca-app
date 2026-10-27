@@ -291,13 +291,17 @@ export async function listTasks(
   ).rows;
 }
 
-/** Kind and platform the agent loop needs to set a turn's limits and context. */
+/** Kind, platform and title the agent loop needs for a turn's limits, context and notification. */
 export async function taskKind(
   db: Queryable,
   taskId: string,
-): Promise<{ kind: TaskKind; platform: string | null } | undefined> {
+): Promise<
+  { kind: TaskKind; platform: string | null; title: string } | undefined
+> {
   return (
-    await db.query("SELECT kind, platform FROM tasks WHERE id=$1", [taskId])
+    await db.query("SELECT kind, platform, title FROM tasks WHERE id=$1", [
+      taskId,
+    ])
   ).rows[0];
 }
 

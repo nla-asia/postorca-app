@@ -15,8 +15,10 @@ const DEVICE_TOKEN_MARGIN_MS = 5 * 60_000;
  * the WebSocket; results go back over HTTP with this device's token.
  */
 class DesktopConnection {
-  constructor(deviceId) {
+  /** onNotification({title, body, taskId?}): the server asks to show one (work finished). */
+  constructor(deviceId, onNotification = () => {}) {
     this.deviceId = deviceId;
+    this.onNotification = onNotification;
     this.session = null;
     this.deviceToken = null;
     this.deviceTokenExpiresAt = 0;
@@ -105,6 +107,8 @@ class DesktopConnection {
       }
       if (message.type === "desktop_tool_execution")
         void this.execute(session, message.data);
+      else if (message.type === "notification")
+        this.onNotification(message.data);
     });
     socket.on("error", () => {});
     socket.on("close", () => {

@@ -18,6 +18,7 @@ import { issueToken } from "../src/middleware/auth.js";
 import { catalogDrift, pluginDefinitions } from "../src/plugins/catalog.js";
 import type { PluginDefinition } from "../src/plugins/types.js";
 import type { Provider } from "../src/providers/types.js";
+import { createWorkTask } from "../src/repositories/tasks.js";
 import { createUser } from "../src/repositories/users.js";
 import { loadSkill } from "../src/skills/load.js";
 import { temporaryPostgres } from "./postgres.js";
@@ -79,8 +80,10 @@ let script: Call[] = [];
 let queue: Call[] = [];
 let offered: string[][] = [];
 let prompts: string[] = [];
+let modelDown = false;
 const provider: Provider = {
   async respond({ instructions, messages, tools }) {
+    if (modelDown) throw new Error("The model is unavailable.");
     offered.push(tools.map((tool) => tool.name));
     prompts.push(instructions);
     const last = messages.at(-1)!;
@@ -193,8 +196,11 @@ async function desktop(
     `${base.replace(/^http/, "ws")}/desktop/socket?token=${encodeURIComponent(deviceToken)}`,
   );
   const calls: any[] = [];
+  const notifications: any[] = [];
   ws.on("message", async (raw) => {
     const message = JSON.parse(raw.toString());
+    if (message.type === "notification")
+      return void notifications.push(message.data);
     assert.equal(message.type, "desktop_tool_execution");
     calls.push(message.data);
     const posted = await request(
@@ -210,7 +216,7 @@ async function desktop(
     ws.once("error", reject);
   });
   const closed = new Promise<number>((resolve) => ws.once("close", resolve));
-  return { deviceId, deviceToken, ws, calls, closed };
+  return { deviceId, deviceToken, ws, calls, notifications, closed };
 }
 /** Activates the demo plugin on the founder's chat. */
 async function activate(token: string) {
@@ -502,4 +508,48 @@ test("a device uploads screenshots to file storage and gets back a file key", as
     ).status,
     401,
   );
+});
+
+test("finished Inbox work notifies the founder's desktops; chat does not", async () => {
+  const founder = await account();
+  const other = await account();
+  const install = await desktop(founder.token, () => ({ ok: true, result: {} }));
+  const received: { title: string; body: string; taskId: string }[] =
+    install.notifications;
+  const laptop = await desktop(founder.token, () => ({ ok: true, result: {} }));
+  const stranger = await desktop(other.token, () => ({ ok: true, result: {} }));
+  script = [];
+  await ask(founder.token);
+  assert.deepEqual(install.notifications, []);
+  const settledWork = async (title: string) => {
+    const { task, turn } = await createWorkTask(fixture.db, founder.id, title, "Do it");
+    agent.dispatch(task.id, turn.id, founder.id);
+    for (let attempt = 0; attempt < 80 && install.notifications.length < 1; attempt++)
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    return task.id;
+  };
+  const done = await settledWork("Draft a post");
+  // Every desktop the founder has online hears it, and nobody else's.
+  for (let attempt = 0; attempt < 40 && !laptop.notifications.length; attempt++)
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  const ready = { title: "Draft a post", body: "Ready for your review.", taskId: done };
+  assert.deepEqual(install.notifications, [ready]);
+  assert.deepEqual(laptop.notifications, [ready]);
+  assert.deepEqual(stranger.notifications, []);
+  // A failed run says how it ended.
+  received.length = 0;
+  modelDown = true;
+  try {
+    const failed = await settledWork("Research launches");
+    assert.deepEqual(received, [
+      {
+        title: "Research launches",
+        body: "Orca could not complete this turn. Please try a follow-up.",
+        taskId: failed,
+      },
+    ]);
+  } finally {
+    modelDown = false;
+  }
+  for (const socket of [install, laptop, stranger]) socket.ws.close();
 });

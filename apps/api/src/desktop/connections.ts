@@ -2,6 +2,12 @@ import type { IncomingMessage, Server } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import { verifyDeviceToken } from "../middleware/auth.js";
 
+export type DesktopNotification = {
+  title: string;
+  body: string;
+  taskId?: string;
+};
+
 /**
  * Live desktop WebSocket connections, one per device. The device ID comes from the
  * signed device token, so a new connection for a device replaces the previous one
@@ -35,6 +41,11 @@ class DesktopConnections {
     if (entry?.socket.readyState !== WebSocket.OPEN) return false;
     entry.socket.send(JSON.stringify({ type, data }));
     return true;
+  }
+  /** Shows a notification on every desktop the user has online; clicking it opens taskId. */
+  notify(userId: string, notification: DesktopNotification) {
+    for (const deviceId of this.online(userId))
+      this.send(deviceId, "notification", notification);
   }
   closeAll() {
     for (const { socket } of this.byDevice.values()) socket.terminate();
