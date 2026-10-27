@@ -237,3 +237,31 @@ The desktop includes five sections:
 New accounts first set up their brand in a full-screen conversation with Orca, then see their saved profile and schedule before entering the workspace. Calendar and Routines persist their settings on the server, and Orca runs them on schedule. Inbox displays the work they produce.
 
 Settings provides light, dark, and system appearance, saved on this device.
+
+## Computer Use
+
+Orca can discover desktop apps, open or select a window, observe it, and click, type, press keys or scroll on Windows and macOS. Run `npm run db:migrate` to sync the plugin catalog, then restart the API and desktop. On macOS, grant the desktop Accessibility and Screen Recording permissions when required.
+
+Activating the computer plugin acquires control for one agent turn on one desktop. Input requires the latest screenshot observation; moved windows and stale observations require another observation. Control is released when the turn ends, the plugin changes, or the desktop disconnects. Screenshots can be delivered as image artifacts.
+
+Run these commands from the repository root:
+
+```sh
+npm run test:computer
+npm run computer:smoke
+npm run test:computer-eval
+npm run computer:eval -- list
+```
+
+The smoke test opens its own temporary window and verifies real desktop discovery, accessibility, screenshot capture, Unicode typing, clicking, scrolling and control release. Its reports and screenshots are saved under `apps/desktop/.data/computer-use-smoke/`. `computer:live-check` starts an interactive loopback tool harness; its private connection file supplies the port and bearer token, and the `quit` command stops it.
+
+The Windows agent eval suite runs Calculator, Notepad, ChatGPT/Codex reading, then Edge/Google. It uses the configured `OPENAI_API_KEY`, `OPENAI_MODEL`, `DATABASE_URL` and `JWT_SECRET` from `apps/api/.env`. Set `POSTORCA_EVAL_EMAIL` to select an existing founder when the database has multiple accounts. Eval tasks appear in that founder's Inbox. Resolve queued/running turns before starting. The conversation-reading case requires the named reference conversation in the desktop app; it cannot pass without that evidence.
+
+```sh
+npm run computer:eval -- run calculator
+npm run computer:eval -- status
+npm run computer:eval -- review <run-folder> passed "Evidence-based review reason"
+npm run computer:eval -- regrade <run-folder>
+```
+
+Each case needs three consecutive passes on the same runtime before the next case unlocks. The runner uses the production agent and authenticated desktop connection, saves evidence under `.data/computer-evals/`, and independently reads the app after the turn. Conversation and search cases also need an observer review; mechanical failures cannot be overridden. Regrading retains the original result and does not execute the agent. Run-folder arguments can be absolute or relative to the repository root. Model or execution-code changes reset pass streaks; grader-only changes allow retained evidence to be regraded.

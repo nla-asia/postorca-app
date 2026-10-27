@@ -10,7 +10,9 @@
     "start": "node dist/index.js",
     "test": "tsx --test --test-concurrency=1 --test-timeout=60000 tests/*.test.ts",
     "db:local": "tsx src/local-db.ts",
-    "db:migrate": "tsx src/migrate.ts"
+    "db:migrate": "tsx src/migrate.ts",
+    "computer:eval": "tsx src/scripts/computer-eval.ts",
+    "test:computer-eval": "tsx --test tests/computer-eval*.test.ts"
   },
   "dependencies": {
     "cors": "2.8.6",

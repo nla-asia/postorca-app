@@ -25,6 +25,8 @@
     "web:start": "npm run start --workspace @postorca/website",
     "computer:smoke": "npm run computer:smoke --workspace @postorca/desktop",
     "test:computer": "npm run test:computer --workspace @postorca/desktop",
-    "computer:live-check": "npm run computer:live-check --workspace @postorca/desktop"
+    "computer:live-check": "npm run computer:live-check --workspace @postorca/desktop",
+    "computer:eval": "npm run computer:eval --workspace @postorca/api --",
+    "test:computer-eval": "npm run test:computer-eval --workspace @postorca/api"
   }
 }
