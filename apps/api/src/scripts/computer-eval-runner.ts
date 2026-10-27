@@ -4,7 +4,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { spawn, execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { mkdir, readFile, writeFile, readdir, rm } from "node:fs/promises";
+import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -22,6 +22,7 @@ import {
 } from "../desktop/connections.js";
 import { callDesktop } from "../desktop/calls.js";
 import { filePath } from "../storage.js";
+import { computerRuntimeFiles } from "./computer-eval-runtime.js";
 import type {
   ComputerEvalSuite,
   ComputerEvalRun,
@@ -64,20 +65,8 @@ export async function runComputerEval<Id extends string>(
     const files = [
       ...suite.files,
       "apps/api/src/scripts/computer-eval-runner.ts",
-      "apps/api/src/agent/loop.ts",
-      "apps/api/src/agent/context.ts",
-      "apps/api/src/agent/prompts/system.md",
-      "apps/api/src/providers/openai.ts",
-      "apps/api/src/plugins/service.ts",
-      "apps/api/src/plugins/computer/index.ts",
-      "apps/api/src/plugins/computer/skills/computer-use/SKILL.md",
-      "apps/desktop/electron/connection.cjs",
-      ...(await readdir(resolve(repoRoot, "apps/desktop/electron/plugins/computer")))
-        .filter((n) => n.endsWith(".cjs") && !n.endsWith(".test.cjs"))
-        .map((n) => `apps/desktop/electron/plugins/computer/${n}`),
-      suite.platform === "darwin"
-        ? "apps/desktop/electron/plugins/computer/native/mac.swift"
-        : "apps/desktop/electron/plugins/computer/native/windows.ps1",
+      "apps/api/src/scripts/computer-eval-runtime.ts",
+      ...await computerRuntimeFiles(repoRoot, suite.platform),
     ];
     const hashes = Object.fromEntries(
       await Promise.all(
