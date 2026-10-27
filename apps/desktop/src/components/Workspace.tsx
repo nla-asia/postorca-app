@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronRight, Sparkles, X } from "lucide-react";
 import Sidebar from "./Sidebar";
-import AppearanceSettings from "./AppearanceSettings";
+import ConnectApps from "./ConnectApps";
+import SettingsModal from "./SettingsModal";
 import type { Page } from "../navigation";
 import type { Theme } from "../lib/useTheme";
 import { api, type AuthUser } from "../lib/api";
@@ -31,6 +32,7 @@ export default function Workspace({
 }) {
   const [page, setPage] = useState<Page>("Inbox");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [connectAppsOpen, setConnectAppsOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [profileName, setProfileName] = useState(user.name);
   const [selected, setSelected] = useState<string | null>(null);
@@ -132,13 +134,13 @@ export default function Workspace({
     <div className="app-shell">
       <Sidebar
         user={{ ...user, name: profileName }}
-        onLogOut={onLogOut}
         page={page}
         onNavigate={(next) => {
           setSelected(null);
           setPage(next);
         }}
         reviewCount={work.attention}
+        onOpenConnectApps={() => setConnectAppsOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <main className="workspace" aria-label={page}>
@@ -191,11 +193,21 @@ export default function Workspace({
           <BrandProfile onNameChange={setProfileName} notify={setNotice} />
         )}
       </main>
-      <AppearanceSettings
+      <ConnectApps
+        open={connectAppsOpen}
+        onOpenChange={setConnectAppsOpen}
+      />
+      <SettingsModal
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         theme={theme}
         onThemeChange={onThemeChange}
+        user={{ ...user, name: profileName }}
+        onLogOut={onLogOut}
+        onOpenBrandProfile={() => {
+          setSelected(null);
+          setPage("Brand Profile");
+        }}
       />
       {notice && (
         <div className="toast" role="status">

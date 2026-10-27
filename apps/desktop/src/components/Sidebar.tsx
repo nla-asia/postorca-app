@@ -1,26 +1,27 @@
-import { LogOut, Settings2 } from "lucide-react";
+import { Plug, Settings2 } from "lucide-react";
 import { navigation, type Page } from "../navigation";
 import type { AuthUser } from "../lib/api";
+import { Button } from "./ui";
+
 export default function Sidebar({
   page,
   onNavigate,
+  onOpenConnectApps,
   onOpenSettings,
   user,
-  onLogOut,
   reviewCount = 0,
 }: {
   page: Page;
   onNavigate: (page: Page) => void;
+  onOpenConnectApps: () => void;
   onOpenSettings: () => void;
   user: AuthUser;
-  onLogOut: () => void;
   reviewCount?: number;
 }) {
   return (
     <aside className="sidebar" aria-label="Workspace sidebar">
-      <div className="sidebar-brand">
-        <span className="wordmark">PostOrca</span>
-        <span className="brand-caption">Personal Brand Agent</span>
+      <div className="window-drag">
+        <span className="window-caption">PERSONAL BRAND AGENT</span>
       </div>
       <nav aria-label="Main navigation">
         {navigation.map(({ name, icon: Icon }) => (
@@ -40,32 +41,30 @@ export default function Sidebar({
         ))}
       </nav>
       <div className="sidebar-bottom">
+        <Button
+          type="button"
+          className="connect-apps-trigger"
+          onClick={onOpenConnectApps}
+        >
+          <Plug size={16} aria-hidden="true" />
+          <span>Connect Apps</span>
+        </Button>
         <button
           type="button"
-          className="settings-trigger"
+          className="profile-button"
           onClick={onOpenSettings}
           aria-haspopup="dialog"
+          aria-label={`Open settings for ${user.name}`}
         >
-          <Settings2 size={18} strokeWidth={1.7} aria-hidden="true" />
-          <span>Settings</span>
-        </button>
-        <div className="account-summary">
-          <span className="account-avatar" aria-hidden="true">
-            {user.name.charAt(0).toUpperCase()}
+          <span className="avatar" aria-hidden="true">
+            {user.name.charAt(0).toUpperCase() || "N"}
           </span>
-          <div className="account-label">
-            <strong>{user.name}</strong>
-            <small>{user.email}</small>
-          </div>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={onLogOut}
-            aria-label="Log out"
-          >
-            <LogOut size={17} aria-hidden="true" />
-          </button>
-        </div>
+          <span>
+            <strong>{user.name || "Your profile"}</strong>
+            <small>Personal workspace</small>
+          </span>
+          <Settings2 size={17} aria-hidden="true" />
+        </button>
       </div>
     </aside>
   );

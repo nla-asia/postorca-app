@@ -22,6 +22,7 @@ export function Modal({
   onOpenChange,
   title,
   description,
+  wide = false,
   className = "",
   children,
 }: {
@@ -29,6 +30,7 @@ export function Modal({
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: string;
+  wide?: boolean;
   className?: string;
   children: ReactNode;
 }) {
@@ -38,7 +40,7 @@ export function Modal({
       <Dialog.Portal>
         <Dialog.Overlay className="modal-overlay" />
         <Dialog.Content
-          className={`modal ${className}`}
+          className={`modal ${wide ? "wide" : ""} ${className} ${!description ? "no-description" : ""}`}
           {...(!description ? { "aria-describedby": undefined } : {})}
           onOpenAutoFocus={() => {
             opener.current =

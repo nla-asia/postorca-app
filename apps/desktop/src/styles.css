@@ -109,23 +109,20 @@ p {
   flex-direction: column;
   padding: 0 16px 14px;
 }
-.sidebar-brand {
-  height: 100px;
+.window-drag {
+  height: 58px;
+  -webkit-app-region: drag;
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 5px;
-  padding: 0 12px;
+  align-items: center;
+  justify-content: flex-end;
 }
-.wordmark {
-  font-size: 23px;
-  font-weight: 600;
-  letter-spacing: -0.8px;
-}
-.brand-caption {
+.window-caption {
+  font-size: 9px;
+  letter-spacing: 1.25px;
   color: var(--muted);
-  font-size: 11px;
+  padding-right: 3px;
+  opacity: 0.7;
 }
 .nav-item {
   width: 100%;
@@ -152,57 +149,66 @@ p {
   margin-top: auto;
   padding-top: 24px;
 }
-.account-summary {
+.connect-apps-trigger {
+  width: 100%;
+  margin-bottom: 16px;
+  min-height: 38px;
+}
+.profile-button {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 15px 8px 4px;
+  width: 100%;
   border-top: 1px solid var(--line);
+  padding: 17px 8px 1px;
+  text-align: left;
+  background: transparent;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  cursor: pointer;
+  color: inherit;
 }
-.account-avatar {
+.profile-button > .avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--badge);
-  color: var(--secondary);
-  border: 1px solid var(--strong-line);
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  background: var(--badge);
+  color: var(--secondary);
+  border: 1px solid var(--strong-line);
   font-size: 13px;
+  flex-shrink: 0;
 }
-.account-label {
-  min-width: 0;
+.profile-button > span:nth-child(2) {
   flex: 1;
+  min-width: 0;
 }
-.account-label strong,
-.account-label small {
+.profile-button strong {
   display: block;
+  font-size: 13px;
+  font-weight: 550;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.account-label strong {
-  font-size: 13px;
-  font-weight: 600;
-}
-.account-label small {
-  color: var(--muted);
+.profile-button small {
+  display: block;
   font-size: 11px;
+  color: var(--muted);
   margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.settings-trigger {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  width: 100%;
-  border-top: 1px solid var(--line);
-  padding: 17px 12px;
-  text-align: left;
+.profile-button > svg {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.profile-button:hover > svg {
   color: var(--secondary);
-  font-size: 12.5px;
-  border-radius: 7px;
 }
 .workspace {
   flex: 1;
@@ -312,10 +318,21 @@ p {
   box-shadow: 0 12px 50px #0002;
   z-index: 11;
 }
+.modal.wide {
+  width: min(840px, calc(100vw - 70px));
+  padding: 30px 0 0;
+}
 .modal-title {
   margin: 0 35px 8px 0;
   font-size: 20px;
   font-weight: 600;
+}
+.modal.no-description > .modal-title {
+  margin-bottom: 26px;
+}
+.wide > .modal-title,
+.wide > .modal-description {
+  margin-left: 28px;
 }
 .modal-description {
   color: var(--secondary);
@@ -327,62 +344,241 @@ p {
   right: 18px;
   top: 20px;
 }
-.appearance {
-  margin: 28px 0 0;
-  padding: 0;
-  border: 0;
-  min-width: 0;
-}
-.appearance legend {
-  padding: 0;
-  margin-bottom: 8px;
-  font-size: 14px;
-  font-weight: 600;
-}
-.appearance p {
-  color: var(--secondary);
-  font-size: 12px;
-  line-height: 1.6;
-}
-.theme-options {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin: 20px 0;
-}
-.theme-option {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  min-height: 100px;
-  border: 1px solid var(--strong-line);
-  border-radius: 9px;
-  cursor: pointer;
-  color: var(--secondary);
-  font-size: 13px;
-}
-.theme-option.chosen {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.theme-option input {
-  position: absolute;
-  opacity: 0;
-  width: 1px;
-  height: 1px;
-}
-.theme-option:has(input:focus-visible) {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
 .modal-footer {
   display: flex;
   justify-content: flex-end;
   margin-top: 28px;
+}
+
+/* Connectors */
+.connectors-content {
+  padding: 0 28px 28px;
+}
+.connectors-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.connector-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-width: 0;
+}
+.connector-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 10px;
+}
+.connector-info {
+  flex: 1;
+  min-width: 0;
+}
+.connector-info h3 {
+  font-size: 13px;
+  font-weight: 550;
+}
+.connector-info p {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-top: 5px;
+}
+.connector-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+  font-size: 10px;
+  margin-top: 7px;
+}
+.connector-card .button {
+  padding: 7px 10px;
+  font-size: 11px;
+}
+.connectors-empty {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 26px 0;
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 800px) {
+  .connectors-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Settings */
+.settings-layout {
+  display: flex;
+  border-top: 1px solid var(--line);
+  min-height: 435px;
+}
+.settings-nav {
+  width: 185px;
+  padding: 20px 12px;
+  border-right: 1px solid var(--line);
+  flex-shrink: 0;
+  background: var(--sidebar);
+}
+.settings-nav button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 11px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  margin-bottom: 5px;
+  color: var(--secondary);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.settings-nav button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.settings-content {
+  padding: 26px 30px;
+  flex: 1;
+  min-width: 0;
+}
+.settings-content h3 {
+  font-size: 17px;
+  font-weight: 550;
+  margin-bottom: 23px;
+}
+.field-section-label {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin: 24px 0 10px;
+}
+.settings-group {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 17px;
+}
+.setting-row + .setting-row {
+  border-top: 1px solid var(--line);
+}
+.setting-row > div:first-child {
+  flex: 1;
+}
+.setting-row strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.setting-row p {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 5px;
+  line-height: 1.6;
+}
+.preview-notice {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin-top: 20px;
+}
+.theme-options {
+  display: flex;
+  gap: 10px;
+  padding: 0 17px 17px;
+}
+.theme-option {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.theme-option > span:last-child {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted);
+  padding: 10px 0 0;
+}
+.theme-preview {
+  height: 68px;
+  border: 1px solid var(--strong-line);
+  border-radius: 6px;
+  display: block;
+  position: relative;
+  overflow: hidden;
+  background: #fafbf8;
+}
+.theme-preview:before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 26%;
+  background: #e9ede5;
+}
+.theme-preview i,
+.theme-preview b,
+.theme-preview em {
+  position: absolute;
+  left: 36%;
+  height: 5px;
+  border-radius: 3px;
+  background: #d8dfd0;
+  right: 12%;
+  top: 16px;
+}
+.theme-preview b {
+  top: 28px;
+  right: 30%;
+}
+.theme-preview em {
+  top: 45px;
+  right: 17%;
+  height: 12px;
+  background: #e8eee2;
+}
+.theme-preview.dark {
+  background: #1c211b;
+}
+.theme-preview.dark:before {
+  background: #11170f;
+}
+.theme-preview.dark i,
+.theme-preview.dark b {
+  background: #424f3b;
+}
+.theme-preview.dark em {
+  background: #2d3927;
+}
+.theme-preview.system {
+  background: linear-gradient(90deg, #fafbf8 50%, #1c211b 50%);
+}
+.theme-option.chosen .theme-preview {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 @media (max-width: 900px) {
   .sidebar {
@@ -390,5 +586,11 @@ p {
   }
   .page-content {
     padding: 32px 28px;
+  }
+  .settings-nav {
+    width: 145px;
+  }
+  .settings-content {
+    padding: 22px 20px;
   }
 }
