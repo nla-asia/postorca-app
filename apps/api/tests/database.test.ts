@@ -27,6 +27,7 @@ test("migrations apply once, including concurrent runners", async () => {
       { name: "006_task_messages_and_artifacts.sql" },
       { name: "007_task_context.sql" },
       { name: "008_plugins.sql" },
+      { name: "009_brand_projects.sql" },
     ],
   );
   await ping(db);
@@ -127,7 +128,7 @@ test("a failed migration rolls back new tables and its migration record", async 
     await migrate(db);
     assert.equal(
       (await db.query("SELECT 1 FROM schema_migrations")).rowCount,
-      8,
+      9,
     );
   } finally {
     await db.end();

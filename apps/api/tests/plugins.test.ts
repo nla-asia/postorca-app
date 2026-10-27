@@ -248,6 +248,7 @@ test("migrate projects the code-defined plugin catalog and core skills into the 
     { name: "demo-use", dir: "../tests/fixtures/plugins/demo-use", plugin_code: "demo" },
     { name: "find-content-ideas", dir: "skills/find-content-ideas", plugin_code: null },
     { name: "weekly-strategy-research", dir: "skills/weekly-strategy-research", plugin_code: null },
+    { name: "work-content-ideas", dir: "skills/work-content-ideas", plugin_code: null },
   ]);
   // In sync after a migration; a stale schema is reported until the next one.
   assert.deepEqual(await catalogDrift(fixture.db), []);

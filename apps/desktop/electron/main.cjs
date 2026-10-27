@@ -1,6 +1,7 @@
 const {
   app,
   BrowserWindow,
+  dialog,
   ipcMain,
   Notification,
   safeStorage,
@@ -80,6 +81,22 @@ ipcMain.handle("session:clear", (event) => {
   if (!trusted(event)) return;
   clearSession();
   desktop?.setSession(null);
+});
+
+// A project folder for the Brand Profile: only picked here; the renderer saves it.
+ipcMain.handle("project-folder:choose", async (event) => {
+  if (!trusted(event)) return null;
+  const result = await dialog.showOpenDialog(
+    BrowserWindow.fromWebContents(event.sender),
+    {
+      title: "Add a project folder",
+      message:
+        "Orca can read what changes in this folder, such as code, docs and designs, to find content ideas in your work.",
+      buttonLabel: "Add project",
+      properties: ["openDirectory"],
+    },
+  );
+  return result.canceled ? null : (result.filePaths[0] ?? null);
 });
 
 // Shown notifications are held until dismissed: one that is garbage-collected

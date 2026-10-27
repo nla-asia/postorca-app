@@ -16,6 +16,14 @@ export type BrandLink = {
   publishing_instructions: string;
   access_status: "not_granted" | "granted";
 };
+/** A folder on the founder's computer where they build, read by Orca's file tools. */
+export type BrandProject = {
+  id: string;
+  name: string;
+  /** Local to the founder's computer; only the desktop app opens it. */
+  path: string;
+  description: string;
+};
 export type Brand = {
   name: string;
   company: string;
@@ -25,5 +33,6 @@ export type Brand = {
   /** Brand colours used in videos, as #RRGGBB. */
   colors: { background?: string; text?: string; highlight?: string };
   links: BrandLink[];
+  projects: BrandProject[];
   onboarding_status: "not_started" | "in_progress" | "completed";
 };

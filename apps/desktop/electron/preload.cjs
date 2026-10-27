@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld("postorca", {
     set: (session) => ipcRenderer.invoke("session:set", session),
     clear: () => ipcRenderer.invoke("session:clear"),
   },
+  projectFolder: {
+    choose: () => ipcRenderer.invoke("project-folder:choose"),
+  },
   /** Calls back with a notification the OS wouldn't show; returns unsubscribe. */
   onNotification: (callback) => {
     const listener = (_event, notification) => callback(notification);

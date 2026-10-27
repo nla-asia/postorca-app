@@ -188,7 +188,7 @@ export default function Workspace({
           />
         )}
         {page === "Brand Profile" && (
-          <BrandProfile onNameChange={setProfileName} />
+          <BrandProfile onNameChange={setProfileName} notify={setNotice} />
         )}
       </main>
       <AppearanceSettings

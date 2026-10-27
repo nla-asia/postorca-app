@@ -4,6 +4,7 @@ import { appendMessage } from "./tasks.js";
 import {
   DEFAULT_ROUTINES,
   PLATFORM_BY_KIND,
+  WORK_IDEAS_ROUTINE,
   type LinkKind,
 } from "../seeds/default-routines.js";
 
@@ -333,6 +334,67 @@ export async function seedDefaultRoutines(db: Queryable, userId: string) {
     );
   }
   return created;
+}
+
+/**
+ * Adds the "Ideas from my work" routine once, for the founder's first social account
+ * of the preferred kinds, after onboarding and with a known timezone. Returns what
+ * was added, or null when nothing was.
+ */
+export async function seedWorkIdeasRoutine(db: Queryable, userId: string) {
+  const {
+    rows: [user],
+  } = await db.query(
+    `SELECT u.timezone FROM users u JOIN brand_profiles p ON p.user_id = u.id
+     WHERE u.id = $1 AND p.onboarding_status = 'completed' AND u.timezone IS NOT NULL
+     FOR UPDATE OF u`,
+    [userId],
+  );
+  if (!user) return null;
+  const { rowCount: existing } = await db.query(
+    "SELECT 1 FROM routines WHERE user_id = $1 AND instructions LIKE $2",
+    [userId, `%${WORK_IDEAS_ROUTINE.skill}%`],
+  );
+  if (existing) return null;
+  const { rows: links } = await db.query(
+    "SELECT id, name, url, kind FROM brand_profile_links WHERE user_id = $1 AND kind = ANY($2) ORDER BY name, id",
+    [userId, WORK_IDEAS_ROUTINE.kinds],
+  );
+  const link = WORK_IDEAS_ROUTINE.kinds
+    .map((kind) => links.find((item) => item.kind === kind))
+    .find(Boolean);
+  if (!link) return null;
+  const {
+    rows: [{ count }],
+  } = await db.query(
+    "SELECT count(*)::int AS count FROM routines WHERE user_id = $1 AND (run_at IS NULL OR active)",
+    [userId],
+  );
+  if (count >= MAX_ROUTINES) return null;
+  const platform = PLATFORM_BY_KIND[link.kind as LinkKind];
+  await db.query(
+    `INSERT INTO routines(user_id, platform, title, instructions, time_of_day, days, timezone, active, next_run_at, link_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, true,
+       routine_next_run($5::time, $6::smallint[], $7, now()), $8)`,
+    [
+      userId,
+      platform,
+      WORK_IDEAS_ROUTINE.title,
+      WORK_IDEAS_ROUTINE.instructions
+        .replace("{{account}}", link.name)
+        .replace("{{url}}", link.url),
+      WORK_IDEAS_ROUTINE.time,
+      WORK_IDEAS_ROUTINE.days,
+      user.timezone,
+      link.id,
+    ],
+  );
+  return {
+    title: WORK_IDEAS_ROUTINE.title,
+    platform,
+    account: link.name,
+    time: WORK_IDEAS_ROUTINE.time,
+  };
 }
 
 /**

@@ -70,18 +70,23 @@ The renderer uses `http://127.0.0.1:3001/api` by default. To change it, copy `ap
 
 ## Brand Profile
 
-Both endpoints require `Authorization: Bearer <token>` and use the signed-in account's profile.
+These endpoints require `Authorization: Bearer <token>` and use the signed-in account's profile.
 
 | Method | Endpoint | Behavior |
 | --- | --- | --- |
-| GET | `/api/brand-profile` | Returns saved name, company, audience, voice, topics, colors, links, and onboarding status. |
+| GET | `/api/brand-profile` | Returns saved name, company, audience, voice, topics, colors, links, project folders, and onboarding status. |
 | PUT | `/api/brand-profile` | Validates and saves a partial profile update; returns the saved profile. |
+| POST | `/api/brand-profile/projects` | Adds a project folder (`name`, local `path`, optional `description`); 201 with the project and `createdRoutine`. 409 for a folder already added; up to 20 projects. |
+| PATCH | `/api/brand-profile/projects/:id` | Renames a project or changes its description; the folder can't change. |
+| DELETE | `/api/brand-profile/projects/:id` | Removes a project folder; Orca stops reading it. |
 
 Omitted fields keep their saved values. A supplied `links` array replaces the account's links; existing IDs retain their identity and omitted publishing metadata. Changing a link URL resets its access status to `not_granted`. Foreign or duplicate link IDs are rejected. Names, context, and links save in one transaction.
 
 Colors accept optional `background`, `text`, and `highlight` values in `#RRGGBB` format. Links accept HTTP(S) URLs, a platform kind, publishing method/instructions, and access status. Completing onboarding requires company context, primary topics, and at least one social account link. Completing a profile creates default routines for its social accounts once the account's timezone is known.
 
-The desktop loads saved data whenever Brand Profile opens and offers a retry if loading fails. General, Audience, Voice, Colours, and Links remain read-only; editing through Orca will follow with chat integration. HTTP(S) links open in the system browser.
+Project folders are where the founder builds (code, docs, designs). Their paths are local to the founder's computer and only the desktop app opens them. Adding the first one, once onboarding is complete and the timezone is known, adds an "Ideas from my work" routine at 18:00 on weekdays for the founder's X account, or otherwise their first LinkedIn, Threads, Instagram, or Facebook account. It follows the work-content-ideas skill and is added only once.
+
+The desktop loads saved data whenever Brand Profile opens and offers a retry if loading fails. General, Audience, Voice, Colours, and Links are read-only; Orca changes them through chat. The Projects tab adds a folder with the system folder picker (desktop app only), and edits or removes projects. HTTP(S) links open in the system browser.
 
 ## Scheduling API
 
@@ -174,13 +179,13 @@ File helpers use `STORAGE_DIR` or default to `apps/api/storage/`, which is ignor
 | Brand Profile | `read_brand_profile`, `update_brand_profile`, `save_brand_link`, `delete_brand_link` | Profile updates never touch links. Links are saved or deleted one at a time with owned IDs; a changed URL resets access. Completing the profile or adding a social link seeds default routines; deleting a link pauses its routines, and deleting the last link reopens onboarding. |
 | Artifacts | `create_artifact`, `read_artifact`, `edit_document`, `delete_artifact`, `list_content_ideas` | Documents, ideas, and HTTP(S) links belong to the calling task. Documents are revised in place with exact find/replace edits that must each match once, or replaced whole; a failed edit saves nothing. Ideas list the founder's recent, unarchived ideas and whether content is queued. |
 | Memory | `search_memory`, `read_memory`, `save_memory`, `delete_memory` | Markdown files per founder under `STORAGE_DIR/users/<id>/memory/`, each starting with a description line. Search works like `grep -i`. Paths are lowercase, at most three levels deep, and files are written atomically. |
+| Desktop | `desktop_status`, `list_dir`, `read_file`, `git_activity`, `recent_files` | Run on the founder's desktop over the desktop connection. `desktop_status` reports the app, platform, plugins, and tools, and answers that the desktop is offline when none is connected. The file tools work only inside the founder's project folders, which the server adds to each call; links pointing outside are refused, and `.env` files, keys, and credentials are never listed, read, or shown in changes. `read_file` returns text and code, or saves a PNG or JPEG and attaches it. `git_activity` lists commits since a time and uncommitted work, or one commit's changes without secrets, lock files, or build folders; `recent_files` finds recently changed files outside git, skipping dependency and build folders. Git runs without a shell. |
 | Chat only | `start_task`, `get_task`, `follow_up_task`, `request_user_input` | Agent chat and onboarding can start background work, read it, send it a follow-up, or ask one multiple-choice question. Background work is never offered these tools. Starting or following up work requires a running worker and otherwise returns 503. |
 
-Image, audio, and video artifacts arrive with file tools.
 
 ## Skills and plugins
 
-A skill is a folder with a `SKILL.md` (YAML frontmatter with its name and description, then Markdown instructions) and optional reference files. Core skills live in `apps/api/src/skills`: `find-content-ideas`, `conversations-to-join`, `weekly-strategy-research`, and `create-content`. The default routines name the skill to follow. Orca's instructions list every core skill, and `read_skill` returns a skill's instructions and lists its other files, which it can also read. Only text files inside the skill's own folder can be read.
+A skill is a folder with a `SKILL.md` (YAML frontmatter with its name and description, then Markdown instructions) and optional reference files. Core skills live in `apps/api/src/skills`: `find-content-ideas`, `conversations-to-join`, `weekly-strategy-research`, `create-content`, and `work-content-ideas`. The default routines and "Ideas from my work" name the skill to follow. Orca's instructions list every core skill, and `read_skill` returns a skill's instructions and lists its other files, which it can also read. Only text files inside the skill's own folder can be read.
 
 A plugin bundles tools with the skills that explain them, defined in code in `apps/api/src/plugins` (none are registered yet). Each migration projects the plugins and core skills into the `tools`, `skills`, `plugins`, `plugin_tools`, and `plugin_skills` tables and disables rows that are no longer defined; at startup the API warns when the database catalog differs from the code. Orca sees the available plugins' codes and descriptions, activates one per task with `activate_plugin` (or `null` to return to its own tools), and from its next response is offered that plugin's tools and can read its skills. Calls to an inactive plugin's tools are refused before they run.
 
@@ -211,7 +216,7 @@ The desktop includes five sections:
 - **Inbox:** saved work filters, task details, document editing, approval, and archive.
 - **Calendar:** month navigation and persistent one-time task creation, editing, and cancellation.
 - **Routines:** persistent recurring routines, weekday/timezone editor, next-run times, pause/resume, Run now, and confirmed deletion.
-- **Brand Profile:** read-only General, Audience, Voice, Colours, and Links tabs showing saved account data.
+- **Brand Profile:** read-only General, Audience, Voice, Colours, and Links tabs showing saved account data, and a Projects tab to add, edit, and remove project folders.
 
 New accounts first set up their brand in a full-screen conversation with Orca, then see their saved profile and schedule before entering the workspace. Calendar and Routines persist their settings on the server, and Orca runs them on schedule. Inbox displays the work they produce.
 

@@ -14,7 +14,10 @@ export async function getProfile(db: Database, userId: string) {
       (SELECT coalesce(jsonb_agg(jsonb_build_object('id',l.id,'name',l.name,'url',l.url,
         'kind',l.kind,'publishing_method',l.publishing_method,
         'publishing_instructions',l.publishing_instructions,'access_status',l.access_status) ORDER BY l.name,l.id),'[]'::jsonb)
-       FROM brand_profile_links l WHERE l.user_id=u.id) AS links
+       FROM brand_profile_links l WHERE l.user_id=u.id) AS links,
+      (SELECT coalesce(jsonb_agg(jsonb_build_object('id',b.id,'name',b.name,'path',b.path,
+        'description',b.description) ORDER BY b.created_at,b.id),'[]'::jsonb)
+       FROM brand_projects b WHERE b.user_id=u.id) AS projects
      FROM users u JOIN brand_profiles p ON p.user_id=u.id WHERE u.id=$1`,
     [userId],
   );

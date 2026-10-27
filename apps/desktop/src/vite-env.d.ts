@@ -8,6 +8,10 @@ interface Window {
       set(session: { token: string; apiUrl: string }): Promise<void>;
       clear(): Promise<void>;
     };
+    /** Picks a folder for a Brand Profile project; doesn't save it. */
+    projectFolder: {
+      choose(): Promise<string | null>;
+    };
     /** Subscribes to notifications the OS wouldn't show; returns unsubscribe. */
     onNotification(
       callback: (notification: {

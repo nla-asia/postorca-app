@@ -138,3 +138,57 @@
   border-radius: 10px;
   overflow: hidden;
 }
+
+.brand-projects {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+}
+
+.brand-projects > * {
+  justify-self: stretch;
+}
+
+.brand-projects > .button {
+  justify-self: start;
+}
+
+.brand-project-path {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.brand-link-item > p {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--secondary);
+}
+
+.brand-project-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.brand-project-confirm {
+  font-size: 12px;
+  color: var(--secondary);
+}
+
+.brand-project-form {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px;
+}
+
+.brand-project-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 550;
+}

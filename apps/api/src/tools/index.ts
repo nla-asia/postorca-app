@@ -3,6 +3,7 @@ import { HttpError } from "../handlers/errors.js";
 import type { TaskKind } from "../repositories/tasks.js";
 import { artifactTools } from "./artifacts.js";
 import { brandTools } from "./brand.js";
+import { desktopToolset } from "./desktop.js";
 import { memoryTools } from "./memory.js";
 import { questionTool } from "./questions.js";
 import type { DispatchTask, Tool, ToolContext } from "./shared.js";
@@ -23,6 +24,7 @@ const tools: Tool[] = [
   ...brandTools,
   ...artifactTools,
   ...memoryTools,
+  ...desktopToolset,
   ...taskTools,
   questionTool,
 ];

@@ -37,5 +37,14 @@ export const profileSchema = z.object({
   links: z.array(brandLinkSchema).max(50),
   onboarding_status: z.enum(["not_started", "in_progress", "completed"]),
 });
+/** A folder on the founder's computer where they build; see brand_projects. */
+export const projectSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    path: z.string().trim().min(1).max(1000),
+    description: z.string().trim().max(500).default(""),
+  })
+  .strict();
+export type ProjectInput = z.infer<typeof projectSchema>;
 export type BrandLinkInput = z.infer<typeof brandLinkSchema>;
 export type ProfileInput = z.infer<typeof profileSchema>;

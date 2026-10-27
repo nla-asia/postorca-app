@@ -2,7 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { coreSkills } from "../src/skills/index.js";
 import { loadSkill, readSkillFile } from "../src/skills/load.js";
-import { DEFAULT_ROUTINES } from "../src/seeds/default-routines.js";
+import {
+  DEFAULT_ROUTINES,
+  WORK_IDEAS_ROUTINE,
+} from "../src/seeds/default-routines.js";
 
 const demo = new URL("./fixtures/skills/demo-skill/", import.meta.url);
 
@@ -20,6 +23,7 @@ test("a skill is a folder whose SKILL.md frontmatter gives its name and descript
       "create-content",
       "weekly-strategy-research",
       "conversations-to-join",
+      "work-content-ideas",
     ],
   );
   for (const skill of coreSkills) assert.ok(skill.description.length > 20);
@@ -50,7 +54,7 @@ test("read_skill reads SKILL.md without frontmatter, lists the folder's other fi
 });
 
 test("every skill a default routine names is a core skill", () => {
-  for (const routine of DEFAULT_ROUTINES) {
+  for (const routine of [...DEFAULT_ROUTINES, WORK_IDEAS_ROUTINE]) {
     const named = /Read the ([\w-]+) skill/.exec(routine.instructions)?.[1];
     assert.ok(coreSkills.some((skill) => skill.name === named), named);
   }

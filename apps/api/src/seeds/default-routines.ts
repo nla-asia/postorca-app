@@ -53,3 +53,18 @@ export const DEFAULT_ROUTINES: DefaultRoutine[] = [
       "Read the weekly-strategy-research skill with read_skill, then follow it for {{account}} ({{url}}).",
   },
 ];
+
+/**
+ * Added once, when the founder adds their first project folder (brand_projects):
+ * content ideas from what they worked on, for their X account if they have one,
+ * otherwise their first other social account. Weekday evenings, after the work.
+ */
+export const WORK_IDEAS_ROUTINE = {
+  kinds: ["x", "linkedin", "threads", "instagram", "facebook"] as LinkKind[],
+  title: "Ideas from my work",
+  time: "18:00",
+  days: [1, 2, 3, 4, 5],
+  skill: "work-content-ideas",
+  instructions:
+    "Read the work-content-ideas skill with read_skill, then follow it for {{account}} ({{url}}).",
+};

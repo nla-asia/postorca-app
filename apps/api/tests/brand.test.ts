@@ -86,6 +86,7 @@ test("brand endpoints require authentication and return the account's empty prof
     topics: "",
     colors: {},
     links: [],
+    projects: [],
     onboarding_status: "not_started",
   });
 });
@@ -103,8 +104,9 @@ test("profile saves persist brand context and account name without affecting ano
   };
   const saved = await request(a.token, context);
   assert.equal(saved.status, 200);
-  assert.deepEqual(saved.data, context);
-  assert.deepEqual((await request(a.token)).data, context);
+  // Projects are managed separately and come back with the profile.
+  assert.deepEqual(saved.data, { ...context, projects: [] });
+  assert.deepEqual((await request(a.token)).data, { ...context, projects: [] });
   const me = await fetch(url.replace("/brand-profile", "/auth/me"), {
     headers: { Authorization: `Bearer ${a.token}` },
   });
