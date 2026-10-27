@@ -12,6 +12,10 @@
     "start": "npm start --workspace @postorca/desktop",
     "api:dev": "npm run dev --workspace @postorca/api",
     "api:start": "npm start --workspace @postorca/api",
+    "connectors:dev": "npm run dev --workspace @postorca/connectors",
+    "connectors:start": "npm run start --workspace @postorca/connectors",
+    "connectors:build": "npm run build --workspace @postorca/connectors",
+    "connectors:test": "npm run test --workspace @postorca/connectors",
     "test": "npm run test --workspaces --if-present",
     "db:local": "npm run db:local --workspace @postorca/api",
     "db:migrate": "npm run db:migrate --workspace @postorca/api"
