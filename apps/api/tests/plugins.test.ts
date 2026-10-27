@@ -228,7 +228,10 @@ test("migrate projects the code-defined plugin catalog and core skills into the 
   const { rows: plugins } = await fixture.db.query(
     "SELECT code,enabled FROM plugins ORDER BY code",
   );
-  assert.deepEqual(plugins, [{ code: "demo", enabled: true }]);
+  assert.deepEqual(plugins, [
+    { code: "browser", enabled: true },
+    { code: "demo", enabled: true },
+  ]);
   const { rows: tools } = await fixture.db.query(
     `SELECT t.name,t.runs_on,t.timeout_ms FROM plugin_tools p JOIN tools t ON t.name=p.tool_name
      WHERE p.plugin_code='demo' ORDER BY p.position`,
@@ -243,6 +246,7 @@ test("migrate projects the code-defined plugin catalog and core skills into the 
      WHERE s.enabled ORDER BY s.name`,
   );
   assert.deepEqual(skills, [
+    { name: "browser-use", dir: "plugins/browser/skills/browser-use", plugin_code: "browser" },
     { name: "conversations-to-join", dir: "skills/conversations-to-join", plugin_code: null },
     { name: "create-content", dir: "skills/create-content", plugin_code: null },
     { name: "demo-use", dir: "../tests/fixtures/plugins/demo-use", plugin_code: "demo" },
@@ -285,7 +289,7 @@ test("plugin tools and skills are available only while the task's plugin is acti
     assert.equal(install.calls.length, 0);
     assert.match(
       prompts[0],
-      /Plugins: activate the plugin[\s\S]*Active plugin: none\nAvailable:\n- demo: Open demo pages on the founder's computer\.\nSkills: when a task names a skill[\s\S]*- find-content-ideas: /,
+      /Plugins: activate the plugin[\s\S]*Active plugin: none\nAvailable:\n- browser: Use the founder's own web browser[^\n]*\n- demo: Open demo pages on the founder's computer\.\nSkills: when a task names a skill[\s\S]*- find-content-ideas: /,
     );
 
     // Activation is task state; tools and skills are offered from the next response.
@@ -553,4 +557,80 @@ test("finished Inbox work notifies the founder's desktops; chat does not", async
     modelDown = false;
   }
   for (const socket of [install, laptop, stranger]) socket.ws.close();
+});
+
+test("the browser plugin offers its desktop tools and skill, and validates calls before the desktop", async () => {
+  const founder = await account();
+  const install = await desktop(founder.token, (call) => ({
+    ok: true,
+    result: { tool: call.tool, arguments: call.arguments },
+  }));
+  try {
+    offered = [];
+    script = [call("activate_plugin", { code: "browser" })];
+    const activated = await ask(founder.token);
+    assert.equal(activated.active_plugin, "browser");
+    assert.deepEqual(
+      activated.skills.map((skill: { name: string }) => skill.name),
+      ["browser-use"],
+    );
+    assert.deepEqual(
+      offered[1].filter((name) => name.startsWith("browser_")),
+      [
+        "browser_fetch_file",
+        "browser_open",
+        "browser_snapshot",
+        "browser_screenshot",
+        "browser_click",
+        "browser_type",
+        "browser_press",
+        "browser_scroll",
+        "browser_close",
+      ],
+    );
+
+    script = [call("read_skill", { name: "browser-use" })];
+    const skill = await ask(founder.token);
+    assert.match(skill.content, /^# Browser\n/);
+    assert.deepEqual(skill.files, ["references/review.md"]);
+
+    // Valid calls go to the desktop with each tool's timeout.
+    script = [call("browser_open", { url: "https://example.com/feed" })];
+    assert.deepEqual(await ask(founder.token), {
+      tool: "browser_open",
+      arguments: { url: "https://example.com/feed" },
+    });
+    script = [call("browser_type", { tab: "t1", ref: "e12", text: "hello", replace: true })];
+    assert.equal((await ask(founder.token)).tool, "browser_type");
+    script = [call("browser_fetch_file", { tab: "t1", ref: "e3", filename: "logo.png" })];
+    assert.equal((await ask(founder.token)).tool, "browser_fetch_file");
+    assert.deepEqual(
+      install.calls.map((sent) => [sent.tool, sent.timeoutMs]),
+      [
+        ["browser_open", 75_000],
+        ["browser_type", 45_000],
+        ["browser_fetch_file", 240_000],
+      ],
+    );
+
+    // Invalid tabs, refs, URLs and keys never reach it.
+    for (const invalid of [
+      call("browser_open", { url: "javascript:alert(1)" }),
+      call("browser_open", { url: "file:///etc/passwd" }),
+      call("browser_snapshot", { tab: "tab1" }),
+      call("browser_click", { tab: "t1", ref: "12" }),
+      call("browser_press", { tab: "t1", key: "Control A" }),
+      call("browser_scroll", { tab: "t1", direction: "left" }),
+      call("browser_fetch_file", { tab: "t1" }),
+      call("browser_fetch_file", { tab: "t1", ref: "e3", url: "https://example.com/a.pdf" }),
+      call("browser_fetch_file", { tab: "t1", url: "ftp://example.com/a.pdf" }),
+    ]) {
+      script = [invalid];
+      assert.ok((await ask(founder.token)).error, invalid.arguments);
+    }
+    assert.equal(install.calls.length, 3);
+  } finally {
+    script = [];
+    install.ws.close();
+  }
 });

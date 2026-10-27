@@ -42,6 +42,7 @@ module.exports = {
         founderBrowser.type(tab, ref, text, submit ?? false, replace === true),
     },
     browser_press: { run: ({ tab, key }) => founderBrowser.press(tab, key) },
+    browser_fetch_file: { run: ({ tab, ...args }, context) => founderBrowser.fetchFile(tab, args, context) },
     browser_scroll: {
       run: ({ tab, direction }) => founderBrowser.scroll(tab, direction),
     },

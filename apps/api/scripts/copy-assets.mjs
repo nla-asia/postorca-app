@@ -1,9 +1,9 @@
 import { cp } from "node:fs/promises";
 
-// SQL migrations, prompt text and skill folders; skills keep only their text files
-// (their TypeScript is compiled separately).
+// SQL migrations, prompt text, and core and plugin skill folders; only their text
+// files are copied (TypeScript is compiled separately).
 await Promise.all(
-  ["migrations", "agent/prompts", "skills"].map((directory) =>
+  ["migrations", "agent/prompts", "skills", "plugins"].map((directory) =>
     cp(
       new URL(`../src/${directory}/`, import.meta.url),
       new URL(`../dist/${directory}/`, import.meta.url),

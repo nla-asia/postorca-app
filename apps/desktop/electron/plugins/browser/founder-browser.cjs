@@ -8,6 +8,7 @@ const { TabObservations, linkTarget } = require("./observations.cjs");
 const { clickElement } = require("./click.cjs");
 const { settle, trackRequests } = require("./settle.cjs");
 const { pressKey } = require("./keyboard.cjs");
+const { fetchBrowserFile } = require("./fetch-file.cjs");
 
 /**
  * The founder's own browser (Chrome, Edge, or Brave), with their real profile and
@@ -310,6 +311,18 @@ class FounderBrowser {
     await pressKey(page, key);
     await settle(page);
     return this.afterAction(id);
+  }
+  async fetchFile(id, { url, ref, filename }, context) {
+    const { page } = this.tab(id);
+    if (ref) {
+      const { element } = this.locator(id, ref);
+      url = await element.locator.evaluate(node => node.closest("a[href]")?.href || (node instanceof HTMLImageElement ? node.currentSrc : null));
+      if (!url) throw new Error("This ref has no file URL. JavaScript-only file buttons are not supported.");
+    }
+    const session = await page.context().getExistingCDPSession(page);
+    return fetchBrowserFile(page, session, { url, filename }, context, {
+      directory: path.join(app.getPath("downloads"), "PostOrca"),
+    });
   }
   async scroll(id, direction) {
     const { page } = this.tab(id);

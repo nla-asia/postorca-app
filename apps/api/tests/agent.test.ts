@@ -373,7 +373,7 @@ test("a context-length error compacts down to the latest step and retries once",
   assert.equal((await settled(founder.id, fresh.task.id)).turns[0].status, "failed");
 });
 
-test("with no plugins installed, routine work can still read core skills", async () => {
+test("with no plugins enabled, routine work can still read core skills", async () => {
   const founder = await account();
   const { task, turn: queued } = await createWorkTask(
     fixture.db,
@@ -386,8 +386,14 @@ test("with no plugins installed, routine work can still read core skills", async
     lastMessage(request).kind === "user"
       ? { text: "", calls: [call("read_skill", { name: "find-content-ideas" })] }
       : reply("Read it.");
-  agent.dispatch(task.id, queued.id, founder.id);
-  const turn = (await settled(founder.id, task.id)).turns[0];
+  await fixture.db.query("UPDATE plugins SET enabled=false");
+  let turn;
+  try {
+    agent.dispatch(task.id, queued.id, founder.id);
+    turn = (await settled(founder.id, task.id)).turns[0];
+  } finally {
+    await fixture.db.query("UPDATE plugins SET enabled=true");
+  }
   assert.match(turn.messages[3].content.result.content, /^# Find content ideas\n/);
   const tools = toolNames(requests[0]);
   assert.ok(tools.includes("read_skill"));
