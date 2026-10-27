@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
 import type { ChatQuestion, TaskArtifact, TaskDetail, TaskMessage } from "./tasks";
+import { artifactMedia, messageMedia, type MediaAttachment } from "./media";
 import { turnActions, type WorkAction } from "./toolActions";
 
 type ChatItem =
   | { id: string; role: "user" | "agent"; text: string }
+  | { id: string; role: "media"; attachments: MediaAttachment[] }
   | { id: string; role: "artifacts"; artifacts: TaskArtifact[] }
   | {
       id: string;
@@ -120,6 +122,10 @@ export function useAgentChat(
     -1,
   );
   const artifacts = task?.turns.flatMap((turn) => turn.artifacts) ?? [];
+  // Files already delivered as artifacts are shown once, as artifacts.
+  const delivered = new Set(
+    artifacts.flatMap((item) => artifactMedia(item)?.file ?? []),
+  );
   // Each turn: the founder's message, then Orca's tool steps (live while it works),
   // then its replies, question cards and artifacts.
   const messages: ChatItem[] = [];
@@ -158,6 +164,13 @@ export function useAgentChat(
             text: message.content.text,
           });
         continue;
+      }
+      const attachments = messageMedia(message).filter(
+        (attachment) => !delivered.has(attachment.file),
+      );
+      if (attachments.length) {
+        showActions();
+        messages.push({ id: message.id, role: "media", attachments });
       }
       if (isQuestion(message)) {
         showActions();

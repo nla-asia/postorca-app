@@ -1,0 +1,52 @@
+/* Generated assets and screenshots share the same authenticated attachment view. */
+.media-attachment {
+  margin: 12px 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  max-width: 560px;
+}
+
+.media-attachment img {
+  display: block;
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.media-attachment audio {
+  display: block;
+  width: 100%;
+}
+
+.media-attachment video {
+  display: block;
+  width: 100%;
+  max-height: 640px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #000;
+}
+
+.media-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  color: inherit;
+  font-size: 13px;
+}
+
+.media-error {
+  font-size: 13px;
+}
+
+.media-error button {
+  margin-left: 6px;
+  text-decoration: underline;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}

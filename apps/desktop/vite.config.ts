@@ -19,8 +19,9 @@ export default defineConfig(({ command, mode }) => {
               tag: "meta",
               attrs: {
                 "http-equiv": "Content-Security-Policy",
-                // Radix dialogs inject styles to lock background scrolling.
-                content: `default-src 'self'; script-src 'self'${development ? " 'unsafe-inline'" : ""}; style-src 'self' 'unsafe-inline'; connect-src 'self' ${apiUrl.origin}${development ? " ws://127.0.0.1:5173" : ""}`,
+                // Radix dialogs inject styles to lock background scrolling. Saved media
+                // is fetched with the session token and shown through blob: URLs.
+                content: `default-src 'self'; script-src 'self'${development ? " 'unsafe-inline'" : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; media-src blob:; connect-src 'self' ${apiUrl.origin}${development ? " ws://127.0.0.1:5173" : ""}`,
               },
               injectTo: "head-prepend",
             },

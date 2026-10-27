@@ -1,3 +1,4 @@
+const { createReadStream } = require("node:fs");
 const WebSocket = require("ws");
 const tools = require("./tools/index.cjs");
 
@@ -131,8 +132,8 @@ class DesktopConnection {
     return `Bearer ${token}`;
   }
   /**
-   * Stores a screenshot (JPEG or PNG) on the server; returns its file key for the
-   * tool result. Allows 30 s plus 1 s per MB.
+   * Stores an image, MP3 or MP4 on the server; returns its file key for the tool
+   * result. Allows 30 s plus 1 s per MB.
    */
   async upload(session, data, type) {
     const response = await fetch(`${session.apiUrl}/desktop/files`, {
@@ -146,6 +147,51 @@ class DesktopConnection {
     });
     if (!response.ok) throw new Error(`Upload failed: HTTP ${response.status}`);
     return (await response.json()).file;
+  }
+  /** Reads one of the founder's saved files by key: {data, type}. */
+  async download(session, key) {
+    const response = await fetch(
+      `${session.apiUrl}/desktop/files?key=${encodeURIComponent(key)}`,
+      {
+        headers: { Authorization: await this.authorization(session) },
+        signal: AbortSignal.timeout(60_000),
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Download failed: HTTP ${response.status}`);
+    return {
+      data: Buffer.from(await response.arrayBuffer()),
+      type: (response.headers.get("content-type") ?? "").split(";")[0],
+    };
+  }
+  /**
+   * Streams a local file to the founder's saved downloads, unchanged, with its
+   * metadata ({filename, source_url?, download_url?, final_url?, reported_type?}).
+   * Returns the saved file's key, detected type, size and checksum.
+   */
+  async uploadFile(session, filename, metadata, signal) {
+    const authorization = await this.authorization(session);
+    const stream = createReadStream(filename);
+    try {
+      const response = await fetch(`${session.apiUrl}/desktop/downloads`, {
+        method: "POST",
+        headers: {
+          Authorization: authorization,
+          "Content-Type": "application/octet-stream",
+          "X-PostOrca-File": encodeURIComponent(JSON.stringify(metadata)),
+        },
+        body: stream,
+        duplex: "half",
+        signal,
+      });
+      if (!response.ok)
+        throw new Error(
+          `File import failed: HTTP ${response.status} ${await response.text()}`,
+        );
+      return await response.json();
+    } finally {
+      stream.destroy();
+    }
   }
   async execute(session, call) {
     let body;
@@ -161,6 +207,9 @@ class DesktopConnection {
           taskId: call.taskId,
           turnId: call.turnId,
           upload: (data, type) => this.upload(session, data, type),
+          download: (key) => this.download(session, key),
+          uploadFile: (filename, metadata, signal) =>
+            this.uploadFile(session, filename, metadata, signal),
           signal: controller.signal,
         }),
         new Promise((_, reject) => {

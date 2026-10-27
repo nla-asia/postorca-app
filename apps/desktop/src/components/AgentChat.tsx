@@ -4,7 +4,12 @@ import { Button } from "./ui";
 import Markdown, { type ArtifactLink } from "./Markdown";
 import QuestionWidget from "./QuestionWidget";
 import WorkActions from "./WorkActions";
-import { ArtifactRow, ArtifactViewer, type Viewable } from "./Artifacts";
+import {
+  ArtifactRow,
+  ArtifactViewer,
+  MediaCard,
+  type Viewable,
+} from "./Artifacts";
 import type { useAgentChat } from "../lib/useAgentChat";
 import "./AgentChat.css";
 
@@ -62,7 +67,20 @@ export default function AgentChat({
         ) : (
           <div className="messages">
             {messages.map((m) =>
-              m.role === "artifacts" ? (
+              m.role === "media" ? (
+                <div key={m.id} className="message agent media-message">
+                  <Mark small />
+                  <div>
+                    {m.attachments.map((attachment) => (
+                      <MediaCard
+                        key={attachment.file}
+                        attachment={attachment}
+                        onOpen={() => setViewing({ type: "media", attachment })}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : m.role === "artifacts" ? (
                 <div key={m.id} className="message agent media-message">
                   <Mark small />
                   <div>

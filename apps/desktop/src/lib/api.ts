@@ -86,6 +86,16 @@ export async function api<T>(
   if (response.status === 204) return undefined as T;
   return response.json();
 }
+/** One of the founder's saved files, loaded through the authenticated API. */
+export async function apiFile(
+  key: string,
+  signal?: AbortSignal,
+): Promise<Blob> {
+  const response = await apiResponse(`/files?key=${encodeURIComponent(key)}`, {
+    signal,
+  });
+  return response.blob();
+}
 export async function authenticate(
   mode: "login" | "register",
   data: { email: string; password: string; name?: string },

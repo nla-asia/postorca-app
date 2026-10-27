@@ -1,5 +1,15 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import {
+  mkdir,
+  readFile,
+  readdir,
+  writeFile,
+  open,
+  rm,
+} from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { Transform, type Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -89,4 +99,98 @@ export async function loadFile(key: string) {
 export function filePath(key: string) {
   if (!keyPattern.test(key)) throw new Error("Invalid file key.");
   return join(root(), key);
+}
+
+export type DownloadMetadata = {
+  filename: string;
+  source_url?: string;
+  download_url?: string;
+  final_url?: string;
+  reported_type?: string;
+};
+export const DOWNLOAD_LIMIT = 200 * 1024 * 1024;
+// Detect previewable formats from bytes, never from a server's claimed MIME type.
+export function detectDownloadType(data: Buffer) {
+  if (data.subarray(0, 3).equals(Buffer.from([255, 216, 255])))
+    return "image/jpeg";
+  if (
+    data.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+  )
+    return "image/png";
+  if (
+    data.toString("ascii", 0, 4) === "RIFF" &&
+    data.toString("ascii", 8, 12) === "WEBP"
+  )
+    return "image/webp";
+  if (
+    data.toString("ascii", 0, 3) === "ID3" ||
+    (data[0] === 255 && (data[1] & 0xe0) === 0xe0)
+  )
+    return "audio/mpeg";
+  if (
+    data.toString("ascii", 0, 4) === "RIFF" &&
+    data.toString("ascii", 8, 12) === "WAVE"
+  )
+    return "audio/wav";
+  if (data.toString("ascii", 4, 8) === "ftyp")
+    return /^M4[AB] /.test(data.toString("ascii", 8, 12))
+      ? "audio/mp4"
+      : "video/mp4";
+  if (data.toString("ascii", 0, 5) === "%PDF-") return "application/pdf";
+  return "application/octet-stream";
+}
+export async function saveDownload(
+  userId: string,
+  input: Readable,
+  metadata: DownloadMetadata,
+) {
+  const key = `users/${userId}/downloads/${randomUUID()}.bin`;
+  const target = filePath(key);
+  await mkdir(dirname(target), { recursive: true, mode: 0o700 });
+  let bytes = 0;
+  const hash = createHash("sha256");
+  try {
+    await pipeline(
+      input,
+      new Transform({
+        transform(chunk: Buffer, _encoding, callback) {
+          bytes += chunk.length;
+          if (bytes > DOWNLOAD_LIMIT)
+            return callback(new Error("Download exceeds 200 MB."));
+          hash.update(chunk);
+          callback(null, chunk);
+        },
+      }),
+      createWriteStream(target, { flags: "wx", mode: 0o600 }),
+    );
+    if (!bytes) throw new Error("Downloaded file is empty.");
+    const handle = await open(target, "r");
+    const prefix = Buffer.alloc(512);
+    let length: number;
+    try {
+      length = (await handle.read(prefix, 0, prefix.length, 0)).bytesRead;
+    } finally {
+      await handle.close();
+    }
+    const mime_type = detectDownloadType(prefix.subarray(0, length));
+    const result = {
+      ...metadata,
+      mime_type,
+      bytes,
+      sha256: hash.digest("hex"),
+    };
+    await writeFile(`${target}.json`, JSON.stringify(result), { mode: 0o600 });
+    return { file: key, ...result };
+  } catch (error) {
+    await rm(target, { force: true });
+    await rm(`${target}.json`, { force: true });
+    throw error;
+  }
+}
+export async function describeFile(key: string) {
+  if (!key.endsWith(".bin"))
+    return { mime_type: fileMimeType(key), filename: key.split("/").at(-1)! };
+  return JSON.parse(
+    await readFile(`${filePath(key)}.json`, "utf8"),
+  ) as DownloadMetadata & { mime_type: string; bytes: number };
 }

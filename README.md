@@ -137,7 +137,7 @@ Inbox uses these endpoints for saved work, details, document editing, review, fo
 
 For review shows working, failed, and unapproved work. Approved shows approved work that is not archived. All activity includes archived work. The attention count in the sidebar and For review tab counts unapproved review items and failures; working items appear in the list without increasing that count.
 
-Opening work shows its request, ordered replies, tool activity, status, and artifacts. Markdown renders as React elements without raw HTML; links can open HTTP(S) pages or artifacts belonging to that work. Documents can be copied and edited, with errors preserving the draft. Archived documents are read-only in the desktop. Follow Up sends Orca feedback or a next step on finished or failed work, which continues as a new turn. Opening an idea offers Create content with an optional note; the idea then shows that its content is queued, being created, ready, or failed, and opens the content work once it has run. Media viewing will follow with file delivery.
+Opening work shows its request, ordered replies, tool activity, status, and artifacts. Markdown renders as React elements without raw HTML; links can open HTTP(S) pages or artifacts belonging to that work. Documents can be copied and edited, with errors preserving the draft. Archived documents are read-only in the desktop. Follow Up sends Orca feedback or a next step on finished or failed work, which continues as a new turn. Opening an idea offers Create content with an optional note; the idea then shows that its content is queued, being created, ready, or failed, and opens the content work once it has run. Images, audio, and video open in a player with Download, and files a tool attached to a step open from that step.
 
 Approve and Archive save through the task API and refresh the lists. Load failures offer a retry. The Inbox list refreshes every twenty seconds, or every three seconds while work is active; an active detail refreshes every 1.5 seconds. Saved reviews and document edits survive logout and app restarts. New accounts have an empty Inbox until work is created; no example results are inserted automatically.
 
@@ -159,7 +159,11 @@ Individual tool results are capped at 80,000 characters in the model view. Compa
 
 Recent PNG/JPEG tool attachments are loaded only from files owned by the task's user. Their image payloads appear for one assistant step by default, then only their references and descriptions remain. `AGENT_IMAGE_STEPS` can extend this window. Original downloads are not automatically loaded as model images, and missing files are skipped. Short file references are scoped to each user's files; ambiguous references do not resolve.
 
-File helpers use `STORAGE_DIR` or default to `apps/api/storage/`, which is ignored by Git. The build copies prompt files and skill folders as well as SQL migrations. File delivery routes are not connected yet.
+File helpers use `STORAGE_DIR` or default to `apps/api/storage/`, which is ignored by Git. The build copies prompt files and skill folders as well as SQL migrations.
+
+`GET /api/files?key=` streams one of the signed-in founder's saved files (screenshots, media, downloads) with range support, `private, no-store` caching, and no MIME sniffing; downloads are always sent as attachments, and other founders' keys return 404. Desktops read the same files at `GET /api/desktop/files?key=` with their device token. `POST /api/desktop/downloads` streams a file a desktop fetched or the founder chose, unchanged, up to 200 MB, with its filename and source URLs in the `X-PostOrca-File` header; the server detects its type from the bytes, records its size and SHA-256 checksum, and never keeps a partial file. `POST /api/desktop/files` also accepts MP3 (50 MB) and MP4 (200 MB) files alongside screenshots.
+
+`create_artifact` delivers images, audio, and video from these saved files: the content is a file ref or key, which must belong to the founder and match the artifact's kind. The artifact stores the validated file metadata, never a URL written by the model. The desktop loads media through the authenticated API as temporary `blob:` URLs, shows a card for files a tool attached in Agent chat (unless they were also delivered as artifacts), and opens images, audio, and video in a player with Download.
 
 ## Orca's tools
 

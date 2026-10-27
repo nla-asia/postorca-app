@@ -272,6 +272,9 @@ export default function WorkDetail({
                       actions={actions}
                       seconds={seconds}
                       working={turnWorking}
+                      onOpenMedia={(attachment) =>
+                        setViewing({ type: "media", attachment })
+                      }
                     />
                     <div className="work-entry-content">
                       {replies.map((reply) => (

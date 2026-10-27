@@ -6,17 +6,22 @@ import {
   Wrench,
 } from "lucide-react";
 
+import { MediaIcon } from "./Artifacts";
+import type { MediaAttachment } from "../lib/media";
 import type { WorkAction } from "../lib/toolActions";
 export type { WorkAction };
 export default function WorkActions({
   actions,
   seconds,
   working = false,
+  onOpenMedia,
 }: {
   actions: WorkAction[];
   /** Total turn duration, when finished. */
   seconds?: number | null;
   working?: boolean;
+  /** Shows each step's attached files, opening them here. */
+  onOpenMedia?: (attachment: MediaAttachment) => void;
 }) {
   // While working, the summary names the step in progress so progress is visible.
   const current = working ? actions.at(-1)?.label : undefined;
@@ -52,6 +57,21 @@ export default function WorkActions({
                   <Check size={14} />
                 )}
                 <span>{action.label}</span>
+                {onOpenMedia && action.media && (
+                  <span className="action-media">
+                    {action.media.map((attachment) => (
+                      <button
+                        key={attachment.file}
+                        type="button"
+                        aria-label={`Open ${attachment.title}`}
+                        title={attachment.title}
+                        onClick={() => onOpenMedia(attachment)}
+                      >
+                        <MediaIcon attachment={attachment} />
+                      </button>
+                    ))}
+                  </span>
+                )}
               </li>
             ))}
           </ol>

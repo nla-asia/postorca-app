@@ -1,3 +1,4 @@
+import { messageMedia, type MediaAttachment } from "./media";
 import type { TaskMessage } from "./tasks";
 
 /** One tool call as the founder sees it: a readable step and its state. */
@@ -8,6 +9,8 @@ export type WorkAction = {
   pending?: boolean;
   /** Failure message, shown on hover. */
   detail?: string;
+  /** Files the tool attached, such as screenshots taken while working. */
+  media?: MediaAttachment[];
 };
 
 const shortUrl = (value: unknown) => {
@@ -112,11 +115,13 @@ export function toolAction(
   const value = result?.content.result as Record<string, any> | undefined;
   const failed = !!value && typeof value === "object" && "error" in value;
   const label = describe(call.content.name ?? "Tool", args, value);
+  const media = result ? messageMedia(result) : [];
   return {
     label: failed ? `${label} (failed)` : label,
     failed,
     pending: !result,
     ...(failed ? { detail: String(value.error) } : {}),
+    ...(media.length ? { media } : {}),
   };
 }
 

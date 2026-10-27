@@ -1,3 +1,4 @@
+import { stat } from "node:fs/promises";
 import { z } from "zod";
 import { HttpError } from "../handlers/errors.js";
 import {
@@ -10,6 +11,12 @@ import {
 } from "../repositories/artifacts.js";
 import { platforms } from "../schemas/platforms.js";
 import {
+  describeFile,
+  filePath,
+  fileRef,
+  resolveUserFile,
+} from "../storage.js";
+import {
   applyEdits,
   editsParameter,
   editsSchema,
@@ -18,8 +25,16 @@ import {
 } from "./shared.js";
 
 const MAX_CONTENT = 100_000;
-/** Text deliverables. Image, audio and video artifacts need saved files from file tools. */
-const ARTIFACT_KINDS = ["document", "idea", "url"] as const;
+/** Text deliverables, and media delivered from files saved by file, browser or media tools. */
+const ARTIFACT_KINDS = [
+  "document",
+  "idea",
+  "url",
+  "image",
+  "audio",
+  "video",
+] as const;
+const MEDIA_KINDS = new Set(["image", "audio", "video"]);
 
 export const artifactTools: Tool[] = [
   {
@@ -60,20 +75,21 @@ export const artifactTools: Tool[] = [
     definition: {
       name: "create_artifact",
       description:
-        "Deliver a document, content idea (one per idea) or reference URL in the task's Artifacts section for founder review. For documents and ideas, content is the deliverable text; for url, an HTTP(S) link. Create each deliverable once. To revise a document, use edit_document instead of creating another.",
+        "Deliver a document, content idea (one per idea), reference URL, image, audio or video in the task's Artifacts section for founder review. For image/audio/video, content must be the saved file ref or file key a file, browser or media tool returned; the server validates ownership and file type and supplies an authenticated preview/download. Already saved files need no re-upload. For documents/ideas, content is the deliverable text; for url, an HTTP(S) link. Create each deliverable once. To revise a document, use edit_document instead of creating another.",
       parameters: object(
         {
           kind: { type: "string", enum: [...ARTIFACT_KINDS] },
           title: { type: "string" },
           content: {
             type: "string",
-            description: "Document or idea text, or the reference URL.",
+            description:
+              "For image/audio/video: saved file ref or key. Otherwise: document/idea text or reference URL.",
           },
         },
         ["kind", "title", "content"],
       ),
     },
-    run: ({ db, taskId, turnId }, args) => {
+    run: async ({ db, userId, taskId, turnId }, args) => {
       const artifact = z
         .object({
           kind: z.enum(ARTIFACT_KINDS),
@@ -84,6 +100,39 @@ export const artifactTools: Tool[] = [
         .parse(args);
       if (artifact.kind === "url")
         z.url({ protocol: /^https?$/ }).parse(artifact.content);
+      if (MEDIA_KINDS.has(artifact.kind)) {
+        const key = await resolveUserFile(userId, artifact.content);
+        if (!key)
+          throw new HttpError(
+            404,
+            "Saved file not found. Use a file ref returned by a file or media tool.",
+          );
+        let metadata;
+        try {
+          await stat(filePath(key));
+          metadata = await describeFile(key);
+        } catch {
+          throw new HttpError(404, "Saved file not found.");
+        }
+        if (!metadata.mime_type.startsWith(`${artifact.kind}/`))
+          throw new HttpError(400, `Choose a saved ${artifact.kind} file.`);
+        // The artifact stores validated metadata, never a model-written URL.
+        const media = {
+          file: key,
+          ref: fileRef(key),
+          mime_type: metadata.mime_type,
+          filename: metadata.filename,
+          ...("bytes" in metadata ? { bytes: metadata.bytes } : {}),
+          ...("source_url" in metadata
+            ? { source_url: metadata.source_url }
+            : {}),
+          url: `/api/files?key=${encodeURIComponent(key)}`,
+        };
+        return createArtifact(db, taskId, turnId, {
+          ...artifact,
+          content: JSON.stringify(media),
+        });
+      }
       return createArtifact(db, taskId, turnId, artifact);
     },
   },
