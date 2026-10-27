@@ -22,6 +22,9 @@
     "db:migrate": "npm run db:migrate --workspace @postorca/api",
     "web:dev": "npm run dev --workspace @postorca/website",
     "web:build": "npm run build --workspace @postorca/website",
-    "web:start": "npm run start --workspace @postorca/website"
+    "web:start": "npm run start --workspace @postorca/website",
+    "computer:smoke": "npm run computer:smoke --workspace @postorca/desktop",
+    "test:computer": "npm run test:computer --workspace @postorca/desktop",
+    "computer:live-check": "npm run computer:live-check --workspace @postorca/desktop"
   }
 }

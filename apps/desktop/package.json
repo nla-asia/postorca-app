@@ -11,7 +11,10 @@
     "build": "npm run check && vite build",
     "start": "electron .",
     "test": "node --test \"electron/tools/*.test.cjs\" \"electron/plugins/*/*.test.cjs\"",
-    "computer:build-native": "node scripts/build-computer-native.cjs"
+    "computer:build-native": "node scripts/build-computer-native.cjs",
+    "computer:smoke": "electron electron/plugins/computer/smoke.cjs",
+    "test:computer": "node --test electron/plugins/computer/*.test.cjs",
+    "computer:live-check": "electron electron/plugins/computer/live-check.cjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "5.3.0",
