@@ -1,11 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button, Modal, Platform } from "../components/ui";
-import {
-  previewScheduleRequest as api,
-  type ScheduledTask,
-  type WorkTask,
-} from "../lib/previewSchedules";
+import { api } from "../lib/api";
+import type { ScheduledTask, WorkTask } from "../lib/schedules";
 import "./Calendar.css";
 import "../components/forms.css";
 
@@ -29,7 +26,7 @@ const timeLabel = (value: string) =>
   });
 const status = (item: ScheduledTask) =>
   item.active
-    ? "Preview"
+    ? "Scheduled"
     : item.last_run_status === "completed"
       ? "Completed"
       : item.last_run_status === "failed"
@@ -51,21 +48,49 @@ export default function Calendar({
   const [editing, setEditing] = useState<ScheduledTask | "new" | null>(null);
   const [when, setWhen] = useState("");
   const [showPast, setShowPast] = useState(false);
+  const requestController = useRef<AbortController | null>(null);
   const reload = useCallback(async () => {
+    requestController.current?.abort();
+    const controller = new AbortController();
+    requestController.current = controller;
     try {
-      setItems(await api<ScheduledTask[]>("/routines?once=true"));
+      const schedules = await api<ScheduledTask[]>("/routines?once=true", {
+        signal: AbortSignal.any([
+          controller.signal,
+          AbortSignal.timeout(15000),
+        ]),
+      });
+      if (controller.signal.aborted) return;
+      setItems(schedules);
       setError("");
     } catch (failure) {
+      if (controller.signal.aborted) return;
       setError(
         failure instanceof Error
           ? failure.message
           : "Unable to load schedules.",
       );
+    } finally {
+      if (requestController.current === controller)
+        requestController.current = null;
     }
   }, []);
   useEffect(() => {
     void reload();
+    return () => requestController.current?.abort();
   }, [reload]);
+  const busy = items?.some((item) =>
+    ["queued", "running"].includes(item.last_run_status ?? ""),
+  );
+  useEffect(() => {
+    const timer = setInterval(
+      () => {
+        if (!requestController.current) void reload();
+      },
+      busy ? 2000 : 10000,
+    );
+    return () => clearInterval(timer);
+  }, [reload, busy]);
   const today = new Date();
   const month = new Date(today.getFullYear(), today.getMonth() + offset, 1);
   const firstDay = (month.getDay() + 6) % 7;
@@ -131,14 +156,16 @@ export default function Calendar({
           </button>
         </div>
       </div>
-      <p className="preview-note calendar-preview">
-        Preview · Tasks are saved for this session only. Nothing is scheduled to
-        run.
+      <p className="preview-note calendar-note">
+        Schedules are saved to your account. Automatic execution is coming soon.
       </p>
       {error && (
-        <p className="auth-error" role="alert">
-          {error}
-        </p>
+        <div className="calendar-load-error">
+          <p className="auth-error" role="alert">
+            {error}
+          </p>
+          <Button onClick={() => void reload()}>Try again</Button>
+        </div>
       )}
       {items === null && !error && <p role="status">Loading…</p>}
       <div className="calendar">
@@ -225,7 +252,7 @@ export default function Calendar({
         </div>
       </div>
       <Modal
-        description="Preview a one-time task. Execution will be available when scheduling is connected."
+        description="Save a one-time task to your account. Automatic execution is coming soon."
         open={editing !== null}
         onOpenChange={(open) => {
           if (!open) setEditing(null);
@@ -388,7 +415,7 @@ function ScheduleEditor({
           <span />
         )}
         <Button variant="primary" type="submit" disabled={saving}>
-          {saving ? "Saving…" : item ? "Save changes" : "Save preview task"}
+          {saving ? "Saving…" : item ? "Save changes" : "Schedule task"}
         </Button>
       </div>
     </form>

@@ -124,7 +124,7 @@
   --event-text: var(--accent);
 }
 
-.calendar-event.preview {
+.calendar-event.scheduled {
   --event-side: #5b7fb0;
   --event-bg: #5b7fb014;
   --event-text: #3f5f8c;
@@ -142,7 +142,7 @@
   --event-text: #b04848;
 }
 
-:root[data-theme="dark"] .calendar-event.preview {
+:root[data-theme="dark"] .calendar-event.scheduled {
   --event-side: #8fb0dc;
   --event-bg: #8fb0dc1f;
   --event-text: #b5cbea;
@@ -216,8 +216,11 @@
   padding-top: 24px;
 }
 
-.calendar-page .calendar-preview {
+.calendar-page .calendar-note {
   margin: -6px 0 20px;
+}
+.calendar-load-error {
+  margin-bottom: 16px;
 }
 @media (max-width: 1000px) {
   .calendar-toolbar {

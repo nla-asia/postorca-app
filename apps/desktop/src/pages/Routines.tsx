@@ -11,13 +11,13 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button, Modal, Pill, Platform } from "../components/ui";
+import { previewScheduleRequest as api } from "../lib/previewSchedules";
 import {
-  previewScheduleRequest as api,
   PLATFORMS,
   type PlatformName,
   type Routine,
   type RoutineInput,
-} from "../lib/previewSchedules";
+} from "../lib/schedules";
 
 import "./Routines.css";
 import "../components/forms.css";

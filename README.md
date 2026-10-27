@@ -64,7 +64,7 @@ User tokens use HS256, expire after 12 hours, and are scoped to the PostOrca des
 
 The desktop opens with Log in and provides a Sign up form. Successful sign-in opens the workspace and shows the account name/email in the sidebar. Electron encrypts the token and API URL with `safeStorage` in the app's data directory. On restart, the saved token is validated through `/auth/me`. If OS encryption is unavailable, the session stays in memory for that launch. The preload bridge exposes only session get/set/clear to the app's top frame; renderer Node access remains disabled.
 
-Log out clears the current session, removes the saved session file, and clears session-only work previews. A rejected token returns to Log in and removes the saved session; a network failure retains it for a later retry. Plain-browser development uses `sessionStorage` instead of desktop persistence. Opening the desktop again focuses the existing window rather than starting another process for the same profile.
+Log out clears the current session, removes the saved session file, and clears session-only routine previews. Saved Calendar schedules stay with the account. A rejected token returns to Log in and removes the saved session; a network failure retains it for a later retry. Plain-browser development uses `sessionStorage` instead of desktop persistence. Opening the desktop again focuses the existing window rather than starting another process for the same profile.
 
 The renderer uses `http://127.0.0.1:3001/api` by default. To change it, copy `apps/desktop/.env.example` to `apps/desktop/.env`, set `VITE_API_URL`, and restart development or rebuild. Only this API origin is added to the renderer's connection policy. Start the API before signing in.
 
@@ -101,7 +101,9 @@ One-time schedules accept `title`, `instructions`, `timezone`, an optional nulla
 
 Each account can have up to 50 recurring routines and pending one-time schedules combined; paused recurring routines count toward this limit. Creation is serialized per account to enforce the limit during concurrent requests. Responses include the latest run's task ID, trigger, and live status when available. Deleting a routine keeps any work it previously produced.
 
-The API stores schedules but does not execute them yet. Default routines are not seeded automatically. Calendar and Routines still use their local desktop preview adapter until UI integration is connected.
+The API stores schedules but does not execute them yet. Default routines are not seeded automatically. Calendar uses these endpoints; Routines still uses its local desktop preview adapter.
+
+Calendar saves one-time tasks to the signed-in account, including edits and confirmed cancellation. Schedules survive logout and app restarts. Dates are entered and displayed in the device's local timezone and sent as absolute timestamps with the timezone name. Calendar refreshes every ten seconds, or every two seconds while work is queued or running. Failed loads offer a retry, and failed saves keep the form open. Inbox work links will be connected when execution and review are available.
 
 ## Workspace
 
@@ -114,10 +116,10 @@ The desktop includes five sections:
 
 - **Agent:** chat welcome screen and draft composer. Messages are not sent yet.
 - **Inbox:** review, approved, and activity filters with empty work lists.
-- **Calendar:** month navigation and a one-time task editor.
+- **Calendar:** month navigation and persistent one-time task creation, editing, and cancellation.
 - **Routines:** recurring routine cards, weekday/timezone editor, pause, and delete.
 - **Brand Profile:** read-only General, Audience, Voice, Colours, and Links tabs showing saved account data.
 
-Calendar and Routines use a temporary in-memory preview adapter. Changes last until logout, reload, or restart; no scheduled tasks or routines execute. These previews make no server requests. Agent and scheduling integration are coming soon.
+Routines uses a temporary in-memory preview adapter. Its changes last until logout, reload, or restart and make no server requests. No scheduled tasks or routines execute yet. Agent execution and Routines integration are coming soon.
 
 Settings provides light, dark, and system appearance, saved on this device.
