@@ -56,6 +56,31 @@ export async function taskHistory(
   ).rows;
 }
 
+/** The task's compacted model context, if it has been compacted. */
+export async function taskContext(
+  db: Queryable,
+  taskId: string,
+): Promise<{ summary: string; through_message_id: string } | undefined> {
+  return (
+    await db.query(
+      "SELECT summary,through_message_id FROM task_context WHERE task_id=$1",
+      [taskId],
+    )
+  ).rows[0];
+}
+
+export async function saveTaskContext(
+  db: Queryable,
+  taskId: string,
+  summary: string,
+  throughMessageId: string,
+) {
+  await db.query(
+    `INSERT INTO task_context(task_id,summary,through_message_id) VALUES ($1,$2,$3)
+     ON CONFLICT (task_id) DO UPDATE SET summary=$2,through_message_id=$3,updated_at=now()`,
+    [taskId, summary, throughMessageId],
+  );
+}
 export async function createTurn(
   db: Database,
   userId: string,

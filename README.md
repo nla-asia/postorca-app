@@ -150,6 +150,16 @@ When a turn trace is supplied, local request/result diagnostics are written unde
 
 The adapter is not yet connected to the API entry point or task dispatch. Follow-ups and Run now remain unavailable, and schedules do not execute. Provider tests mock the HTTP transport and require no live credentials or model calls.
 
+## Model context
+
+The context layer preserves the full task history for Inbox while building a shorter model view. Once the estimated history and instructions exceed the application's 100,000-token budget, it asks the provider for a summary and saves that summary with a message checkpoint in `task_context`. The most recent four assistant steps stay verbatim, including their tool calls and results. Explicit compaction can keep fewer steps for a context-length retry. Generated summaries carry no send timestamp; real founder messages retain their timestamps.
+
+Individual tool results are capped at 80,000 characters in the model view. Compaction clips long assistant/tool excerpts while retaining founder instructions and carries the earlier summary into its replacement. Empty summaries do not advance a checkpoint. Failed compaction leaves the history available, and cancellation still propagates. Stored messages are never replaced by the summary.
+
+Recent PNG/JPEG tool attachments are loaded only from files owned by the task's user. Their image payloads appear for one assistant step by default, then only their references and descriptions remain. `AGENT_IMAGE_STEPS` can extend this window. Original downloads are not automatically loaded as model images, and missing files are skipped. Short file references are scoped to each user's files; ambiguous references do not resolve.
+
+File helpers use `STORAGE_DIR` or default to `apps/api/storage/`, which is ignored by Git. The build copies prompt files as well as SQL migrations. File delivery routes, tools, and the agent loop are not connected yet, so these helpers do not enable model calls or scheduled execution from the desktop.
+
 ## Workspace
 
 - `apps/desktop/electron`: Electron main process and window.

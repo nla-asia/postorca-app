@@ -9,3 +9,4 @@ dist/
 Thumbs.db
 coverage/
 .data/
+/apps/api/storage/

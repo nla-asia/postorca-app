@@ -50,7 +50,10 @@ export class OpenAIProvider implements Provider {
       if (message.kind === "user")
         input.push({
           role: "user",
-          content: `[Sent ${new Date(message.created_at).toISOString().slice(0, 16).replace("T", " ")} UTC]\n${message.content.text}`,
+          // Generated context summaries have no founder send time.
+          content: message.created_at
+            ? `[Sent ${new Date(message.created_at).toISOString().slice(0, 16).replace("T", " ")} UTC]\n${message.content.text}`
+            : message.content.text,
         });
       if (message.kind === "assistant") {
         if (message.content.replay) input.push(...message.content.replay);

@@ -364,6 +364,46 @@ const input = () => ({
   tools: [],
   signal: new AbortController().signal,
 });
+
+test("generated summaries without a send time are passed through without inventing a timestamp", async (context) => {
+  let request: any;
+  context.mock.method(
+    globalThis,
+    "fetch",
+    async (_url: unknown, init: RequestInit) => {
+      request = JSON.parse(String(init.body));
+      return new Response(
+        JSON.stringify({
+          id: "r",
+          object: "response",
+          status: "completed",
+          output: [],
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    },
+  );
+  await new OpenAIProvider("test-only-key", "test-model").respond({
+    ...input(),
+    messages: [
+      {
+        id: "0",
+        turn_id: "",
+        kind: "user",
+        created_at: "",
+        content: {
+          text: "[Summary of the earlier conversation]\nSaved decisions.",
+        },
+      },
+    ],
+  });
+  assert.deepEqual(request.input, [
+    {
+      role: "user",
+      content: "[Summary of the earlier conversation]\nSaved decisions.",
+    },
+  ]);
+});
 const jsonResponse = (
   body: unknown,
   status = 200,
