@@ -457,3 +457,225 @@ test("a follow-up continues finished work with a new turn", async () => {
   });
   assert.equal(detail.turns[1].messages[0].content.text, "Make it shorter");
 });
+
+test("a scheduled post becomes a founder reminder or an agent run, and records how it ended", async () => {
+  const a = await account();
+  const b = await account();
+  const { task, turn } = await createWorkTask(
+    fixture.db,
+    a.id,
+    "Post draft",
+    "Write it",
+    "X",
+  );
+  const post = await createArtifact(fixture.db, task.id, turn.id, {
+    kind: "document",
+    title: "The awkward first post",
+    content: "I almost didn't post this.\n\n**Other openings:**\n- Another line",
+  });
+  const second = await createArtifact(fixture.db, task.id, turn.id, {
+    kind: "document",
+    title: "A thread",
+    content: "1/ First\n\n2/ Second",
+  });
+  const path = (id: string) => `/tasks/${task.id}/artifacts/${id}/publication`;
+  const soon = new Date(Date.now() + 3_600_000).toISOString();
+  const body = {
+    text: "I almost didn't post this.",
+    post_at: soon,
+    publisher: "founder",
+  };
+
+  assert.equal(
+    (await request(path(post.id), "POST", body, b.token)).status,
+    404,
+  );
+  assert.equal(
+    (
+      await request(
+        path(post.id),
+        "POST",
+        { ...body, post_at: new Date(Date.now() - 3_600_000).toISOString() },
+        a.token,
+      )
+    ).status,
+    400,
+  );
+  const scheduled = await request(path(post.id), "POST", body, a.token);
+  assert.equal(scheduled.status, 201);
+  assert.equal(scheduled.data.status, "scheduled");
+  assert.equal(scheduled.data.source_task_id, task.id);
+  // One open schedule per post.
+  assert.equal(
+    (await request(path(post.id), "POST", body, a.token)).status,
+    409,
+  );
+  // It shows on the post and on the calendar as a one-time publish routine.
+  const onPost = async () =>
+    (await request(`/tasks/${task.id}`, "GET", undefined, a.token)).data
+      .turns[0].artifacts.find((x: any) => x.id === post.id).publication;
+  assert.equal((await onPost()).status, "scheduled");
+  const calendar = (
+    await request("/routines?once=true", "GET", undefined, a.token)
+  ).data;
+  assert.equal(
+    calendar.find((r: any) => r.title === "Post: The awkward first post")
+      .work_type,
+    "publish",
+  );
+
+  // Orca posts the second one: a normal agent run.
+  const byAgent = await request(
+    path(second.id),
+    "POST",
+    { text: "1/ First\n\n2/ Second", post_at: soon, publisher: "agent" },
+    a.token,
+  );
+  assert.equal(byAgent.status, 201);
+  // Cancelled before it's due: gone from the post and the calendar.
+  const cancelled = await request(path(second.id), "POST", body, a.token);
+  assert.equal(cancelled.status, 409);
+  assert.equal(
+    (
+      await request(
+        `/publications/${byAgent.data.id}`,
+        "DELETE",
+        undefined,
+        b.token,
+      )
+    ).status,
+    404,
+  );
+  assert.equal(
+    (
+      await request(
+        `/publications/${byAgent.data.id}`,
+        "DELETE",
+        undefined,
+        a.token,
+      )
+    ).status,
+    204,
+  );
+  const again = await request(
+    path(second.id),
+    "POST",
+    { text: "1/ First\n\n2/ Second", post_at: soon, publisher: "agent" },
+    a.token,
+  );
+  assert.equal(again.status, 201);
+
+  await fixture.db.query(
+    "UPDATE routines SET next_run_at = now() - interval '1 second' WHERE title LIKE 'Post: %'",
+  );
+  const scheduler = new Scheduler(fixture.db, agent, 60_000);
+  await scheduler.tick();
+  await scheduler.stop();
+
+  // The founder's post: a publish task with no agent run, the post ready on it.
+  const due = (
+    await request(`/publications/${scheduled.data.id}`, "GET", undefined, a.token)
+  ).data;
+  assert.equal(due.status, "due");
+  const reminder = (
+    await request(`/tasks/${due.task_id}`, "GET", undefined, a.token)
+  ).data;
+  assert.equal(reminder.work_type, "publish");
+  assert.equal(reminder.publication.text, "I almost didn't post this.");
+  assert.equal(reminder.turns.length, 1);
+  assert.equal(reminder.turns[0].status, "completed");
+  assert.ok(
+    !reminder.turns[0].messages.some((m: any) => m.kind === "assistant"),
+  );
+  assert.equal((await onPost()).status, "due");
+
+  // Orca's post: dispatched to the agent with the publish-post skill.
+  const agentDue = (
+    await request(`/publications/${again.data.id}`, "GET", undefined, a.token)
+  ).data;
+  assert.equal(agentDue.status, "due");
+  const run = await waitFor(async () => {
+    const detail = (
+      await request(`/tasks/${agentDue.task_id}`, "GET", undefined, a.token)
+    ).data;
+    return detail.turns[0].status === "completed" ? detail : undefined;
+  });
+  assert.match(run.turns[0].messages[0].content.text, /publish-post skill/);
+  assert.ok(run.turns[0].messages.some((m: any) => m.kind === "assistant"));
+
+  // Recording how it ended: owner only, a real link, once.
+  assert.equal(
+    (
+      await request(
+        `/publications/${due.id}`,
+        "PATCH",
+        { status: "posted", url: "https://x.com/f/status/1" },
+        b.token,
+      )
+    ).status,
+    404,
+  );
+  assert.equal(
+    (
+      await request(
+        `/publications/${due.id}`,
+        "PATCH",
+        { status: "posted", url: "not a link" },
+        a.token,
+      )
+    ).status,
+    400,
+  );
+  const posted = await request(
+    `/publications/${due.id}`,
+    "PATCH",
+    { status: "posted", url: "https://x.com/f/status/1" },
+    a.token,
+  );
+  assert.equal(posted.data.status, "posted");
+  assert.ok(posted.data.posted_at);
+  assert.equal(
+    (
+      await request(
+        `/publications/${due.id}`,
+        "PATCH",
+        { status: "skipped" },
+        a.token,
+      )
+    ).status,
+    404,
+  );
+  assert.equal(
+    (await request(`/publications/${due.id}`, "DELETE", undefined, a.token))
+      .status,
+    409,
+  );
+  assert.equal((await onPost()).posted_url, "https://x.com/f/status/1");
+  // A posted post can be scheduled again, and to another of the founder's
+  // platforms than the task's own.
+  assert.equal(
+    (
+      await request(
+        path(post.id),
+        "POST",
+        { ...body, platform: "Myspace" },
+        a.token,
+      )
+    ).status,
+    400,
+  );
+  const elsewhere = await request(
+    path(post.id),
+    "POST",
+    { ...body, platform: "LinkedIn" },
+    a.token,
+  );
+  assert.equal(elsewhere.status, 201);
+  assert.equal(elsewhere.data.platform, "LinkedIn");
+  assert.equal((await onPost()).platform, "LinkedIn");
+  const later = (
+    await request("/routines?once=true", "GET", undefined, a.token)
+  ).data.filter((r: any) => r.title === "Post: The awkward first post");
+  assert.equal(later.at(-1).platform, "LinkedIn");
+  assert.match(later.at(-1).instructions, /post this on LinkedIn/);
+});

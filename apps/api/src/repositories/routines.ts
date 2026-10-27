@@ -1,6 +1,7 @@
 import { transaction, type Database, type Queryable } from "../db.js";
 import { HttpError } from "../handlers/errors.js";
 import { appendMessage } from "./tasks.js";
+import { startPublication } from "./publications.js";
 import {
   DEFAULT_ROUTINES,
   PLATFORM_BY_KIND,
@@ -8,12 +9,21 @@ import {
   type LinkKind,
 } from "../seeds/default-routines.js";
 
+export type WorkType =
+  | "general"
+  | "ideas"
+  | "content"
+  | "publish"
+  | "conversations"
+  | "strategy";
+
 export type RoutineRow = {
   id: string;
   user_id: string;
   platform: string | null;
   title: string;
   instructions: string;
+  work_type?: WorkType;
   run_at?: Date | string | null;
 };
 export type RoutineFields = {
@@ -24,11 +34,13 @@ export type RoutineFields = {
   days: number[];
   timezone: string;
   active: boolean;
+  work_type?: WorkType;
 };
 export type StartedRun = {
   runId: string;
   taskId: string;
   turnId: string;
+  founderReminder?: { title: string; body: string };
   userId: string;
 };
 export type OnceFields = {
@@ -39,11 +51,12 @@ export type OnceFields = {
   timezone: string;
   /** The idea artifact this schedule turns into content. */
   source_artifact_id?: string;
+  work_type?: WorkType;
 };
 
 // Client-facing routine shape, including the most recent run and its live status.
 const routineSelect = `
-  SELECT r.id, r.platform, r.title, r.instructions,
+  SELECT r.id, r.platform, r.title, r.instructions, r.work_type,
     to_char(r.time_of_day, 'HH24:MI') AS time, r.days, r.timezone, r.active,
     r.next_run_at, r.run_at, r.created_at,
     lr.created_at AS last_run_at, lr.trigger AS last_run_trigger,
@@ -86,8 +99,9 @@ export async function startRoutineRun(
   const {
     rows: [task],
   } = await client.query(
-    "INSERT INTO tasks(user_id, kind, title, platform) VALUES ($1, 'work', $2, $3) RETURNING id",
-    [routine.user_id, routine.title, routine.platform],
+    `INSERT INTO tasks(user_id, kind, title, platform, work_type)
+     VALUES ($1, 'work', $2, $3, (SELECT work_type FROM routines WHERE id = $4)) RETURNING id`,
+    [routine.user_id, routine.title, routine.platform, routine.id],
   );
   const {
     rows: [turn],
@@ -106,6 +120,24 @@ export async function startRoutineRun(
     run.id,
     task.id,
   ]);
+  const publisher = await startPublication(client, routine.id, task.id);
+  if (publisher === "founder") {
+    // Nothing for the agent to do: the task is the founder's reminder.
+    await client.query(
+      "UPDATE turns SET status = 'completed', finished_at = now() WHERE id = $1",
+      [turn.id],
+    );
+    return {
+      runId: run.id,
+      taskId: task.id,
+      turnId: turn.id,
+      userId: routine.user_id,
+      founderReminder: {
+        title: `Time to post${routine.platform ? ` on ${routine.platform}` : ""}`,
+        body: routine.title.replace(/^Post: /, ""),
+      },
+    };
+  }
   return {
     runId: run.id,
     taskId: task.id,
@@ -230,8 +262,8 @@ export async function createRoutine(
       const {
         rows: [created],
       } = await client.query(
-        `INSERT INTO routines(user_id, platform, title, instructions, timezone, run_at, next_run_at, source_artifact_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$6,$7) RETURNING id`,
+        `INSERT INTO routines(user_id, platform, title, instructions, timezone, run_at, next_run_at, source_artifact_id, work_type)
+         VALUES ($1,$2,$3,$4,$5,$6,$6,$7,coalesce($8,'general')) RETURNING id`,
         [
           userId,
           data.platform ?? null,
@@ -240,6 +272,7 @@ export async function createRoutine(
           data.timezone,
           data.run_at,
           data.source_artifact_id ?? null,
+          data.work_type ?? null,
         ],
       );
       return created.id;
@@ -247,9 +280,9 @@ export async function createRoutine(
     const {
       rows: [created],
     } = await client.query(
-      `INSERT INTO routines(user_id, platform, title, instructions, time_of_day, days, timezone, active, next_run_at)
+      `INSERT INTO routines(user_id, platform, title, instructions, time_of_day, days, timezone, active, next_run_at, work_type)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
-         ${NEXT_RUN})
+         ${NEXT_RUN}, coalesce($9, 'general'))
        RETURNING id`,
       [
         userId,
@@ -260,6 +293,7 @@ export async function createRoutine(
         data.days,
         data.timezone,
         data.active,
+        data.work_type ?? null,
       ],
     );
     return created.id;

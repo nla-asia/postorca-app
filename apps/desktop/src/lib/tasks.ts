@@ -1,4 +1,4 @@
-import type { WorkTask, TurnStatus } from "./schedules";
+import type { WorkTask, TurnStatus, PlatformName } from "./schedules";
 
 /** A multiple-choice question Orca asked with request_user_input. */
 export type ChatQuestion = {
@@ -19,11 +19,34 @@ export type TaskMessage = {
   };
   created_at: string;
 };
+
+/** A post scheduled for publishing, by the founder or by Orca. */
+export type Publication = {
+  id: string;
+  artifact_id: string;
+  task_id: string | null;
+  platform: PlatformName | null;
+  publisher: "founder" | "agent";
+  text: string;
+  post_at: string;
+  status: "scheduled" | "due" | "posted" | "skipped";
+  posted_url: string | null;
+  posted_at: string | null;
+  /** The content task the post was written in. */
+  source_task_id: string;
+};
+
 export type TaskArtifact = {
   id: string;
   turn_id: string;
   kind:
-    "document" | "idea" | "url" | "screenshot" | "image" | "audio" | "video";
+    | "document"
+    | "idea"
+    | "url"
+    | "screenshot"
+    | "image"
+    | "audio"
+    | "video";
   title: string;
   content: string;
   /** Ideas only: content work queued from this idea. */
@@ -33,9 +56,22 @@ export type TaskArtifact = {
     task_id: string | null;
     status: TurnStatus | null;
   } | null;
+  /** Documents: the latest schedule to publish this post, if any. */
+  publication: {
+    id: string;
+    status: Publication["status"];
+    publisher: Publication["publisher"];
+    post_at: string;
+    task_id: string | null;
+    posted_url: string | null;
+    platform: PlatformName | null;
+  } | null;
 };
+
 export type TaskDetail = Omit<WorkTask, "routine_title" | "summary"> & {
   current_turn_id: string | null;
+  /** Publish tasks: the post to publish. */
+  publication: Publication | null;
   turns: {
     id: string;
     status: TurnStatus;

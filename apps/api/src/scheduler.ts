@@ -2,6 +2,7 @@ import type { Database } from "./db.js";
 import type { AgentRouter } from "./agent/router.js";
 import { startDueRuns } from "./repositories/routines.js";
 import { staleQueuedTurns } from "./repositories/turns.js";
+import { desktopConnections } from "./desktop/connections.js";
 
 const BATCH = 20;
 
@@ -48,7 +49,12 @@ export class Scheduler {
     for (;;) {
       const started = await startDueRuns(this.db, BATCH);
       for (const run of started.runs)
-        this.agent.dispatch(run.taskId, run.turnId, run.userId);
+        if (run.founderReminder)
+          desktopConnections.notify(run.userId, {
+            ...run.founderReminder,
+            taskId: run.taskId,
+          });
+        else this.agent.dispatch(run.taskId, run.turnId, run.userId);
       if (started.claimed < BATCH) break;
     }
     // A crash between commit and dispatch leaves a queued turn behind. Dispatching

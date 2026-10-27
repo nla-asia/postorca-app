@@ -13,6 +13,8 @@ import {
 } from "../repositories/tasks.js";
 import { updateDocumentArtifact } from "../repositories/artifacts.js";
 import { queueIdeaContent } from "../repositories/routines.js";
+import { schedulePost } from "../repositories/publications.js";
+import { platforms } from "../schemas/platforms.js";
 import { HttpError } from "../handlers/errors.js";
 import type { AgentRouter } from "../agent/router.js";
 const id = z.uuid();
@@ -87,6 +89,28 @@ export function taskRoutes(db: Database, agent: AgentRouter | null) {
           id.parse(req.params.id),
           id.parse(req.params.artifactId),
           note || undefined,
+        ),
+      );
+  });
+  router.post("/:id/artifacts/:artifactId/publication", async (req, res) => {
+    const data = z
+      .object({
+        text: z.string().trim().min(1).max(25_000),
+        post_at: z.iso.datetime({ offset: true }),
+        publisher: z.enum(["founder", "agent"]),
+        platform: z.enum(platforms).optional(),
+      })
+      .strict()
+      .parse(req.body);
+    res
+      .status(201)
+      .json(
+        await schedulePost(
+          db,
+          res.locals.userId as string,
+          id.parse(req.params.id),
+          id.parse(req.params.artifactId),
+          data,
         ),
       );
   });

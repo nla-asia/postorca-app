@@ -110,12 +110,13 @@ p {
   padding: 0 16px 14px;
 }
 .window-drag {
-  height: 58px;
+  height: 80px;
   -webkit-app-region: drag;
   flex-shrink: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: flex-end;
+  padding-bottom: 10px;
 }
 .window-caption {
   font-size: 9px;
@@ -123,6 +124,25 @@ p {
   color: var(--muted);
   padding-right: 3px;
   opacity: 0.7;
+}
+.sidebar-logo-area {
+  justify-content: flex-start;
+}
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sidebar-logo-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.sidebar-logo-text {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
 }
 .nav-item {
   width: 100%;
@@ -593,4 +613,113 @@ p {
   .settings-content {
     padding: 22px 20px;
   }
+}
+
+/* Publishing: a post document's schedule, the schedule dialog, the publish task. */
+.post-schedule {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 12px;
+  font-size: 13px;
+  color: var(--secondary);
+}
+.post-schedule a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+}
+.schedule-form {
+  display: grid;
+  gap: 14px;
+}
+.schedule-form label,
+.schedule-form legend {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 550;
+}
+.schedule-form fieldset {
+  display: grid;
+  gap: 8px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.schedule-form .schedule-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 400;
+}
+.schedule-choice span {
+  display: grid;
+  gap: 2px;
+}
+.schedule-choice small,
+.form-error {
+  color: var(--secondary);
+  font-size: 12px;
+}
+.form-error {
+  color: var(--danger, #c0392b);
+  margin: 0;
+}
+.schedule-actions,
+.publish-actions,
+.publish-done {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.schedule-actions {
+  justify-content: flex-end;
+}
+.publish-panel {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+.publish-panel header {
+  display: grid;
+  gap: 4px;
+}
+.publish-panel h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.publish-part {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.publish-part p {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
+.publish-done input {
+  flex: 1 1 260px;
+}
+.publish-panel > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+}
+.publish-actions a.button {
+  text-decoration: none;
+  gap: 6px;
 }

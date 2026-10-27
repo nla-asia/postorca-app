@@ -9,6 +9,10 @@ import {
   taskArtifact,
   updateDocumentArtifact,
 } from "../repositories/artifacts.js";
+import {
+  taskPublication,
+  recordPostResult,
+} from "../repositories/publications.js";
 import { platforms } from "../schemas/platforms.js";
 import {
   describeFile,
@@ -218,6 +222,37 @@ export const artifactTools: Tool[] = [
       if (!artifact)
         throw new HttpError(404, "No artifact with that id in this task.");
       return { ...artifact, deleted: true };
+    },
+  },
+  {
+    definition: {
+      name: "record_post_result",
+      description:
+        "In a publish task: record how the scheduled post ended. status posted with url (the live post's exact link, opened and checked) once it is up, or skipped when it was not posted and won't be. The founder sees it on the task and the post's draft.",
+      parameters: object(
+        {
+          status: { type: "string", enum: ["posted", "skipped"] },
+          url: { type: "string", description: "posted: the live post's link." },
+        },
+        ["status"],
+      ),
+    },
+    run: async ({ db, userId, taskId }, args) => {
+      const result = z
+        .discriminatedUnion("status", [
+          z
+            .object({
+              status: z.literal("posted"),
+              url: z.url({ protocol: /^https?$/ }).max(2048),
+            })
+            .strict(),
+          z.object({ status: z.literal("skipped") }).strict(),
+        ])
+        .parse(args);
+      const publication = await taskPublication(db, taskId);
+      if (!publication)
+        throw new HttpError(400, "This task has no scheduled post to record.");
+      return recordPostResult(db, userId, publication.id, result);
     },
   },
 ];

@@ -7,6 +7,22 @@ export const PLATFORMS = [
 ] as const;
 export type PlatformName = (typeof PLATFORMS)[number];
 export type TurnStatus = "queued" | "running" | "completed" | "failed";
+export type WorkType =
+  | "general"
+  | "ideas"
+  | "content"
+  | "publish"
+  | "conversations"
+  | "strategy";
+
+export const WORK_TYPE_LABELS: Record<WorkType, string> = {
+  general: "Work",
+  ideas: "Content ideas",
+  content: "Post draft",
+  publish: "To publish",
+  conversations: "Conversations",
+  strategy: "Strategy",
+};
 export type Routine = {
   id: string;
   platform: PlatformName;
@@ -42,6 +58,7 @@ export type WorkTask = {
   kind: "work";
   title: string;
   platform: PlatformName | null;
+  work_type: WorkType;
   routine_title: string | null;
   summary: string | null;
   status: TurnStatus | null;

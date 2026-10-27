@@ -12,6 +12,7 @@ import { fileRoutes } from "./routes/files.js";
 import { routineRoutes } from "./routes/routines.js";
 import { taskRoutes } from "./routes/tasks.js";
 import { connectorRoutes, connectorCallback } from "./routes/connectors.js";
+import { publicationRoutes } from "./routes/publications.js";
 
 /** agent is null when no model provider is configured; turns then return 503. */
 export function createApp(
@@ -53,6 +54,11 @@ export function createApp(
   app.use("/api/connectors", authenticate(config.jwtSecret), connectorRoutes(db));
   app.use("/api/routines", authenticate(config.jwtSecret), routineRoutes(db, agent));
   app.use("/api/tasks", authenticate(config.jwtSecret), taskRoutes(db, agent));
+  app.use(
+    "/api/publications",
+    authenticate(config.jwtSecret),
+    publicationRoutes(db),
+  );
   app.use((_req, res) => {
     res.status(404).json({ error: "Endpoint not found." });
   });

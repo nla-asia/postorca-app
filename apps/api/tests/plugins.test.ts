@@ -255,6 +255,7 @@ test("migrate projects the code-defined plugin catalog and core skills into the 
     { name: "create-content", dir: "skills/create-content", plugin_code: null },
     { name: "demo-use", dir: "../tests/fixtures/plugins/demo-use", plugin_code: "demo" },
     { name: "find-content-ideas", dir: "skills/find-content-ideas", plugin_code: null },
+    { name: "publish-post", dir: "skills/publish-post", plugin_code: null },
     { name: "weekly-strategy-research", dir: "skills/weekly-strategy-research", plugin_code: null },
     { name: "work-content-ideas", dir: "skills/work-content-ideas", plugin_code: null },
   ]);

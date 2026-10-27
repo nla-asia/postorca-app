@@ -159,7 +159,7 @@ function createWindow() {
     height: 760,
     minWidth: 800,
     minHeight: 600,
-    title: "PostOrca",
+    titleBarStyle: "hiddenInset",
     backgroundColor: "#f8f9f7",
     webPreferences: {
       contextIsolation: true,

@@ -1,4 +1,5 @@
 import { Plug, Settings2 } from "lucide-react";
+import logoUrl from "../assets/logo.png";
 import { navigation, type Page } from "../navigation";
 import type { AuthUser } from "../lib/api";
 import { Button } from "./ui";
@@ -20,8 +21,13 @@ export default function Sidebar({
 }) {
   return (
     <aside className="sidebar" aria-label="Workspace sidebar">
-      <div className="window-drag">
-        <span className="window-caption">PERSONAL BRAND AGENT</span>
+      <div className="window-drag sidebar-logo-area">
+        <div className="sidebar-logo">
+          <span className="sidebar-logo-icon" aria-hidden="true">
+              <img src={logoUrl} alt="" width={44} height={44} />
+            </span>
+          <span className="sidebar-logo-text">PostOrca</span>
+        </div>
       </div>
       <nav aria-label="Main navigation">
         {navigation.map(({ name, icon: Icon }) => (

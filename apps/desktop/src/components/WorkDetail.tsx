@@ -17,6 +17,7 @@ import WorkActions from "./WorkActions";
 import { turnActions } from "../lib/toolActions";
 import Markdown, { type ArtifactLink } from "./Markdown";
 import { ArtifactRow, ArtifactViewer, type Viewable } from "./Artifacts";
+import { PostSchedule, PublishPanel } from "./Publishing";
 import { api } from "../lib/api";
 import type { TaskArtifact, TaskDetail } from "../lib/tasks";
 import "./WorkDetail.css";
@@ -199,7 +200,21 @@ export default function WorkDetail({
               <Button onClick={() => void load()}>Try again</Button>
             </div>
           )}
-          {task.turns.map((turn, index) => {
+          {task.publication && (
+            <PublishPanel
+              publication={task.publication}
+              readOnly={archived}
+              onChanged={() => {
+                void load();
+                onChanged();
+              }}
+              onOpenTask={onOpenTask}
+              notify={notify}
+            />
+          )}
+          {/* A post the founder publishes: the panel is the whole task. */}
+          {task.publication?.publisher !== "founder" &&
+            task.turns.map((turn, index) => {
             const request = turn.messages.find((m) => m.kind === "user");
             const actions = turnActions(turn.messages);
             const replies = turn.messages.filter(
@@ -336,11 +351,24 @@ export default function WorkDetail({
                                 <ChevronRight size={16} />
                               </button>
                             ) : (
-                              <ArtifactRow
-                                key={item.id}
-                                item={item}
-                                onOpen={() => openArtifact(item)}
-                              />
+                              <Fragment key={item.id}>
+                                <ArtifactRow
+                                  item={item}
+                                  onOpen={() => openArtifact(item)}
+                                />
+                                {item.kind === "document" &&
+                                  task.work_type === "content" && (
+                                    <PostSchedule
+                                      taskId={task.id}
+                                      platform={task.platform}
+                                      item={item}
+                                      readOnly={archived}
+                                      onChanged={() => void load()}
+                                      onOpenTask={onOpenTask}
+                                      notify={notify}
+                                    />
+                                  )}
+                              </Fragment>
                             ),
                           )}
                         </section>

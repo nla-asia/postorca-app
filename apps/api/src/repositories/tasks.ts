@@ -1,3 +1,4 @@
+import { taskPublication } from "./publications.js";
 import { transaction, type Database, type Queryable } from "../db.js";
 import { HttpError } from "../handlers/errors.js";
 import type { StoredMessage } from "../schemas/tasks.js";
@@ -221,7 +222,12 @@ export async function taskDetail(
         `SELECT a.*, CASE WHEN ro.id IS NOT NULL THEN jsonb_build_object(
           'routine_id', ro.id,
           'run_at', to_char(ro.run_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
-          'task_id', lr.task_id, 'status', lt.status) END AS content_work
+          'task_id', lr.task_id, 'status', lt.status) END AS content_work,
+        (SELECT jsonb_build_object('id', p.id, 'status', p.status, 'publisher', p.publisher,
+            'post_at', to_char(p.post_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+            'task_id', p.task_id, 'posted_url', p.posted_url, 'platform', p.platform)
+          FROM publications p WHERE p.artifact_id = a.id
+          ORDER BY p.created_at DESC LIMIT 1) AS publication
        FROM artifacts a
        LEFT JOIN routines ro ON ro.source_artifact_id = a.id
        LEFT JOIN LATERAL (SELECT task_id FROM routine_runs WHERE routine_id = ro.id
@@ -234,6 +240,8 @@ export async function taskDetail(
     ).rows;
   return {
     ...task,
+    // A publish task's post: its text, schedule and outcome.
+    publication: await taskPublication(db, taskId),
     turns: turns.map((turn) => ({
       ...turn,
       messages: messages
