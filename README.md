@@ -74,3 +74,7 @@ To let Orca use your browser, open `chrome://extensions`, turn on Developer mode
 | `npm run web:dev` | Start the website at `http://127.0.0.1:3000` |
 
 Deployment is covered in [DEPLOY.md](DEPLOY.md).
+
+## Contributing
+
+We work on `develop` and release to `main`. See [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) for branching, pull requests and releases.
