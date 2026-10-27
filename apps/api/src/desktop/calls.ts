@@ -20,7 +20,7 @@ type Pending = {
 /** Calls sent to a desktop and waiting for its result, by execution ID. */
 const pending = new Map<string, Pending>();
 
-/** Sends one validated tool call to the user's most recently connected desktop and waits for its result. */
+/** Sends one validated tool call to the user's desktop and waits for its result. */
 export async function callDesktop(
   context: {
     userId: string;
@@ -29,10 +29,15 @@ export async function callDesktop(
     signal?: AbortSignal;
   },
   name: string,
-  tool: { timeoutMs: number; offline?: () => unknown },
+  tool: { timeoutMs: number; offline?: () => unknown; deviceId?: string },
   args: unknown,
 ) {
-  const deviceId = desktopConnections.online(context.userId).at(-1);
+  context.signal?.throwIfAborted();
+  // Computer sessions pin a device; other tools use the most recently connected one.
+  const online = desktopConnections.online(context.userId);
+  const deviceId = tool.deviceId
+    ? online.find((id) => id === tool.deviceId)
+    : online.at(-1);
   if (!deviceId) {
     if (tool.offline) return tool.offline();
     throw new HttpError(503, "The desktop app is not connected.");

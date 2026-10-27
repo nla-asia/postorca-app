@@ -2,6 +2,7 @@ import type { Queryable } from "../db.js";
 import { writeCatalog } from "../repositories/plugins.js";
 import { coreSkills } from "../skills/index.js";
 import { browserPlugin } from "./browser/index.js";
+import { computerPlugin } from "./computer/index.js";
 import { gmailPlugin, drivePlugin } from "./google/index.js";
 import type { PluginDefinition, PluginToolDefinition } from "./types.js";
 
@@ -19,7 +20,7 @@ export { gmailPlugin, drivePlugin } from "./google/index.js";
  * here, and implement its desktop tools under the same names in the desktop app's
  * electron/plugins/<code>/.
  */
-export const pluginDefinitions: PluginDefinition[] = [browserPlugin];
+export const pluginDefinitions: PluginDefinition[] = [browserPlugin, computerPlugin];
 
 /** Every plugin tool by name; throws when two plugins define different tools or skills under one name. */
 function indexCatalog() {

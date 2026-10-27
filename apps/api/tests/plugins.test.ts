@@ -13,9 +13,11 @@ import { createApp } from "../src/app.js";
 import { createAgent, type AgentRouter } from "../src/agent/router.js";
 import { configFromEnv } from "../src/config.js";
 import { attachDesktopSocket } from "../src/desktop/connections.js";
+import { callDesktop } from "../src/desktop/calls.js";
 import { migrate } from "../src/migrate.js";
 import { issueToken } from "../src/middleware/auth.js";
 import { catalogDrift, pluginDefinitions } from "../src/plugins/catalog.js";
+import { executePluginTool, loadPluginState, releaseComputer } from "../src/plugins/service.js";
 import type { PluginDefinition } from "../src/plugins/types.js";
 import type { Provider } from "../src/providers/types.js";
 import { createWorkTask } from "../src/repositories/tasks.js";
@@ -186,7 +188,7 @@ async function ask(token: string) {
 /** A fake desktop install connected over the real WebSocket, answering calls with `answer`. */
 async function desktop(
   token: string,
-  answer: (call: any) => object,
+  answer: (call: any) => object | Promise<object>,
   deviceId: string = randomUUID(),
 ) {
   const deviceToken = (
@@ -206,7 +208,7 @@ async function desktop(
     const posted = await request(
       "/desktop/tool-result",
       "POST",
-      { executionId: message.data.executionId, ...answer(message.data) },
+      { executionId: message.data.executionId, ...(await answer(message.data)) },
       deviceToken,
     );
     assert.equal(posted.status, 204);
@@ -230,6 +232,7 @@ test("migrate projects the code-defined plugin catalog and core skills into the 
   );
   assert.deepEqual(plugins, [
     { code: "browser", enabled: true },
+    { code: "computer", enabled: true },
     { code: "demo", enabled: true },
   ]);
   const { rows: tools } = await fixture.db.query(
@@ -247,6 +250,7 @@ test("migrate projects the code-defined plugin catalog and core skills into the 
   );
   assert.deepEqual(skills, [
     { name: "browser-use", dir: "plugins/browser/skills/browser-use", plugin_code: "browser" },
+    { name: "computer-use", dir: "plugins/computer/skills/computer-use", plugin_code: "computer" },
     { name: "conversations-to-join", dir: "skills/conversations-to-join", plugin_code: null },
     { name: "create-content", dir: "skills/create-content", plugin_code: null },
     { name: "demo-use", dir: "../tests/fixtures/plugins/demo-use", plugin_code: "demo" },
@@ -289,7 +293,7 @@ test("plugin tools and skills are available only while the task's plugin is acti
     assert.equal(install.calls.length, 0);
     assert.match(
       prompts[0],
-      /Plugins: activate the plugin[\s\S]*Active plugin: none\nAvailable:\n- browser: Use the founder's own web browser[^\n]*\n- demo: Open demo pages on the founder's computer\.\nSkills: when a task names a skill[\s\S]*- find-content-ideas: /,
+      /Plugins: activate the plugin[\s\S]*Active plugin: none\nAvailable:\n- browser: Use the founder's own web browser[^\n]*\n- computer: [^\n]*\n- demo: Open demo pages on the founder's computer\.\nSkills: when a task names a skill[\s\S]*- find-content-ideas: /,
     );
 
     // Activation is task state; tools and skills are offered from the next response.
@@ -629,6 +633,161 @@ test("the browser plugin offers its desktop tools and skill, and validates calls
       assert.ok((await ask(founder.token)).error, invalid.arguments);
     }
     assert.equal(install.calls.length, 3);
+  } finally {
+    script = [];
+    install.ws.close();
+  }
+});
+
+test("computer tools require activation, validate input, and release control between turns", async () => {
+  const founder = await account();
+  const install = await desktop(founder.token, (sent) => ({
+    ok: true,
+    result: { tool: sent.tool, arguments: sent.arguments },
+  }));
+  try {
+    script = [call("computer_list_apps")];
+    assert.match((await ask(founder.token)).error, /plugin that is not active/);
+    assert.equal(install.calls.length, 0);
+
+    offered = [];
+    script = [call("activate_plugin", { code: "computer" })];
+    const activated = await ask(founder.token);
+    assert.equal(activated.active_plugin, "computer");
+    assert.deepEqual(activated.skills.map((skill: any) => skill.name), ["computer-use"]);
+    assert.deepEqual(offered[1].filter((name) => name.startsWith("computer_")), [
+      "computer_list_apps", "computer_open", "computer_observe", "computer_click",
+      "computer_type", "computer_press", "computer_scroll",
+    ]);
+    assert.ok(offered.every((names) => !names.includes("desktop_computer_session")));
+    assert.deepEqual(install.calls.map((sent) => sent.arguments), [
+      { active: true }, { active: false },
+    ]);
+
+    script = [call("read_skill", { name: "computer-use" })];
+    assert.match((await ask(founder.token)).content, /^# Computer Use/);
+    const before = install.calls.length;
+    script = [call("computer_observe", { window: "7", accessibility: true, wait_ms: 5 })];
+    assert.equal((await ask(founder.token)).tool, "computer_observe");
+    assert.deepEqual(install.calls.slice(before).map((sent) => [sent.tool, sent.timeoutMs]), [
+      ["desktop_computer_session", 20_000],
+      ["computer_observe", 60_000],
+      ["desktop_computer_session", 5_000],
+    ]);
+    assert.notEqual(install.calls[0].turnId, install.calls[before].turnId);
+
+    const count = install.calls.length;
+    for (const invalid of [
+      call("computer_open", { app_id: "" }),
+      call("computer_observe", { window: "7", wait_ms: 10001 }),
+      call("computer_click", { window: "7", observation: "invented", x: 1, y: 2 }),
+      call("computer_type", { window: "7", observation: "o1_abcdef", text: "" }),
+      call("computer_press", { window: "7", observation: "o1_abcdef", key: "F99" }),
+      call("computer_scroll", { window: "7", observation: "o1_abcdef", x: 1, y: 2, max_steps: 21 }),
+    ]) {
+      script = [invalid];
+      assert.match((await ask(founder.token)).error, /Invalid arguments/);
+    }
+    assert.equal(install.calls.length, count);
+  } finally {
+    script = [];
+    install.ws.close();
+  }
+});
+
+test("a computer turn stays on its desktop when another device connects", async () => {
+  const founder = await account();
+  let laptop: Awaited<ReturnType<typeof desktop>> | undefined;
+  const install = await desktop(founder.token, async (sent) => {
+    if (sent.tool === "computer_list_apps")
+      laptop = await desktop(founder.token, () => ({ ok: true, result: "wrong device" }));
+    return { ok: true, result: { tool: sent.tool } };
+  });
+  try {
+    script = [
+      call("activate_plugin", { code: "computer" }),
+      call("computer_list_apps"),
+      call("computer_observe", { window: "7" }),
+    ];
+    assert.equal((await ask(founder.token)).tool, "computer_observe");
+    assert.ok(laptop);
+    assert.equal(laptop.calls.length, 0);
+    assert.deepEqual(install.calls.map((sent) => sent.tool), [
+      "desktop_computer_session", "desktop_computer_session", "computer_list_apps",
+      "desktop_computer_session", "computer_observe", "desktop_computer_session",
+    ]);
+    assert.deepEqual(install.calls.at(-1).arguments, { active: false });
+    assert.equal(new Set(install.calls.map((sent) => sent.turnId)).size, 1);
+  } finally {
+    script = [];
+    install.ws.close();
+    laptop?.ws.close();
+  }
+});
+
+test("computer ownership is released on a plugin change, a question, and a model failure", async () => {
+  for (const ending of ["switch", "question", "failure"] as const) {
+    const founder = await account();
+    const install = await desktop(founder.token, (sent) => {
+      if (ending === "failure" && sent.arguments.active === true) modelDown = true;
+      return { ok: true, result: {} };
+    });
+    try {
+      script = [call("activate_plugin", { code: "computer" })];
+      if (ending === "switch") script.push(call("activate_plugin", { code: "browser" }));
+      if (ending === "question") script.push(call("request_user_input", {
+        questions: [{ question: "Which app?", options: ["Calculator", "Notepad"] }],
+      }));
+      await ask(founder.token);
+      assert.deepEqual(install.calls.map((sent) => [sent.tool, sent.arguments]), [
+        ["desktop_computer_session", { active: true }],
+        ["desktop_computer_session", { active: false }],
+      ], ending);
+    } finally {
+      modelDown = false;
+      script = [];
+      install.ws.close();
+    }
+  }
+});
+
+test("computer activation fails offline and aborted desktop calls send no input", async () => {
+  const founder = await account();
+  script = [call("activate_plugin", { code: "computer" })];
+  assert.equal((await ask(founder.token)).error, "The desktop app is not connected.");
+  const install = await desktop(founder.token, () => ({ ok: true, result: {} }));
+  try {
+    const controller = new AbortController();
+    controller.abort();
+    await assert.rejects(callDesktop(
+      { userId: founder.id, signal: controller.signal },
+      "computer_click", { timeoutMs: 1000 }, {},
+    ), /abort/i);
+    assert.equal(install.calls.length, 0);
+    await assert.rejects(callDesktop(
+      { userId: founder.id }, "computer_list_apps",
+      { timeoutMs: 1000, deviceId: randomUUID() }, {},
+    ), /not connected/);
+    assert.equal(install.calls.length, 0);
+
+    // Stopping a turn must still send its release, without the aborted signal.
+    const { task, turn } = await createWorkTask(fixture.db, founder.id, "Inspect an app", "Read its window");
+    const abort = new AbortController();
+    const context = {
+      db: fixture.db, userId: founder.id, taskId: task.id, turnId: turn.id,
+      signal: abort.signal,
+    };
+    try {
+      await executePluginTool(context, await loadPluginState(fixture.db, task.id),
+        "activate_plugin", { code: "computer" });
+      abort.abort();
+      await releaseComputer(context);
+      assert.deepEqual(install.calls.map((sent) => sent.arguments), [
+        { active: true }, { active: false },
+      ]);
+    } finally {
+      await releaseComputer(context);
+    }
   } finally {
     script = [];
     install.ws.close();

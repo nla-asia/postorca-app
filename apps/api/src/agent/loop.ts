@@ -3,7 +3,7 @@ import type { Database } from "../db.js";
 import { desktopConnections } from "../desktop/connections.js";
 import { HttpError } from "../handlers/errors.js";
 import { memoryIndex } from "../memory.js";
-import { loadPluginState } from "../plugins/service.js";
+import { loadPluginState, releaseComputer } from "../plugins/service.js";
 import { ContextTooLongError, type Provider } from "../providers/types.js";
 import { getProfile } from "../repositories/brand.js";
 import { appendMessage, taskKind } from "../repositories/tasks.js";
@@ -175,6 +175,7 @@ export class AgentLoop {
         }
         // A question ends the turn until the founder answers.
         if (!response.calls.length || awaitingInput) {
+          await releaseComputer({ db: this.db, userId, taskId, turnId });
           await completeTurn(this.db, turnId);
           notify(
             awaitingInput ? "Orca needs your input." : "Ready for your review.",
@@ -195,11 +196,13 @@ export class AgentLoop {
         message: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
+      await releaseComputer({ db: this.db, userId, taskId, turnId });
       await failTurn(this.db, turnId, message);
       // A restart is the server's doing, not news about the work.
       if (message !== SERVER_STOPPED) notify(message);
     } finally {
       clearTimeout(deadline);
+      await releaseComputer({ db: this.db, userId, taskId, turnId });
       this.active.delete(turnId);
     }
   }

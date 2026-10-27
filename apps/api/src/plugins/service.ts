@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Queryable } from "../db.js";
 import { callDesktop } from "../desktop/calls.js";
+import { desktopConnections } from "../desktop/connections.js";
 import { HttpError } from "../handlers/errors.js";
 import type { ToolDefinition } from "../providers/types.js";
 import {
@@ -135,6 +136,33 @@ export const isPluginRuntimeTool = (name: string) =>
   name === "read_skill" ||
   !!pluginToolImplementation(name);
 
+const computerTurns = new Map<string, string>();
+async function activateComputer(context: PluginContext) {
+  const deviceId =
+    computerTurns.get(context.turnId) ??
+    desktopConnections.online(context.userId).at(-1);
+  if (!deviceId) throw new HttpError(503, "The desktop app is not connected.");
+  computerTurns.set(context.turnId, deviceId);
+  await callDesktop(
+    context,
+    "desktop_computer_session",
+    { timeoutMs: 20_000, deviceId },
+    { active: true },
+  );
+}
+/** Best-effort release; the desktop also expires leases and clears them on disconnect. */
+export async function releaseComputer(context: PluginContext) {
+  const deviceId = computerTurns.get(context.turnId);
+  if (!deviceId) return;
+  computerTurns.delete(context.turnId);
+  await callDesktop(
+    { ...context, signal: undefined },
+    "desktop_computer_session",
+    { timeoutMs: 5_000, deviceId },
+    { active: false },
+  ).catch(() => {});
+}
+
 export async function executePluginTool(
   context: PluginContext,
   state: PluginState,
@@ -152,6 +180,8 @@ export async function executePluginTool(
         : state.available.find((candidate) => candidate.code === code);
     if (plugin === undefined)
       throw new HttpError(400, `Plugin ${code} is not available.`);
+    if (plugin?.code === "computer") await activateComputer(context);
+    else await releaseComputer(context);
     await setActivePlugin(context.db, context.taskId, plugin?.code ?? null);
     if (!plugin)
       return {
@@ -195,12 +225,23 @@ export async function executePluginTool(
     );
   const implementation = pluginToolImplementation(name)!;
   const args = implementation.args.parse(rawArgs);
+  if (state.active?.code === "computer") {
+    if ((await activePluginCode(context.db, context.taskId)) !== "computer")
+      throw new HttpError(400, "The computer plugin is no longer active.");
+    await activateComputer(context);
+  }
   if (implementation.runsOn === "server")
     return implementation.run(context, args);
   return callDesktop(
     context,
     name,
-    { timeoutMs: tool.timeout_ms ?? implementation.timeoutMs },
+    {
+      timeoutMs: tool.timeout_ms ?? implementation.timeoutMs,
+      deviceId:
+        state.active?.code === "computer"
+          ? computerTurns.get(context.turnId)
+          : undefined,
+    },
     args,
   );
 }
