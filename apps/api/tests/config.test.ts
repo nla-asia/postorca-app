@@ -12,6 +12,7 @@ test("configuration has local defaults and accepts trimmed origins", () => {
       jwtSecret: secret,
       port: 3001,
       origins: ["http://127.0.0.1:5173", "http://localhost:5173"],
+      openai: null,
     },
   );
   assert.deepEqual(
@@ -26,6 +27,7 @@ test("configuration has local defaults and accepts trimmed origins", () => {
       jwtSecret: secret,
       port: 4100,
       origins: ["https://app.example.com", "http://localhost:5173"],
+      openai: null,
     },
   );
 });
@@ -77,5 +79,22 @@ test("database configuration is required", () => {
   assert.throws(
     () => configFromEnv({ DATABASE_URL: "" }),
     /DATABASE_URL is required/,
+  );
+});
+
+test("the model provider is optional, but its key and model are set together", () => {
+  const base = { DATABASE_URL: databaseUrl, JWT_SECRET: secret };
+  assert.deepEqual(
+    configFromEnv({ ...base, OPENAI_API_KEY: "sk-test", OPENAI_MODEL: "gpt-test" })
+      .openai,
+    { apiKey: "sk-test", model: "gpt-test" },
+  );
+  assert.throws(
+    () => configFromEnv({ ...base, OPENAI_API_KEY: "sk-test" }),
+    /openai\.model: Set OPENAI_MODEL together with OPENAI_API_KEY/,
+  );
+  assert.throws(
+    () => configFromEnv({ ...base, OPENAI_MODEL: "gpt-test" }),
+    /openai\.apiKey: Set OPENAI_API_KEY together with OPENAI_MODEL/,
   );
 });

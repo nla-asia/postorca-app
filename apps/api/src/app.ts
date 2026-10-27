@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import type { AgentRouter } from "./agent/router.js";
 import type { Config } from "./config.js";
 import { handleErrors } from "./handlers/errors.js";
 import { ping, type Database } from "./db.js";
@@ -9,7 +10,12 @@ import { brandRoutes } from "./routes/brand.js";
 import { routineRoutes } from "./routes/routines.js";
 import { taskRoutes } from "./routes/tasks.js";
 
-export function createApp(db: Database, config: Config) {
+/** agent is null when no model provider is configured; turns then return 503. */
+export function createApp(
+  db: Database,
+  config: Config,
+  agent: AgentRouter | null = null,
+) {
   const app = express();
   app.disable("x-powered-by");
   app.use(
@@ -36,7 +42,7 @@ export function createApp(db: Database, config: Config) {
     brandRoutes(db),
   );
   app.use("/api/routines", authenticate(config.jwtSecret), routineRoutes(db));
-  app.use("/api/tasks", authenticate(config.jwtSecret), taskRoutes(db));
+  app.use("/api/tasks", authenticate(config.jwtSecret), taskRoutes(db, agent));
   app.use((_req, res) => {
     res.status(404).json({ error: "Endpoint not found." });
   });

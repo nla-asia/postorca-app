@@ -14,6 +14,13 @@ const schema = z.object({
     .min(32, "JWT_SECRET must contain at least 32 characters."),
   port: z.coerce.number().int().min(1).max(65535),
   origins: z.array(origin).min(1),
+  /** Orca runs turns only when a model is configured. */
+  openai: z
+    .object({
+      apiKey: z.string().min(1, "Set OPENAI_API_KEY together with OPENAI_MODEL."),
+      model: z.string().min(1, "Set OPENAI_MODEL together with OPENAI_API_KEY."),
+    })
+    .nullable(),
 });
 
 export function configFromEnv(env: NodeJS.ProcessEnv = process.env) {
@@ -26,6 +33,10 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env) {
     )
       .split(",")
       .map((value) => value.trim()),
+    openai:
+      env.OPENAI_API_KEY || env.OPENAI_MODEL
+        ? { apiKey: env.OPENAI_API_KEY ?? "", model: env.OPENAI_MODEL ?? "" }
+        : null,
   });
   if (!result.success) {
     const messages = result.error.issues.map(

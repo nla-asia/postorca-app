@@ -42,7 +42,7 @@ npm run db:migrate
 npm run api:dev
 ```
 
-It listens on `http://127.0.0.1:3001` after checking the database connection. `GET /api/health` queries PostgreSQL before returning `{ "ok": true }`. The desktop uses the account, Brand Profile, scheduling, and task endpoints. Agent execution is not connected yet; saved schedules do not run.
+It listens on `http://127.0.0.1:3001` after checking the database connection. `GET /api/health` queries PostgreSQL before returning `{ "ok": true }`. The desktop uses the account, Brand Profile, scheduling, and task endpoints. With a model configured, task follow-ups run Orca (see [Agent loop](#agent-loop)); saved schedules do not run yet.
 
 `DATABASE_URL` and `JWT_SECRET` are required. `PORT` and `CLIENT_ORIGINS` are optional. Origins are comma-separated HTTP(S) origins without paths or trailing slashes. Local renderer origins are allowed by default; the `null` origin used by packaged Electron windows is also allowed. The API binds to loopback only.
 
@@ -122,7 +122,7 @@ All task endpoints require `Authorization: Bearer <token>` and check account own
 | GET | `/api/tasks/:id` | Returns task status, ordered turns/messages, and artifacts grouped by turn. |
 | PATCH | `/api/tasks/:id` | Accepts `action: "approve"` or `"archive"`; returns the task. |
 | PATCH | `/api/tasks/:id/artifacts/:artifactId` | Accepts `content` and edits a document belonging to this task. Other artifact kinds are read-only. |
-| POST | `/api/tasks/:id/turns` | Validates `message` and ownership, then returns 503 while the model provider is unavailable; queues no turn. |
+| POST | `/api/tasks/:id/turns` | Validates `message` and ownership, saves a queued turn, and returns it with 202 while Orca runs it in the background. Returns 503 without creating a turn when no model is configured, and 409 while the task is busy or archived. |
 
 Each account has one chat and one onboarding conversation. Repeated creation reuses the existing conversation; work tasks remain independent. Onboarding opens once with a fixed Orca greeting and first question, completes that opening turn without a model call, and marks the profile `in_progress`. Existing history and completed profiles do not receive another opening.
 
@@ -148,7 +148,7 @@ The adapter retains a three-minute request timeout and three SDK retries for tra
 
 When a turn trace is supplied, local request/result diagnostics are written under `apps/api/.data/agent-traces/<taskId>/<turnId>/`. Traces include the prompt, conversation input, tools, usage, and short failure metadata; SDK credentials and HTTP headers are omitted. Diagnostic write failures do not interrupt execution. This directory is ignored by Git.
 
-The adapter is not yet connected to the API entry point or task dispatch. Follow-ups and Run now remain unavailable, and schedules do not execute. Provider tests mock the HTTP transport and require no live credentials or model calls.
+Set `OPENAI_API_KEY` and `OPENAI_MODEL` in `apps/api/.env` to enable it; both are required together, and without them the API starts with Orca off. Provider and loop tests use mocked transports or scripted providers and require no live credentials or model calls.
 
 ## Model context
 
@@ -158,7 +158,7 @@ Individual tool results are capped at 80,000 characters in the model view. Compa
 
 Recent PNG/JPEG tool attachments are loaded only from files owned by the task's user. Their image payloads appear for one assistant step by default, then only their references and descriptions remain. `AGENT_IMAGE_STEPS` can extend this window. Original downloads are not automatically loaded as model images, and missing files are skipped. Short file references are scoped to each user's files; ambiguous references do not resolve.
 
-File helpers use `STORAGE_DIR` or default to `apps/api/storage/`, which is ignored by Git. The build copies prompt files as well as SQL migrations. File delivery routes and the agent loop are not connected yet, so these helpers do not enable model calls or scheduled execution from the desktop.
+File helpers use `STORAGE_DIR` or default to `apps/api/storage/`, which is ignored by Git. The build copies prompt files as well as SQL migrations. File delivery routes are not connected yet.
 
 ## Orca's tools
 
@@ -171,7 +171,17 @@ File helpers use `STORAGE_DIR` or default to `apps/api/storage/`, which is ignor
 | Memory | `search_memory`, `read_memory`, `save_memory`, `delete_memory` | Markdown files per founder under `STORAGE_DIR/users/<id>/memory/`, each starting with a description line. Search works like `grep -i`. Paths are lowercase, at most three levels deep, and files are written atomically. |
 | Chat only | `start_task`, `get_task`, `follow_up_task`, `request_user_input` | Agent chat and onboarding can start background work, read it, send it a follow-up, or ask one multiple-choice question. Background work is never offered these tools. Starting or following up work requires a running worker and otherwise returns 503. |
 
-Image, audio, and video artifacts arrive with file tools. These tools are not yet called by a model; the agent loop that offers them is next.
+Image, audio, and video artifacts arrive with file tools.
+
+## Agent loop
+
+`apps/api/src/agent/loop.ts` runs one turn: it claims the queued turn (so repeated dispatches run it once), builds Orca's instructions, asks the model for a response, saves it, runs each tool call, and saves each result, repeating until Orca answers without calling tools. A `request_user_input` question also ends the turn until the founder replies. Instructions combine `agent/prompts/system.md` with the brand profile (re-read each step), the founder's memory index (read once per turn), and the chat, onboarding, or work section for the task.
+
+Chat and onboarding turns allow 30 responses in 6 minutes; Inbox work allows 100 in 45 minutes. The last response is offered no tools and told to report what is unfinished, so long turns end with an answer. Tool refusals, invalid arguments, and malformed JSON go back to Orca as messages it can correct; other tool failures stay generic. If the model reports a context-length error, the loop compacts down to the current step and retries once.
+
+A failed turn saves a short message for the founder (time limit, action limit, restart, or a generic failure) and writes the cause to the local turn trace. The router runs turns in the background after their turn is committed. On shutdown it stops running turns, which fail asking for a follow-up; on startup, turns left queued or running by the previous process are marked failed.
+
+Agent chat and onboarding are not yet connected in the desktop, routine runs and the scheduler are not connected, and desktop notifications for finished work are not implemented.
 
 ## Workspace
 

@@ -8,12 +8,14 @@ import {
   reviewTask,
   taskDetail,
   startOnboarding,
+  createTurn,
   TASK_KINDS,
 } from "../repositories/tasks.js";
 import { updateDocumentArtifact } from "../repositories/artifacts.js";
 import { HttpError } from "../handlers/errors.js";
+import type { AgentRouter } from "../agent/router.js";
 const id = z.uuid();
-export function taskRoutes(db: Database) {
+export function taskRoutes(db: Database, agent: AgentRouter | null) {
   const router = Router();
   router.post("/", async (req, res) => {
     const data = z
@@ -37,9 +39,15 @@ export function taskRoutes(db: Database) {
   });
   router.post("/:id/turns", async (req, res) => {
     const taskId = id.parse(req.params.id);
-    z.object({ message: z.string().trim().min(1).max(30000) }).parse(req.body);
+    const { message } = z
+      .object({ message: z.string().trim().min(1).max(30000) })
+      .parse(req.body);
     await ownedTask(db, res.locals.userId, taskId);
-    throw new HttpError(503, "Orca’s model provider is not configured.");
+    if (!agent)
+      throw new HttpError(503, "Orca’s model provider is not configured.");
+    const turn = await createTurn(db, res.locals.userId, taskId, message);
+    agent.dispatch(taskId, turn.id, res.locals.userId);
+    res.status(202).json(turn);
   });
   router.patch("/:id", async (req, res) => {
     const taskId = id.parse(req.params.id);
