@@ -27,13 +27,13 @@ extraResources:
   - from: build/remotion
     to: remotion-bundle
 mac:
+  identity: null
   extraResources:
     - from: build/computer-use/computer-native
       to: computer-native
   binaries:
     - Contents/Resources/computer-native
   category: public.app-category.productivity
-  # Off until there's an Apple team ID; Gatekeeper rejects downloaded copies meanwhile.
   notarize: false
   target:
     - target: dmg
