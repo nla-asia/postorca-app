@@ -156,6 +156,13 @@ export function useAgentChat(
     };
     for (const message of turn.messages) {
       const position = index++;
+      const attachments = messageMedia(message).filter(
+        (attachment) => !delivered.has(attachment.file),
+      );
+      if (attachments.length) {
+        showActions();
+        messages.push({ id: message.id, role: "media", attachments });
+      }
       if (message.kind === "user") {
         if (message.content.text)
           messages.push({
@@ -164,13 +171,6 @@ export function useAgentChat(
             text: message.content.text,
           });
         continue;
-      }
-      const attachments = messageMedia(message).filter(
-        (attachment) => !delivered.has(attachment.file),
-      );
-      if (attachments.length) {
-        showActions();
-        messages.push({ id: message.id, role: "media", attachments });
       }
       if (isQuestion(message)) {
         showActions();

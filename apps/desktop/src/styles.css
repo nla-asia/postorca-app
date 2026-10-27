@@ -23,6 +23,7 @@
   --accent: #456846;
   --accent-soft: #eaf0e6;
   --modal-backdrop: #10181055;
+  --shadow: 0 12px 50px #27332012;
   color-scheme: light;
   color: var(--text);
   background: var(--bg);
@@ -43,6 +44,7 @@
   --accent: #b6d39f;
   --accent-soft: #2b3928;
   --modal-backdrop: #0009;
+  --shadow: 0 12px 50px #0004;
   color-scheme: dark;
 }
 * {
@@ -68,6 +70,10 @@ button {
   color: inherit;
   border: 0;
   background: none;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
 }
 button,
 input,
@@ -75,9 +81,11 @@ textarea,
 select {
   -webkit-app-region: no-drag;
 }
-button:focus-visible {
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 3px;
+  outline-offset: 4px;
 }
 button:disabled {
   opacity: 0.45;
@@ -87,8 +95,47 @@ button svg {
   flex-shrink: 0;
 }
 h1,
+h2,
+h3,
 p {
   margin: 0;
+}
+input,
+select,
+textarea {
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--strong-line);
+  border-radius: 8px;
+  outline: none;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+select {
+  padding: 9px 30px 9px 12px;
+  font-size: 14px;
+}
+input {
+  padding: 11px 12px;
+}
+textarea {
+  padding: 14px;
+  resize: vertical;
+  line-height: 1.7;
+}
+h1 {
+  font-family:
+    Manrope,
+    -apple-system,
+    sans-serif;
+  font-weight: 600;
+  font-size: 30px;
+  letter-spacing: -1.15px;
+  line-height: 1.4;
 }
 ::selection {
   background: var(--accent-soft);
@@ -284,23 +331,37 @@ p {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid var(--strong-line);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 9px 13px;
+  border: 1px solid transparent;
   border-radius: 7px;
-  padding: 9px 15px;
-  font-size: 13px;
-  background: var(--surface);
+  white-space: nowrap;
+  min-height: 34px;
 }
-.button:hover {
-  background: var(--line);
+.button.secondary {
+  background: var(--surface);
+  border-color: var(--strong-line);
+  color: var(--secondary);
+  box-shadow: 0 1px 2px #00000004;
+}
+.button.secondary:hover {
+  background: var(--surface-hover);
+  border-color: var(--muted);
 }
 .button.primary {
-  color: var(--bg);
   background: var(--accent);
+  color: var(--bg);
   border-color: var(--accent);
 }
+.button.primary:hover {
+  background: var(--accent-hover);
+}
 .button.ghost {
-  background: transparent;
-  border-color: transparent;
+  color: var(--secondary);
+}
+.button.ghost:hover {
+  background: var(--surface-hover);
 }
 .icon-button {
   width: 28px;
@@ -321,48 +382,62 @@ p {
   background: var(--modal-backdrop);
   backdrop-filter: blur(4px);
   z-index: 10;
+  animation: fade-in 0.15s;
 }
 .modal {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(520px, calc(100vw - 48px));
-  max-height: calc(100dvh - 48px);
-  overflow: auto;
-  background: var(--surface);
+  background: var(--bg);
   color: var(--text);
   border: 1px solid var(--strong-line);
-  border-radius: 14px;
-  padding: 28px;
-  box-shadow: 0 12px 50px #0002;
+  border-radius: 15px;
+  box-shadow: var(--shadow);
+  width: min(560px, calc(100vw - 50px));
+  padding: 30px;
+  max-height: calc(100dvh - 70px);
+  overflow: auto;
   z-index: 11;
+  animation: fade-in 0.15s;
 }
 .modal.wide {
   width: min(840px, calc(100vw - 70px));
   padding: 30px 0 0;
 }
 .modal-title {
-  margin: 0 35px 8px 0;
-  font-size: 20px;
+  font-family: Manrope, sans-serif;
+  font-size: 21px;
   font-weight: 600;
+  letter-spacing: -0.5px;
+  padding-right: 25px;
 }
 .modal.no-description > .modal-title {
+  margin-bottom: 26px;
+}
+.modal-description {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 8px;
+  line-height: 1.7;
   margin-bottom: 26px;
 }
 .wide > .modal-title,
 .wide > .modal-description {
   margin-left: 28px;
 }
-.modal-description {
-  color: var(--secondary);
-  font-size: 13px;
-  line-height: 1.6;
-}
 .modal-close {
   position: absolute;
-  right: 18px;
-  top: 20px;
+  top: 22px;
+  right: 22px;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 .modal-footer {
   display: flex;
