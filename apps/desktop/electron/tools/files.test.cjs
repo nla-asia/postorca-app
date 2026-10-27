@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
-const { list_dir, read_file } = require("./files.cjs");
+const { list_dir, read_file, upload_file } = require("./files.cjs");
 
 // A 1×1 PNG.
 const png = Buffer.from(
@@ -37,7 +37,7 @@ test("list_dir and read_file work only inside project folders; images come back 
 
   await assert.rejects(
     list_dir.run({ path: project }),
-    /No project folder is set/,
+    /No working folder or project folder is set/,
   );
   // No path, or a relative one, means the first project folder.
   assert.equal((await list_dir.run({ roots })).path, project);
@@ -95,14 +95,14 @@ test("list_dir and read_file work only inside project folders; images come back 
   // Nothing outside, including through a link that points out.
   await assert.rejects(
     read_file.run({ path: path.join(outside, "secret.txt"), roots }, context),
-    /Not in a project folder/,
+    /Not in the working folder or a project folder/,
   );
   await assert.rejects(
     read_file.run(
       { path: path.join(project, "escape/secret.txt"), roots },
       context,
     ),
-    /Not in a project folder/,
+    /Not in the working folder or a project folder/,
   );
   await assert.rejects(
     read_file.run({ path: path.join(project, "nope.txt"), roots }, context),
@@ -187,4 +187,72 @@ test("audio reading converts only the selected excerpt inside the project bounda
     { cwd: binaryDirectory },
   );
   assert.ok(Math.abs(Number(stdout.trim()) - 2) < 0.1);
+});
+
+test("development shared folders are readable, and upload_file sends originals unchanged", async (t) => {
+  const shared = await fs.realpath(
+    await fs.mkdtemp(path.join(os.tmpdir(), "postorca-shared-")),
+  );
+  const project = await fs.realpath(
+    await fs.mkdtemp(path.join(os.tmpdir(), "postorca-project-")),
+  );
+  const previous = process.env.POSTORCA_SHARED_FOLDERS;
+  t.after(async () => {
+    if (previous === undefined) delete process.env.POSTORCA_SHARED_FOLDERS;
+    else process.env.POSTORCA_SHARED_FOLDERS = previous;
+    await fs.rm(shared, { recursive: true, force: true });
+    await fs.rm(project, { recursive: true, force: true });
+  });
+  // Development folders come after the working folder and project folders.
+  process.env.POSTORCA_SHARED_FOLDERS = shared;
+  const original = Buffer.from([0, 1, 2, 3, 255, 254]);
+  await fs.writeFile(path.join(shared, "clip.mov"), original);
+  await fs.writeFile(path.join(project, "plan.md"), "# Plan\n");
+  await fs.writeFile(path.join(shared, "empty.dat"), "");
+  await fs.mkdir(path.join(shared, "demos"));
+
+  // Without a project, relative paths start in the shared folder; both are readable.
+  assert.equal((await list_dir.run({})).path, shared);
+  assert.equal((await list_dir.run({ roots: [project] })).path, project);
+  assert.equal(
+    (await read_file.run({ path: path.join(project, "plan.md"), roots: [project] }, {})).text,
+    "# Plan\n",
+  );
+
+  const sent = [];
+  const context = {
+    uploadFile: async (file, metadata) => {
+      sent.push({ data: await fs.readFile(file), metadata });
+      return {
+        file: "downloads/0123456789abcdef.mov",
+        filename: metadata.filename,
+        mime_type: "video/quicktime",
+        bytes: original.length,
+      };
+    },
+  };
+  const uploaded = await upload_file.run({ path: "clip.mov" }, context);
+  assert.deepEqual(sent[0].data, original);
+  assert.deepEqual(sent[0].metadata, { filename: "clip.mov" });
+  assert.equal(uploaded.ref, "01234567");
+  assert.equal(uploaded.local_path, path.join(shared, "clip.mov"));
+  assert.deepEqual(uploaded.attachments, [
+    {
+      kind: "download",
+      file: "downloads/0123456789abcdef.mov",
+      mime_type: "video/quicktime",
+      filename: "clip.mov",
+      title: "clip.mov",
+      bytes: original.length,
+    },
+  ]);
+  await assert.rejects(upload_file.run({ path: "demos" }, context), /not a folder/);
+  await assert.rejects(upload_file.run({ path: "empty.dat" }, context), /empty file/);
+  await fs.truncate(path.join(shared, "empty.dat"), 200 * 1024 * 1024 + 1);
+  await assert.rejects(upload_file.run({ path: "empty.dat" }, context), /200 MB/);
+  await assert.rejects(
+    upload_file.run({ path: "/etc/hosts" }, context),
+    /Not in the working folder or a project folder/,
+  );
+  assert.equal(sent.length, 1);
 });

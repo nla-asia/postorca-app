@@ -1,9 +1,12 @@
-// File access on the founder's computer, inside their project folders (from the
-// brand profile; the server sends them with each call as `roots`). A relative or
-// missing path means the first project folder. Secrets (.env files, keys,
-// credentials) are never read. list_dir lists a folder; read_file returns a text
-// file's text, and saves a PNG or JPEG image to the server like a screenshot,
-// returning its file key.
+// File access on the founder's computer, inside their working folder (chosen in the
+// app; see working-folder.cjs), their project folders (from the brand profile; the
+// server sends them with each call as `roots`) and, for development and tests, any
+// folders in POSTORCA_SHARED_FOLDERS (separated by the OS path delimiter). A relative
+// or missing path means the working folder, or the first project folder without one.
+// Secrets (.env files, keys, credentials) are never read. list_dir lists a folder;
+// read_file returns a text file's text, and saves a PNG or JPEG image (or audio, as
+// MP3) to the server like a screenshot, returning its file key; upload_file saves a
+// file to the server unchanged.
 const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
@@ -160,18 +163,30 @@ async function readAudio(file, startSeconds, durationSeconds, context) {
   }
 }
 
+function workingFolder() {
+  try {
+    return require("../working-folder.cjs").get();
+  } catch {
+    return null; // Plain Node (tests): no Electron app.
+  }
+}
+
 function sharedFolders(roots = []) {
-  return (Array.isArray(roots) ? roots : [])
+  return [
+    workingFolder(),
+    ...(Array.isArray(roots) ? roots : []),
+    ...(process.env.POSTORCA_SHARED_FOLDERS ?? "").split(path.delimiter),
+  ]
     .filter((root) => typeof root === "string" && root)
     .map((folder) => path.resolve(folder.replace(/^~(?=$|\/)/, os.homedir())));
 }
 
-// The real path, which must be inside a project folder (after resolving links).
+// The real path, which must be inside a shared folder (after resolving links).
 async function allowed(requested, roots) {
   const folders = sharedFolders(roots);
   if (!folders.length)
     throw new Error(
-      "No project folder is set. Ask the founder to add a project folder in their Brand Profile.",
+      "No working folder or project folder is set. Ask the founder to choose a working folder in Settings or add a project in their Brand Profile.",
     );
   const real = await fs
     .realpath(
@@ -183,7 +198,7 @@ async function allowed(requested, roots) {
     .catch(() => {
       throw new Error(`Not found: ${requested}`);
     });
-  // Project folders may themselves be links; compare against their real paths.
+  // Shared folders may themselves be links; compare against their real paths.
   const realFolders = await Promise.all(
     folders.map((folder) => fs.realpath(folder).catch(() => folder)),
   );
@@ -193,7 +208,7 @@ async function allowed(requested, roots) {
     )
   )
     throw new Error(
-      `Not in a project folder (${folders.join(", ")}). Ask the founder to add its folder as a project in their Brand Profile.`,
+      `Not in the working folder or a project folder (${folders.join(", ")}). Ask the founder to move the file there or add its folder as a project.`,
     );
   if (isSecret(real))
     throw new Error("This file may hold secrets, so it can't be opened.");
@@ -260,9 +275,39 @@ const readFile = {
   },
 };
 
+const uploadFile = {
+  run: async ({ path: requested, roots }, context) => {
+    context.signal?.throwIfAborted();
+    const file = await allowed(requested, roots);
+    const info = await fs.stat(file);
+    if (!info.isFile()) throw new Error("Choose a file, not a folder.");
+    if (!info.size) throw new Error("Cannot upload an empty file.");
+    if (info.size > 200 * 1024 * 1024)
+      throw new Error("Upload exceeds the 200 MB limit.");
+    const filename = path.basename(file).slice(0, 120);
+    const result = await context.uploadFile(file, { filename }, context.signal);
+    return {
+      ...result,
+      ref: path.basename(result.file).slice(0, 8),
+      local_path: file,
+      attachments: [
+        {
+          kind: "download",
+          file: result.file,
+          mime_type: result.mime_type,
+          filename: result.filename,
+          title: filename,
+          bytes: result.bytes,
+        },
+      ],
+    };
+  },
+};
+
 module.exports = {
   list_dir: listDir,
   read_file: readFile,
+  upload_file: uploadFile,
   allowed,
   isSecret,
   mediaBinary,

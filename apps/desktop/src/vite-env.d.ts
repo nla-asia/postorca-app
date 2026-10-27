@@ -13,6 +13,11 @@ interface Window {
     projectFolder: {
       choose(): Promise<string | null>;
     };
+    /** The folder Orca's file tools use; choose() opens the picker and saves it. */
+    workingFolder: {
+      get(): Promise<string | null>;
+      choose(): Promise<string | null>;
+    };
     /** Subscribes to notifications the OS wouldn't show; returns unsubscribe. */
     onNotification(
       callback: (notification: {

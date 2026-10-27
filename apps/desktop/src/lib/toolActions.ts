@@ -90,6 +90,10 @@ function describe(
       return `Looked in ${folder(args.path) || "the working folder"}`;
     case "read_file":
       return `Read ${folder(args.path)}`;
+    case "upload_file":
+      return `Saved ${folder(args.path)} to your files`;
+    case "download_file":
+      return `Downloaded ${folder(args.filename ?? args.url) || "a file"}`;
     case "git_activity":
       return args.commit
         ? `Read the changes in commit ${String(args.commit).slice(0, 7)}`

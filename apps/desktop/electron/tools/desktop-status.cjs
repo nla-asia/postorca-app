@@ -11,6 +11,8 @@ exports.run = async (_args, context) => ({
   arch: process.arch,
   // The app keeps running tools with its window closed (macOS keeps it in the Dock).
   window_open: BrowserWindow.getAllWindows().length > 0,
+  // Where list_dir and read_file work besides project folders; null until chosen.
+  working_folder: require("../working-folder.cjs").get(),
   plugins: await plugins.status(),
   tools: context.tools,
 });

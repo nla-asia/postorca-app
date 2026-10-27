@@ -399,3 +399,77 @@ test("capture tools check their target and reach the desktop without project fol
     ws.close();
   }
 });
+
+test("file transfer tools validate their arguments and never send project folders", async () => {
+  const founder = await onboarded([
+    { name: "Founder on X", url: "https://x.com/transfer-founder", kind: "x" },
+  ]);
+  await request(
+    "/brand-profile/projects",
+    "POST",
+    { name: "App", path: "/Users/founder/app" },
+    founder.token,
+  );
+  const task = await createTask(fixture.db, founder.id, "work", "Collect files");
+  const turn = await createTurn(fixture.db, founder.id, task.id, "Collect the files");
+  const context = { userId: founder.id, taskId: task.id, turnId: turn.id };
+  const run = (name: string, args: unknown) =>
+    executeTool(fixture.db, context, name, args) as Promise<any>;
+  for (const kind of ["chat", "onboarding", "work"] as const)
+    for (const name of ["upload_file", "download_file"])
+      assert.ok(toolsForTask(kind).some((tool) => tool.name === name), name);
+
+  const deviceToken = (
+    await request("/desktop/device-token", "POST", { deviceId: randomUUID() }, founder.token)
+  ).data.token;
+  const ws = new WebSocket(
+    `${base.replace(/^http/, "ws")}/desktop/socket?token=${encodeURIComponent(deviceToken)}`,
+  );
+  const calls: any[] = [];
+  ws.on("message", async (raw) => {
+    const { data: call } = JSON.parse(raw.toString());
+    calls.push(call);
+    await request(
+      "/desktop/tool-result",
+      "POST",
+      { executionId: call.executionId, ok: true, result: { tool: call.tool } },
+      deviceToken,
+    );
+  });
+  await once(ws, "open");
+  try {
+    await run("upload_file", { path: "demos/idea/2-payoff.mov" });
+    await run("download_file", {
+      url: "https://example.com/track.mp3",
+      filename: "track.mp3",
+      source_url: "https://example.com/music",
+    });
+    assert.deepEqual(
+      calls.map((call) => [call.tool, call.arguments, call.timeoutMs]),
+      [
+        ["upload_file", { path: "demos/idea/2-payoff.mov" }, 240_000],
+        [
+          "download_file",
+          {
+            url: "https://example.com/track.mp3",
+            filename: "track.mp3",
+            source_url: "https://example.com/music",
+          },
+          240_000,
+        ],
+      ],
+    );
+    for (const args of [
+      { url: "file:///etc/passwd" },
+      { url: "javascript:alert(1)" },
+      { url: "https://example.com/a.mp3", source_url: "ftp://example.com" },
+      { url: "https://example.com/a.mp3", directory: "/tmp" },
+    ])
+      await assert.rejects(run("download_file", args));
+    await assert.rejects(run("upload_file", {}));
+    await assert.rejects(run("upload_file", { path: "a.mov", roots: ["/etc"] }));
+    assert.equal(calls.length, 2);
+  } finally {
+    ws.close();
+  }
+});

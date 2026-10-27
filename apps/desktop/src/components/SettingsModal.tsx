@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CircleHelp,
   LogOut,
@@ -36,6 +36,10 @@ export default function SettingsModal({
   onOpenBrandProfile?: () => void;
 }) {
   const [tab, setTab] = useState<"General" | "Account" | "Help">("General");
+  const [workingFolder, setWorkingFolder] = useState<string | null>(null);
+  useEffect(() => {
+    if (open) void window.postorca?.workingFolder.get().then(setWorkingFolder);
+  }, [open]);
 
   return (
     <Modal
@@ -120,6 +124,26 @@ export default function SettingsModal({
                     </Button>
                   )}
                 </div>
+                {window.postorca && (
+                  <div className="setting-row">
+                    <div>
+                      <strong>Working folder</strong>
+                      <p>
+                        {workingFolder ??
+                          "Not set. Orca can only use files in this folder and your project folders."}
+                      </p>
+                    </div>
+                    <Button
+                      onClick={async () => {
+                        const chosen =
+                          await window.postorca?.workingFolder.choose();
+                        if (chosen) setWorkingFolder(chosen);
+                      }}
+                    >
+                      {workingFolder ? "Change" : "Choose folder"}
+                    </Button>
+                  </div>
+                )}
               </div>
               <div className="preview-notice">
                 Appearance is saved on this device.

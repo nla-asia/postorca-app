@@ -64,13 +64,13 @@ When the founder has to help, ask once, in your final message, for every shot st
 - **What it's for**, in one line.
 - **Steps**, numbered: where to go, what to click or type, what should be on screen, in the app's own words.
 - **How to capture**, with the exact keys: on the Mac, ⌘⇧5 for a screen or window recording (Record Selected Portion fits a window), ⌘⇧4 then Space then click a window for a window screenshot; in the Simulator, File → Save Screen (⌘S) for a screenshot and File → Record Screen (⌘R) for a recording. Say how long a clip should run.
-- **Where to save it**: in a `demos` folder inside the project's folder (from the brand profile), `demos/<idea-slug>/<number>-<shot>.<ext>`, for example `demos/repo-to-idea/2-payoff.mov`, so you can find it with list_dir.
+- **Where to save it**: in their working folder, `demos/<idea-slug>/<number>-<shot>.<ext>`, for example `demos/repo-to-idea/2-payoff.mov`.
 
 Start each shot's steps with getting it ready (the app open on the starting screen, the window in front, Do Not Disturb on), then the recording steps. Put the demo-ready points they need in the steps where they apply, not as a separate lecture. End by asking them to reply in this task when the files are saved. Keep the whole guide short enough to follow without scrolling back and forth.
 
 ## 5. Check what you got
 
-Look at every shot before using it: open screenshots with `read_file` (from the project folder) or view the capture result; for clips, check the duration and look at frames (the video plugin's preview tools can show them). Each must show the right screen and the payoff clearly, be readable, and have nothing private on it. If one is wrong, retake it or ask the founder again for that shot only, saying exactly what to change.
+Look at every shot before using it: open screenshots with `read_file` (from the working folder) or view the capture result; for clips, check the duration and look at frames (the video plugin's preview tools can show them). Each must show the right screen and the payoff clearly, be readable, and have nothing private on it. If one is wrong, retake it or ask the founder again for that shot only, saying exactly what to change.
 
 ## Deliver
 

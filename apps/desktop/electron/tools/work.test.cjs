@@ -51,9 +51,9 @@ test("git_activity and recent_files read only project folders and leave secrets 
   assert.deepEqual(recent.files.map((f) => f.file).sort(), ["app.ts", "notes.md", "package-lock.json"]);
 
   // Outside the project folders, and secrets inside them, are refused.
-  await assert.rejects(git_activity.run({ path: outside, roots }), /Not in a project folder/);
-  await assert.rejects(recent_files.run({ path: outside, roots }), /Not in a project folder/);
+  await assert.rejects(git_activity.run({ path: outside, roots }), /Not in the working folder or a project folder/);
+  await assert.rejects(recent_files.run({ path: outside, roots }), /Not in the working folder or a project folder/);
   await assert.rejects(read_file.run({ path: path.join(repo, ".env"), roots }, {}), /secrets/);
   assert.match((await read_file.run({ path: path.join(repo, "app.ts"), roots }, {})).text, /answer/);
-  await assert.rejects(git_activity.run({ path: repo, roots: [] }), /Not in a project folder|No project folder/);
+  await assert.rejects(git_activity.run({ path: repo, roots: [] }), /Not in the working folder or a project folder|No working folder or project folder/);
 });

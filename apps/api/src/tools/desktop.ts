@@ -14,7 +14,7 @@ type DesktopTool = {
   timeoutMs: number;
   /** Server-side answer when no desktop is connected; otherwise the call fails. */
   offline?: () => unknown;
-  /** File tools get the founder's project folders, the only places they may read. */
+  /** File tools get the founder's project folders; besides the working folder, the only places they may read. */
   readsProjects?: boolean;
 };
 
@@ -109,6 +109,53 @@ const desktopTools: DesktopTool[] = [
   },
   {
     definition: {
+      name: "upload_file",
+      description:
+        "Upload an existing local file from the founder's working folder to authenticated server storage, preserving the complete original bytes. Supports images, audio, video and other files up to 200 MB. Runs on the connected desktop; path is absolute or relative to the working folder reported by desktop_status. Does not convert, trim, execute or publish the file. Returns a saved file ref/key, filename, detected type, size and checksum. Use create_artifact with kind image/audio/video and content set to the returned ref to deliver a reviewable task artifact. Files already returned by download_file, browser_fetch_file or media tools are uploaded already and do not need this tool.",
+      parameters: object(
+        {
+          path: {
+            type: "string",
+            description: "Existing file inside the founder's working folder.",
+          },
+        },
+        ["path"],
+      ),
+    },
+    args: z.object({ path: z.string().min(1).max(1000) }).strict(),
+    timeoutMs: 240_000,
+  },
+  {
+    definition: {
+      name: "download_file",
+      description:
+        "Download a public file when its HTTP(S) URL is known. Runs directly in Electron on the founder's computer and streams the original into Downloads/PostOrca/ without opening the browser or showing a Save dialog. Sends no browser cookies or login credentials. Supports images, audio, video, documents and other files up to 200 MB. filename is an optional suggested name; source_url optionally records the page where the URL was found. Returns the saved local path, original-file attachment, filename, byte count, detected file type, checksum and source URLs. Download only files relevant to the user's request. Does not execute downloaded files or assemble streaming video.",
+      parameters: object(
+        {
+          url: { type: "string", description: "Public HTTP(S) file URL." },
+          filename: { type: "string" },
+          source_url: {
+            type: "string",
+            description: "Optional HTTP(S) source page URL.",
+          },
+        },
+        ["url"],
+      ),
+    },
+    args: z
+      .object({
+        url: z.url({ protocol: /^https?$/ }).max(8192),
+        filename: z.string().min(1).max(120).optional(),
+        source_url: z
+          .url({ protocol: /^https?$/ })
+          .max(8192)
+          .optional(),
+      })
+      .strict(),
+    timeoutMs: 240_000,
+  },
+  {
+    definition: {
       name: "desktop_status",
       description:
         "Check whether the founder's desktop app is running and connected, the status of its plugins (such as the browser), and which desktop tools it can run. Call this before relying on desktop tools.",
@@ -125,13 +172,13 @@ const desktopTools: DesktopTool[] = [
     definition: {
       name: "list_dir",
       description:
-        "List a folder inside one of the founder's project folders (brand profile projects) on their computer: its files (with sizes) and subfolders. Needs the desktop app.",
+        "List a folder on the founder's computer, inside their working folder (desktop_status shows where it is) or one of their project folders (brand profile projects): its files (with sizes) and subfolders. Needs the desktop app.",
       parameters: object(
         {
           path: {
             type: "string",
             description:
-              "A folder inside a project folder: absolute, or relative to the first project folder. Omit for the first project folder itself.",
+              "A folder inside the working folder or a project folder: absolute, or relative to the working folder (the first project folder without one). Omit for that folder itself.",
           },
         },
         [],
@@ -145,13 +192,13 @@ const desktopTools: DesktopTool[] = [
     definition: {
       name: "read_file",
       description:
-        "Read a file in one of the founder's project folders. Text/code return text; PNG/JPEG return saved images. Audio (or a video's sound) returns a saved MP3 ref; audio longer than 300 seconds is an excerpt. Set start_seconds/duration_seconds to select an excerpt. Secrets are never read. Needs the desktop app.",
+        "Read a file in the founder's working folder or one of their project folders. Text/code return text; PNG/JPEG return saved images. Audio (or a video's sound) returns a saved MP3 ref; audio longer than 300 seconds is an excerpt. Set start_seconds/duration_seconds to select an excerpt. Secrets are never read. Needs the desktop app.",
       parameters: object(
         {
           path: {
             type: "string",
             description:
-              "The file: absolute, or relative to the first project folder.",
+              "The file: absolute, or relative to the working folder (the first project folder without one).",
           },
           start_seconds: {
             type: "number",
@@ -216,7 +263,7 @@ const desktopTools: DesktopTool[] = [
     definition: {
       name: "recent_files",
       description:
-        "Files changed recently in one of the founder's project folders, newest first, with when each changed and its size: finds work on things that aren't in git, such as designs, notes and recordings. Skips hidden, dependency and build folders. Needs the desktop app.",
+        "Files changed recently in one of the founder's project folders or their working folder, newest first, with when each changed and its size: finds work on things that aren't in git, such as designs, notes and recordings. Skips hidden, dependency and build folders. Needs the desktop app.",
       parameters: object(
         {
           path: projectPath,
@@ -244,7 +291,7 @@ const desktopTools: DesktopTool[] = [
 /**
  * The desktop tools as Orca's tools. File tools are sent the founder's project folders
  * as `roots` (added after validation, so the model can't set them); the desktop only
- * opens paths inside those.
+ * opens paths inside those or its working folder.
  */
 export const desktopToolset: Tool[] = desktopTools.map((tool) => ({
   definition: tool.definition,
