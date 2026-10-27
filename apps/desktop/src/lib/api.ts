@@ -54,11 +54,11 @@ export const tokenStore = {
   /**
    * A new access token for the same login, shared by concurrent callers.
    * Returns null when the session was rejected; throws when the server cannot be reached.
-   * On desktop, Electron's main process manages token persistence, so this
-   * only applies to browser sessions.
+   * On desktop, Electron's main process holds the refresh token and renews it
+   * (the same renewal its server connection uses).
    */
   refresh: () =>
-    (refreshing ??= refreshInBrowser()
+    (refreshing ??= (desktop ? desktop.session.refresh() : refreshInBrowser())
       .then((value) => {
         remember(value);
         return value;

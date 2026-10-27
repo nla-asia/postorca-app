@@ -10,7 +10,7 @@
     "check": "tsc --noEmit",
     "build": "npm run check && vite build && npm run video:bundle",
     "start": "electron .",
-    "test": "node --test \"electron/tools/*.test.cjs\" \"electron/plugins/*/*.test.cjs\"",
+    "test": "node --test \"electron/*.test.cjs\" \"electron/tools/*.test.cjs\" \"electron/plugins/*/*.test.cjs\" \"src/lib/*.test.mjs\"",
     "computer:build-native": "node scripts/build-computer-native.cjs",
     "computer:smoke": "electron electron/plugins/computer/smoke.cjs",
     "test:computer": "node --test electron/plugins/computer/*.test.cjs",

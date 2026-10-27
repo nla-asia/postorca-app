@@ -16,9 +16,14 @@ const DEVICE_TOKEN_MARGIN_MS = 5 * 60_000;
  * the WebSocket; results go back over HTTP with this device's token.
  */
 class DesktopConnection {
-  /** onNotification({title, body, taskId?}): the server asks to show one (work finished). */
-  constructor(deviceId, onNotification = () => {}) {
+  /**
+   * refresh() renews the session's access token in place and resolves to it (null
+   * when the server ended the session). onNotification({title, body, taskId?}): the
+   * server asks to show one (work finished).
+   */
+  constructor(deviceId, refresh = async () => null, onNotification = () => {}) {
     this.deviceId = deviceId;
+    this.refresh = refresh;
     this.onNotification = onNotification;
     this.session = null;
     this.deviceToken = null;
@@ -50,7 +55,8 @@ class DesktopConnection {
   /**
    * This device's token for the session: the server binds this device's identity
    * into a token of its own, minted again with the session token when it nears
-   * expiry. Null when the session was rejected; throws when offline.
+   * expiry. An expired access token is renewed once; null when the session was
+   * rejected; throws when offline.
    */
   async deviceTokenFor(session) {
     if (
@@ -59,26 +65,32 @@ class DesktopConnection {
       this.deviceTokenExpiresAt - Date.now() > DEVICE_TOKEN_MARGIN_MS
     )
       return this.deviceToken;
-    const response = await fetch(`${session.apiUrl}/desktop/device-token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.token}`,
-      },
-      body: JSON.stringify({ deviceId: this.deviceId }),
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (response.status === 401) return null;
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const { token } = await response.json();
-    if (session === this.session) {
-      const { exp } = JSON.parse(
-        Buffer.from(token.split(".")[1], "base64url").toString(),
-      );
-      this.deviceToken = token;
-      this.deviceTokenExpiresAt = exp * 1000;
+    for (let renewed = false; ; renewed = true) {
+      const response = await fetch(`${session.apiUrl}/desktop/device-token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({ deviceId: this.deviceId }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (response.status === 401) {
+        if (!renewed && session === this.session && (await this.refresh()))
+          continue;
+        return null;
+      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const { token } = await response.json();
+      if (session === this.session) {
+        const { exp } = JSON.parse(
+          Buffer.from(token.split(".")[1], "base64url").toString(),
+        );
+        this.deviceToken = token;
+        this.deviceTokenExpiresAt = exp * 1000;
+      }
+      return token;
     }
-    return token;
   }
   async connect() {
     const session = this.session;

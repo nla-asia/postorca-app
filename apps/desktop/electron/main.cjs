@@ -267,7 +267,7 @@ app.on("second-instance", () => {
 // Windows shows notifications only for an app with this ID.
 if (process.platform === "win32") app.setAppUserModelId("com.postorca.desktop");
 app.whenReady().then(() => {
-  desktop = new DesktopConnection(installId(), notifyFounder);
+  desktop = new DesktopConnection(installId(), refreshSession, notifyFounder);
   session = readSession();
   desktop.setSession(session);
   plugins.start();
