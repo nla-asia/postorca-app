@@ -2,7 +2,7 @@
 // exports { name, tools, start?, shutdown?, status? }; its tool names must match the
 // server plugin's desktop tools. To add one: create electron/plugins/<name>/index.cjs
 // and list it here.
-const plugins = [];
+const plugins = [require("./browser/index.cjs")];
 
 module.exports = {
   /** Every plugin's desktop tools, by name. */

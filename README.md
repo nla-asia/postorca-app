@@ -193,6 +193,18 @@ A plugin tool runs either on the server or on the founder's desktop. Desktop too
 
 To add a plugin, define it in `apps/api/src/plugins/<code>/`, list it in `apps/api/src/plugins/catalog.ts`, and implement its desktop tools under the same names in `apps/desktop/electron/plugins/<code>/`, listed in `apps/desktop/electron/plugins/index.cjs`.
 
+## Browser extension
+
+`apps/browser-extension` lets the desktop work in the founder's own Chrome, Edge, or Brave, with their existing sign-ins. Load it once: open `chrome://extensions` (or `edge://extensions`), turn on Developer mode, choose **Load unpacked**, and select `apps/browser-extension`. Its manifest key fixes the extension ID to `bdfijompoabfinpmaepcpcfhdneghegf`. The popup shows whether it is connected.
+
+When the desktop starts, it runs a relay on a random loopback port and registers the native-messaging host `com.postorca.browser` for the current user: registry entries for Chrome and Edge on Windows, host manifests for installed Chrome, Edge, and Brave profiles on macOS. The host only answers this extension's origin, and it gives the extension the relay's port and a per-start secret. The extension proves it holds the secret (HMAC of a fresh nonce) before the relay accepts it. A running browser reconnects within about 10 seconds of the desktop starting.
+
+The desktop drives the browser with Playwright over the relay. It works only in tabs it opened, kept in the green **Orca** tab group; other tabs are refused. Closing a tab or dismissing the browser's debugging bar ends Orca's use of it. Tabs from an earlier connection are closed when the extension reconnects, and tabs idle for 15 minutes are closed. On macOS, if no browser is connected, the desktop opens the last-used browser in the background.
+
+The desktop browser tools are `browser_open`, `browser_snapshot` (accessibility tree; repeated snapshots return only what changed), `browser_screenshot` (optionally labeled with element refs, uploaded through the desktop connection), `browser_click`, `browser_type`, `browser_press`, `browser_scroll`, and `browser_close`. Actions return a snapshot of what they changed. The server's browser plugin, which offers these tools to Orca, is not registered yet.
+
+`npm test` runs the extension's screenshot-capture checks and the desktop relay, pairing, snapshot, click, keyboard, and page-settling checks. The relay and browser checks launch the installed Chrome (and Edge on Windows) headless with temporary profiles.
+
 ## Agent loop
 
 `apps/api/src/agent/loop.ts` runs one turn: it claims the queued turn (so repeated dispatches run it once), builds Orca's instructions, asks the model for a response, saves it, runs each tool call, and saves each result, repeating until Orca answers without calling tools. A `request_user_input` question also ends the turn until the founder replies. Instructions combine `agent/prompts/system.md` with the skills and plugins available to the task and the brand profile (both re-read each step), the founder's memory index (read once per turn), and the chat, onboarding, or work section for the task.
@@ -206,6 +218,8 @@ When Inbox work finishes, needs input, or fails (other than by a server restart)
 ## Workspace
 
 - `apps/desktop/electron`: Electron main process and window.
+- `apps/desktop/electron/plugins`: desktop sides of plugins, including the browser relay and tools.
+- `apps/browser-extension`: the PostOrca browser extension.
 - `apps/desktop/src`: React interface and styles.
 - `apps/api/src`: Express app, configuration, startup, and shared error handling.
 - `apps/api/tests`: API and configuration checks.

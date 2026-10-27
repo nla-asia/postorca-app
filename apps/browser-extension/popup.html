@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { font: 13px/1.4 system-ui, sans-serif; width: 260px; margin: 14px; color: #1d201d; }
+      h1 { font-size: 14px; margin: 0 0 10px; }
+      .status { display: flex; align-items: center; gap: 8px; }
+      .dot { width: 9px; height: 9px; border-radius: 50%; background: #b8bcb8; }
+      .on .dot { background: #2e9e4f; }
+      p { color: #5d625d; margin: 8px 0 0; }
+      button { margin-top: 10px; font: inherit; padding: 4px 10px; }
+    </style>
+  </head>
+  <body>
+    <h1>PostOrca</h1>
+    <div class="status" id="status"><span class="dot"></span><span id="label">Checking…</span></div>
+    <p id="detail"></p>
+    <button id="retry" hidden>Try again</button>
+    <script src="popup.js"></script>
+  </body>
+</html>

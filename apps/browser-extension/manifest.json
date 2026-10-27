@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "PostOrca",
+  "version": "0.1.0",
+  "description": "Lets the PostOrca desktop app work in your browser, in its own Orca tab group, with your existing sign-ins.",
+  "minimum_chrome_version": "125",
+  "permissions": [
+    "debugger",
+    "tabs",
+    "tabGroups",
+    "storage",
+    "alarms",
+    "nativeMessaging"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "PostOrca",
+    "default_popup": "popup.html"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzmqPXO8KNIOj0wpBiZACXYpCEigYuvtXbS0/wf0TSGwdyA0+1LG/owQIJL2upRTX7bKv6Q/LuG8O71zZQVRAskzQORmFK9UUUTOD0e9O3xz9OuTDvpwVq/ygEyIfhuwbHIs29bXWgedlC1rjwWncbpyO91gzYoBuom56C/LopP9q5DDp8KuA7hHAZl3O0FHQD7ZeDyHA9cHMiJW5ejryaQfG7FmLQW7IuZ/Bv9sTQajHYNby9UGwH0L2jVq4JB0sJxvO1JZ/zh+7q6LmQmV0D+DxTsANZrmm8QHyolZJzUESdcuWqyTZ5GECe80nQ3wPruvZnj419KrEqV31eNnEyQIDAQAB"
+}
