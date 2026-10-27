@@ -2,10 +2,13 @@
 # Deploy the current backend working tree (including local changes) to the existing GCP VM.
 # Secrets and stored user files remain at their existing VM paths. No backup is created.
 set -euo pipefail
-DEPLOY_HOST="${POSTORCA_DEPLOY_HOST:-nika@34.67.138.114}"
-DEPLOY_KEY="${POSTORCA_DEPLOY_KEY:-$HOME/.ssh/id_ed25519}"
-DEPLOY_ROOT=/opt/postorca
 cd "$(cd "$(dirname "$0")/.." && pwd)"
+# Host, key and API URL come from a private file outside the repository.
+. scripts/deploy-config.sh
+DEPLOY_HOST="$POSTORCA_DEPLOY_HOST"
+DEPLOY_KEY="$POSTORCA_DEPLOY_KEY"
+DEPLOY_USER="${DEPLOY_HOST%@*}"
+DEPLOY_ROOT=/opt/postorca
 SSH=(ssh -i "$DEPLOY_KEY" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15)
 
 # Build before interrupting any service. The backend outputs are platform-neutral JS.
@@ -27,14 +30,15 @@ for app in desktop website browser-extension; do
 done
 printf '%s working-tree %s\n' "$(git rev-parse HEAD)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$stage/REVISION"
 
-"${SSH[@]}" "$DEPLOY_HOST" 'sudo -n install -d -m 700 -o nika -g nika /opt/postorca && sudo -n systemctl stop pba-api pba-connectors'
+"${SSH[@]}" "$DEPLOY_HOST" "sudo -n install -d -m 700 -o $DEPLOY_USER -g $DEPLOY_USER $DEPLOY_ROOT && sudo -n systemctl stop pba-api pba-connectors"
 # The old /opt/pba tree is left in place; its environment files are the existing secret source.
 rsync -az --delete --exclude=node_modules --exclude=.env --exclude=.data --exclude=storage \
   -e "ssh -i $DEPLOY_KEY -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15" \
   "$stage/" "$DEPLOY_HOST:$DEPLOY_ROOT/"
 
-"${SSH[@]}" "$DEPLOY_HOST" 'bash -s' <<'REMOTE'
+"${SSH[@]}" "$DEPLOY_HOST" "bash -s -- $DEPLOY_USER" <<'REMOTE'
 set -euo pipefail
+service_user="$1"
 cd /opt/postorca
 ln -sfn /opt/pba/.env apps/api/.env
 ln -sfn /opt/pba/connectors/.env apps/connectors/.env
@@ -42,8 +46,11 @@ ln -sfn /opt/pba/connectors/.env apps/connectors/.env
 npm ci --workspace @postorca/api --workspace @postorca/connectors --include-workspace-root=false \
   --omit=dev --ignore-scripts --no-audit --no-fund --loglevel=error
 node apps/api/dist/upgrade-legacy.js
-sudo -n install -m 644 deploy/pba-api.service /etc/systemd/system/pba-api.service
-sudo -n install -m 644 deploy/pba-connectors.service /etc/systemd/system/pba-connectors.service
+# The service files leave the account to run as to be filled in here.
+for service in pba-api pba-connectors; do
+  sed "s/__SERVICE_USER__/$service_user/" "deploy/$service.service" | sudo -n tee "/etc/systemd/system/$service.service" >/dev/null
+  sudo -n chmod 644 "/etc/systemd/system/$service.service"
+done
 sudo -n systemctl daemon-reload
 sudo -n systemctl start pba-connectors pba-api
 for attempt in $(seq 1 30); do
