@@ -341,9 +341,9 @@ export async function seedDefaultRoutines(db: Queryable, userId: string) {
         url: link.url,
       };
       await db.query(
-        `INSERT INTO routines(user_id, platform, title, instructions, time_of_day, days, timezone, active, next_run_at, link_id)
+        `INSERT INTO routines(user_id, platform, title, instructions, time_of_day, days, timezone, active, next_run_at, link_id, work_type)
          VALUES ($1, $2, $3, $4, $5, $6, $7, true,
-           routine_next_run($5::time, $6::smallint[], $7, now()), $8)`,
+           routine_next_run($5::time, $6::smallint[], $7, now()), $8, $9)`,
         [
           userId,
           PLATFORM_BY_KIND[kind],
@@ -353,6 +353,7 @@ export async function seedDefaultRoutines(db: Queryable, userId: string) {
           routine.days,
           user.timezone,
           link.id,
+          routine.workType,
         ],
       );
       created.push({
@@ -407,9 +408,9 @@ export async function seedWorkIdeasRoutine(db: Queryable, userId: string) {
   if (count >= MAX_ROUTINES) return null;
   const platform = PLATFORM_BY_KIND[link.kind as LinkKind];
   await db.query(
-    `INSERT INTO routines(user_id, platform, title, instructions, time_of_day, days, timezone, active, next_run_at, link_id)
+    `INSERT INTO routines(user_id, platform, title, instructions, time_of_day, days, timezone, active, next_run_at, link_id, work_type)
      VALUES ($1, $2, $3, $4, $5, $6, $7, true,
-       routine_next_run($5::time, $6::smallint[], $7, now()), $8)`,
+       routine_next_run($5::time, $6::smallint[], $7, now()), $8, $9)`,
     [
       userId,
       platform,
@@ -421,6 +422,7 @@ export async function seedWorkIdeasRoutine(db: Queryable, userId: string) {
       WORK_IDEAS_ROUTINE.days,
       user.timezone,
       link.id,
+      WORK_IDEAS_ROUTINE.workType,
     ],
   );
   return {
