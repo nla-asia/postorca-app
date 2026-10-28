@@ -4,7 +4,7 @@ Check every conversation and reply before delivering. Drop a conversation that f
 
 - The post is on the founder's topics and posted within the last 48 hours.
 - It is alive: the author has 1,000+ followers (X, Instagram, Threads, Facebook) or 100+ on LinkedIn, or the post has 10+ replies from different people.
-- The entry states the exact link, author, posting time and the numbers you saw. No author appears twice.
+- Each conversation is one create_reply card (intent conversation) with the exact link, author, posting time, post text and the numbers you saw, and its text is the reply only. No author appears twice.
 - On LinkedIn, no one's profile was opened just to check numbers.
 - No post was suggested before, authors from the last week are avoided unless clearly the best fit, and today's list is saved to memory.
 - You read the replies, and the draft adds one specific take, example or question that isn't already there and couldn't come from any founder.

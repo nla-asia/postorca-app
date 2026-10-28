@@ -1,0 +1,213 @@
+.reply-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 2px;
+  font-size: 12px;
+  color: var(--secondary);
+}
+
+.reply-progress-bar {
+  flex: 1;
+  max-width: 160px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--badge);
+  overflow: hidden;
+}
+
+.reply-progress-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.reply-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.reply-card.done,
+.reply-card.skipped {
+  opacity: 0.6;
+}
+
+.reply-target,
+.reply-mine {
+  display: flex;
+  gap: 11px;
+  padding: 14px 16px 0;
+}
+
+/* The thread line from their post down to the founder's reply. */
+.reply-target {
+  position: relative;
+  padding-bottom: 14px;
+}
+
+.reply-target::before {
+  content: "";
+  position: absolute;
+  left: 33px;
+  top: 52px;
+  bottom: -14px;
+  width: 2px;
+  background: var(--strong-line);
+}
+
+.reply-avatar {
+  position: relative;
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--badge);
+  color: var(--secondary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.reply-avatar.mine {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.reply-target-body,
+.reply-mine-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.reply-byline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.reply-byline strong {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.reply-byline .replying {
+  flex-basis: 100%;
+  font-size: 12px;
+}
+
+.reply-platform {
+  margin-left: auto;
+}
+
+.reply-target-text {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.reply-target-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 9px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.reply-target-stats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reply-why {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.reply-mine-body {
+  position: relative;
+}
+
+.reply-mine textarea {
+  width: 100%;
+  margin-top: 4px;
+  padding: 0 0 18px;
+  border: 0;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.reply-mine textarea:focus {
+  outline: none;
+}
+
+.reply-mine-body:focus-within {
+  box-shadow: inset 0 -1px 0 var(--accent);
+}
+
+.reply-count {
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.reply-count.over {
+  color: #c2410c;
+}
+
+.reply-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px 12px 63px;
+}
+
+.reply-actions .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reply-done {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.reply-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.reply-state.done {
+  color: var(--accent);
+}

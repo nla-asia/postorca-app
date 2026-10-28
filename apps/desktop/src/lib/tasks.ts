@@ -46,9 +46,13 @@ export type TaskArtifact = {
     | "screenshot"
     | "image"
     | "audio"
-    | "video";
+    | "video"
+    | "reply"
+    | "post";
   title: string;
   content: string;
+  /** Replies: what the founder did with it. */
+  state: "done" | "skipped" | null;
   /** Ideas only: content work queued from this idea. */
   content_work: {
     routine_id: string;

@@ -733,3 +733,53 @@ test("interruption recovery is durable and account deletion cascades through tas
     0,
   );
 });
+
+test("founders edit replies and mark them done or skipped on their own tasks only", async () => {
+  const a = await account(),
+    b = await account();
+  const first = await work(a.id);
+  const reply = {
+    platform: "X",
+    kind: "reply",
+    intent: "conversation",
+    target: { url: "https://x.com/maya/status/1", author: "Maya" },
+    text: "Original reply",
+  };
+  const card = await createArtifact(fixture.db, first.task.id, first.turn.id, {
+    kind: "reply",
+    title: "Reply to Maya",
+    content: JSON.stringify(reply),
+  });
+  const draft = await createArtifact(fixture.db, first.task.id, first.turn.id, {
+    kind: "document",
+    title: "Draft",
+    content: "Not a reply",
+  });
+  const path = `/${first.task.id}/artifacts/${card.id}/reply`;
+  assert.equal((await request(path, "PATCH", { state: "done" }, b.token)).status, 404);
+  assert.equal(
+    (await request(`/${first.task.id}/artifacts/${draft.id}/reply`, "PATCH", { state: "done" }, a.token)).status,
+    404,
+  );
+  assert.equal((await request(path, "PATCH", {}, a.token)).status, 400);
+  assert.equal((await request(path, "PATCH", { state: "posted" }, a.token)).status, 400);
+
+  const edited = await request(path, "PATCH", { text: "  Better reply  " }, a.token);
+  assert.equal(edited.status, 200);
+  assert.deepEqual(JSON.parse(edited.data.content), { ...reply, text: "Better reply" });
+  assert.equal(edited.data.state, null);
+
+  const done = await request(path, "PATCH", { state: "done" }, a.token);
+  assert.equal(done.data.state, "done");
+  assert.ok(done.data.state_at);
+  assert.equal(JSON.parse(done.data.content).text, "Better reply");
+  const undone = await request(path, "PATCH", { state: null }, a.token);
+  assert.equal(undone.data.state, null);
+  assert.equal(undone.data.state_at, null);
+  const skipped = await request(path, "PATCH", { state: "skipped" }, a.token);
+  assert.equal(skipped.data.state, "skipped");
+
+  const detail = await request(`/${first.task.id}`, "GET", undefined, a.token);
+  const artifact = detail.data.turns[0].artifacts.find((item: any) => item.id === card.id);
+  assert.equal(artifact.state, "skipped");
+});
