@@ -172,7 +172,6 @@ export default function Workspace({
         }}
         reviewCount={work.attention}
         onOpenConnectApps={() => setConnectAppsOpen(true)}
-        onOpenBilling={openBilling}
         onOpenSettings={() => {
           setSettingsTab("General");
           setSettingsOpen(true);
