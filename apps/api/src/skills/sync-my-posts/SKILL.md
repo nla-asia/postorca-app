@@ -74,7 +74,7 @@ A post saved in the overlap window that you didn't see on the profile may have b
 - LinkedIn Name: synced 2026-10-27 07:20 · reached 2026-10-21, more to read
 ```
 
-Update the file right after each account, before opening the next one, so a run cut short still records what it did. Write the new sync time only when the account's sync reached where it should stop (How far back); otherwise keep the old time and write how far back you got. Use the founder's local time.
+Update the file right after each account, before opening the next one, so a run cut short still records what it did. Write the new sync time only when the account's sync reached where it should stop (How far back); otherwise keep the old time and write how far back you got. Write times in the founder's own time zone, not UTC (the task's first message gives the time in UTC).
 
 ## Finish
 
