@@ -22,6 +22,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        {/* Run before the Next runtime: the static host falls back to this document. */}
+        <script
+          id="static-privacy-route"
+          dangerouslySetInnerHTML={{
+            __html: `if (window.location.pathname === "/privacy") {
+  window.location.replace("/privacy/" + window.location.search + window.location.hash);
+}`,
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );
