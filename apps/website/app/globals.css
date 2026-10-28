@@ -8,6 +8,33 @@
   --lime: #dce8b9;
   --radius: 22px;
 }
+.privacy-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 64px 24px 96px;
+  font-size: 16px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+.privacy-page h1 {
+  margin: 12px 0;
+  font-size: clamp(36px, 6vw, 56px);
+  line-height: 1.15;
+  letter-spacing: -2px;
+}
+.privacy-eyebrow {
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 600;
+}
+.privacy-updated { color: var(--muted); font-size: 14px; }
+.privacy-intro { font-size: 19px; }
+.privacy-page section { margin-top: 36px; }
+.privacy-page h2 { font-size: 23px; line-height: 1.3; letter-spacing: -0.5px; }
+.privacy-page li { margin: 12px 0; }
+.privacy-page ul { padding-left: 24px; }
+.privacy-page p, .privacy-page li { color: #555b51; }
+.privacy-page a { color: var(--green); text-decoration: underline; text-underline-offset: 3px; }
 * {
   box-sizing: border-box;
 }
