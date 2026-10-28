@@ -387,7 +387,7 @@ export default function Home() {
         <nav aria-label="Footer">
           <a href="#product">The app</a>
           <a href="#questions">Questions</a>
-          <a href="/privacy">Privacy</a>
+          <a href="/privacy/">Privacy</a>
           <a href="/">
             orca.atpa.site
             <ArrowUpRight size={12} />

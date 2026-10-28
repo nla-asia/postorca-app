@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://orca.atpa.site"),
@@ -22,7 +23,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {/* Static hosting falls back to this document for bare /privacy. */}
+        <Script id="static-privacy-route" strategy="beforeInteractive">
+          {`if (window.location.pathname === "/privacy") {
+  window.location.replace("/privacy/" + window.location.search + window.location.hash);
+}`}
+        </Script>
+        {children}
+      </body>
     </html>
   );
 }
