@@ -1,7 +1,59 @@
 // Adapted from Autopilot's programmatic_judge.ts assertion contract. Pure evidence
 // input replaces its MessageRepository; budgets never conflate turns and calls.
 import { isDeepStrictEqual } from "node:util";
-import type { Call, Check, EvalCase, Verdict } from "./contracts.js";
+import type {
+  Call,
+  Check,
+  EvalCase,
+  Verdict,
+  Run,
+  Evidence,
+} from "./contracts.js";
+
+// Version changes require explicit, reasoned regrading of stored attempts.
+export const gradingPolicyVersion = 2;
+export function executionCheck(run: Run, evidence?: Evidence): Check {
+  const settled = ["completed", "failed"].includes(run.execution);
+  const turns = evidence?.task.turns ?? [];
+  // Legacy runners labelled a completed product turn failed for a recovered tool
+  // error. Read actual terminal product state without rewriting the launch record.
+  const productCompleted =
+    settled &&
+    turns.length > 0 &&
+    turns.every((t: any) => t.status === "completed");
+  return {
+    id: "execution",
+    verdict: productCompleted
+      ? "passed"
+      : run.execution === "failed"
+        ? "failed"
+        : "blocked",
+    reason: productCompleted
+      ? "Observed product turns completed; outcome checks and tool errors are evaluated separately"
+      : (run.error ?? `Execution ${run.execution}`),
+    evidence: productCompleted
+      ? ["evidence.json#/task/turns", "run.json#/execution"]
+      : ["run.json#/execution"],
+  };
+}
+export function triageIssues(checks: Check[], calls: Call[]) {
+  return [
+    ...checks
+      .filter((c) => ["failed", "blocked"].includes(c.verdict))
+      .map((c) => ({ id: c.id, reason: c.reason, evidence: c.evidence })),
+    ...calls.flatMap((c, i) =>
+      c.failed
+        ? [
+            {
+              id: `tool-error:${c.turn_id}:${c.id}`,
+              reason: `${c.name}: ${String(c.result?.error ?? "Missing or malformed tool result")}`,
+              evidence: [`evidence.json#/calls/${i}`],
+            },
+          ]
+        : [],
+    ),
+  ];
+}
 
 export function pathValue(source: any, path: string): any {
   return path

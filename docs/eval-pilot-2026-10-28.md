@@ -85,3 +85,20 @@ was taken; both work items remain in Inbox for the owner.
 After the fixture addition, `npm run check` and `npm test` passed. The independent
 fixture self-check and target transport controls also passed. Token and cost
 metrics remain explicitly unavailable in the shared report.
+
+## Subsequent investigation — 29 October 2026
+
+The [failure investigation policy](EVAL_FAILURE_POLICY.md) separates product
+execution, outcome acceptance, and root cause. The original download rubric's
+hidden browser-discovery restriction was identified as an eval-design defect;
+the file-access error remains a real agent action-selection mistake. Neither
+finding indicates an execution-infrastructure failure in these pilots.
+
+Explicit policy-2 regrading corrected the recovered-error execution label without
+editing either frozen case, launch record, or raw task evidence. Original
+judgments remain in history. Retained semantic judgments were revalidated against
+the same evidence and frozen criteria: notebook passed, original download case
+still failed. Its triage record identifies the two separate causes. Future
+public-download contracts are revision 2; genuine session-transfer coverage is
+preserved in the existing protected-resource case. No prompt change or new paid
+attempt was used to manufacture a passing result.

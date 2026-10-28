@@ -15,12 +15,20 @@ import {
   caseSchema,
   checkSchema,
   reviewSchema,
+  triageSchema,
   type Check,
   type EvalCase,
   type Evidence,
   type Run,
 } from "./contracts.js";
-import { aggregate, normalizeCalls, trajectoryChecks } from "./judge.js";
+import {
+  aggregate,
+  normalizeCalls,
+  trajectoryChecks,
+  executionCheck,
+  gradingPolicyVersion,
+  triageIssues,
+} from "./judge.js";
 import {
   checkReferences,
   evidenceHash,
@@ -324,13 +332,24 @@ export class EvalRunner {
           followupReady = ["image", "audio"].every((kind) =>
             turn.artifacts.some((a: any) => a.kind === kind),
           );
-        // Stop before paid follow-ups after failure, including recovered tool errors.
-        if (
-          !followupReady ||
-          turn.status !== "completed" ||
-          normalizeCalls({ turns: [turn] }).some((c) => c.failed)
-        ) {
+        if (turn.status !== "completed") {
           run.execution = "failed";
+          break;
+        }
+        // A recovered error is diagnostic evidence, not proof that execution or
+        // the user's outcome failed. Still retain the conservative paid-followup
+        // stop; the undeclared outcome of missing followups must not pass.
+        if (
+          i < entry.turns.length - 1 &&
+          (!followupReady ||
+            normalizeCalls({ turns: [turn] }).some((c) => c.failed))
+        ) {
+          run.followups_stopped = {
+            after_turn: turn.id,
+            reason: !followupReady
+              ? "Prerequisite deliverables did not pass checks"
+              : "Tool errors require investigation before paid followups",
+          };
           break;
         }
       }
@@ -437,24 +456,22 @@ export class EvalRunner {
     });
     return evidence;
   }
-  async grade(id: string) {
+  async grade(id: string, policyChangeReason?: string) {
     const { folder, run, entry } = await this.load(id);
+    const old = await maybeJson(join(folder, "result.json"));
+    const previousPolicy = old?.grading_policy_version ?? 1;
+    if (
+      old &&
+      previousPolicy !== gradingPolicyVersion &&
+      !policyChangeReason?.trim()
+    )
+      throw new Error(
+        `Stored grading policy ${previousPolicy} differs from ${gradingPolicyVersion}; use regrade with an explicit correction reason`,
+      );
     const evidence: Evidence | undefined = await maybeJson(
       join(folder, "evidence.json"),
     );
-    const checks: Check[] = [
-      {
-        id: "execution",
-        verdict:
-          run.execution === "completed"
-            ? "passed"
-            : run.execution === "failed"
-              ? "failed"
-              : "blocked",
-        reason: run.error ?? `Execution ${run.execution}`,
-        evidence: ["run.json#/execution"],
-      },
-    ];
+    const checks: Check[] = [executionCheck(run, evidence)];
     if (run.observer_error)
       checks.push({
         id: "observer",
@@ -470,7 +487,11 @@ export class EvalRunner {
           evidence.task.turns.length === entry.turns.length &&
           evidence.task.turns.every((t: any) => t.status === "completed")
             ? "passed"
-            : "failed",
+            : evidence.task.turns.some((t: any) =>
+                  ["queued", "running"].includes(t.status),
+                )
+              ? "blocked"
+              : "failed",
         reason: "All declared turns must complete",
         evidence: ["evidence.json#/task/turns"],
       });
@@ -627,7 +648,9 @@ export class EvalRunner {
       ...semantic,
     ];
     const hash = evidence ? await evidenceHash(folder) : null;
-    const gradingHash = sha(JSON.stringify(checks));
+    const gradingHash = sha(
+      JSON.stringify({ version: gradingPolicyVersion, checks }),
+    );
     const review = await maybeJson(join(folder, "review.json"));
     let acceptedReview: ReturnType<typeof reviewSchema.parse> | undefined;
     if (
@@ -649,17 +672,56 @@ export class EvalRunner {
       ...checks.filter((c) => c.verdict !== "awaiting_review"),
       ...required.map((c) => reviewById.get(c.id) ?? c),
     ];
+    const issues = triageIssues(final, evidence?.calls ?? []);
+    const recordedTriage = await maybeJson(join(folder, "triage.json"));
+    const triageCurrent =
+      recordedTriage &&
+      recordedTriage.case_hash === run.case_hash &&
+      recordedTriage.evidence_hash === hash &&
+      recordedTriage.grading_hash === gradingHash &&
+      recordedTriage.issue_hash === sha(JSON.stringify(issues));
+    const triage = {
+      status: !issues.length
+        ? "not_required"
+        : triageCurrent
+          ? "recorded"
+          : recordedTriage
+            ? "stale"
+            : "awaiting_triage",
+      findings: triageCurrent
+        ? triageSchema.parse({
+            case_hash: recordedTriage.case_hash,
+            evidence_hash: recordedTriage.evidence_hash,
+            grading_hash: recordedTriage.grading_hash,
+            reviewer: recordedTriage.reviewer,
+            findings: recordedTriage.findings,
+          }).findings
+        : [],
+    };
+    const productExecution = !evidence?.task.turns.length
+      ? "not_started"
+      : evidence.task.turns.every((t: any) => t.status === "completed")
+        ? "completed"
+        : evidence.task.turns.some((t: any) => t.status === "failed")
+          ? "failed"
+          : "unknown";
     const result = {
       schema_version: 1,
+      grading_policy_version: gradingPolicyVersion,
       case_id: entry.id,
+      case_revision: entry.revision ?? 1,
       attempt_id: id,
       fingerprint: run.fingerprint,
       case_hash: run.case_hash,
       evidence_hash: hash,
       grading_hash: gradingHash,
       verdict: aggregate(final),
+      product_execution: productExecution,
+      observer_execution: run.execution,
       checks: final,
       review_required: required,
+      triage_issues: issues,
+      triage,
       metrics: {
         elapsed_ms:
           run.started_at && run.finished_at
@@ -672,20 +734,109 @@ export class EvalRunner {
       },
       graded_at: new Date().toISOString(),
     };
-    const old = await maybeJson(join(folder, "result.json"));
     if (old)
       await json(
         join(folder, "history", `${Date.now()}-${randomUUID()}-result.json`),
         old,
       );
     await json(join(folder, "result.json"), result);
+    if (old && previousPolicy !== gradingPolicyVersion)
+      await this.event(folder, "grading-policy-correction", {
+        from: previousPolicy,
+        to: gradingPolicyVersion,
+        reason: policyChangeReason!,
+        previous_verdict: old.verdict,
+        new_verdict: result.verdict,
+        case_hash: run.case_hash,
+        evidence_hash: hash,
+      });
     await json(join(folder, "review-template.json"), {
       evidence_hash: hash,
       case_hash: run.case_hash,
       reviewer: "",
       criteria: required.map((c) => ({ ...c, evidence: [] })),
     });
+    await json(join(folder, "triage-template.json"), {
+      case_hash: run.case_hash,
+      evidence_hash: hash,
+      grading_hash: gradingHash,
+      reviewer: "",
+      findings: issues.map((issue, i) => ({
+        id: `finding-${i + 1}`,
+        side: "unclassified",
+        status: "investigating",
+        check_ids: [issue.id],
+        reason: issue.reason,
+        evidence: issue.evidence,
+        next_action:
+          "Investigate evidence and propose the smallest justified fix; do not relax acceptance to obtain a pass",
+      })),
+    });
     return result;
+  }
+  async inspect(id: string) {
+    const { folder } = await this.load(id);
+    const stored = await maybeJson(join(folder, "result.json"));
+    if (stored && (stored.grading_policy_version ?? 1) !== gradingPolicyVersion)
+      return {
+        ...stored,
+        regrade_required: true,
+        current_grading_policy_version: gradingPolicyVersion,
+      };
+    return this.grade(id);
+  }
+  async regrade(id: string, reason: string) {
+    if (!reason.trim())
+      throw new Error("Regrading requires an evidence-based reason");
+    const result = await this.grade(id, reason);
+    await this.event(this.folder(id), "regraded", {
+      reason,
+      case_hash: result.case_hash,
+      evidence_hash: result.evidence_hash,
+      verdict: result.verdict,
+    });
+    return result;
+  }
+  async triage(id: string, input: unknown) {
+    const { folder } = await this.load(id);
+    const diagnosis = triageSchema.parse(input);
+    const result = await this.grade(id);
+    if (
+      diagnosis.case_hash !== result.case_hash ||
+      diagnosis.evidence_hash !== result.evidence_hash ||
+      diagnosis.grading_hash !== result.grading_hash
+    )
+      throw new Error(
+        "Triage is for different or changed evidence, case, or grading",
+      );
+    const issueIds = new Set(result.triage_issues.map((i) => i.id));
+    if (!issueIds.size)
+      throw new Error("No failures, blockers, or tool errors require triage");
+    const covered = new Set(diagnosis.findings.flatMap((f) => f.check_ids));
+    if (
+      covered.size !== issueIds.size ||
+      [...covered].some((id) => !issueIds.has(id))
+    )
+      throw new Error(
+        "Triage must cover every current failure, blocker, and tool-error diagnostic; unknown causes may remain unclassified",
+      );
+    for (const finding of diagnosis.findings)
+      await checkReferences(folder, finding.evidence);
+    const old = await maybeJson(join(folder, "triage.json"));
+    if (old)
+      await json(
+        join(folder, "history", `${Date.now()}-${randomUUID()}-triage.json`),
+        old,
+      );
+    await json(join(folder, "triage.json"), {
+      ...diagnosis,
+      issue_hash: sha(JSON.stringify(result.triage_issues)),
+      recorded_at: new Date().toISOString(),
+    });
+    await this.event(folder, "triaged", {
+      sides: [...new Set(diagnosis.findings.map((f) => f.side))],
+    });
+    return this.grade(id);
   }
   async review(id: string, input: unknown) {
     const { folder, run } = await this.load(id);
@@ -778,26 +929,32 @@ export class EvalRunner {
         const run = await maybeJson(join(this.root, d.name, "run.json"));
         if (!run) continue;
         // Recompute so changed evidence cannot leave a stale accepted pass in reports.
-        const result = await this.grade(d.name);
+        const result = await this.inspect(d.name);
         attempts.push({
           id: run.id,
           case_id: run.case_id,
           fingerprint: run.fingerprint,
           case_hash: run.case_hash,
+          case_revision: result.case_revision ?? 1,
+          grading_policy_version: result.grading_policy_version ?? 1,
           created_at: run.created_at,
           verdict: result.verdict,
-          execution: run.execution,
+          execution: result.product_execution ?? run.execution,
+          observer_execution: run.execution,
+          regrade_required: result.regrade_required === true,
+          triage: result.triage ?? { status: "awaiting_triage", findings: [] },
           metrics: result.metrics,
         });
       }
     attempts.sort((a, b) => a.created_at.localeCompare(b.created_at));
     const groups = new Map<string, any>();
     for (const a of attempts) {
-      const key = `${a.case_id}:${a.fingerprint}:${a.case_hash}`;
+      const key = `${a.case_id}:${a.fingerprint}:${a.case_hash}:${a.grading_policy_version}`;
       const g = groups.get(key) ?? {
         case_id: a.case_id,
         fingerprint: a.fingerprint,
         case_hash: a.case_hash,
+        grading_policy_version: a.grading_policy_version,
         attempts: 0,
         prepared: 0,
         passed: 0,
@@ -806,7 +963,7 @@ export class EvalRunner {
         awaiting_review: 0,
         consecutive_passes: 0,
       };
-      if (a.execution === "prepared") {
+      if (a.observer_execution === "prepared") {
         g.prepared++;
         groups.set(key, g);
         continue;
@@ -817,6 +974,15 @@ export class EvalRunner {
         a.verdict === "passed" ? g.consecutive_passes + 1 : 0;
       groups.set(key, g);
     }
-    return { attempts, groups: [...groups.values()] };
+    const sides = { agent: 0, infrastructure: 0, eval: 0, unclassified: 0 };
+    for (const a of attempts)
+      for (const finding of a.triage.findings)
+        sides[finding.side as keyof typeof sides]++;
+    return {
+      grading_policy_version: gradingPolicyVersion,
+      attempts,
+      groups: [...groups.values()],
+      triage_findings_by_side: sides,
+    };
   }
 }

@@ -24,7 +24,16 @@ while (args.length) {
   flags[key] = value;
 }
 for (const key of Object.keys(flags))
-  if (!["--root", "--config", "--review", "--task"].includes(key))
+  if (
+    ![
+      "--root",
+      "--config",
+      "--review",
+      "--task",
+      "--reason",
+      "--triage",
+    ].includes(key)
+  )
     throw new Error(`Unknown option ${key}`);
 const path = (value: string) => resolve(invocation, value);
 const configSchema = z
@@ -152,9 +161,27 @@ if (mode === "list") {
   if (!selected) throw new Error("collect <attempt-id>");
   await runner.collect(selected);
   console.log(JSON.stringify(await runner.grade(selected), null, 2));
-} else if (mode === "inspect" || mode === "regrade") {
+} else if (mode === "inspect") {
   if (!selected) throw new Error(`${mode} <attempt-id>`);
-  console.log(JSON.stringify(await runner.grade(selected), null, 2));
+  console.log(JSON.stringify(await runner.inspect(selected), null, 2));
+} else if (mode === "regrade") {
+  if (!selected || !flags["--reason"])
+    throw new Error(
+      'regrade <attempt-id> --reason "evidence-based correction reason"',
+    );
+  console.log(
+    JSON.stringify(await runner.regrade(selected, flags["--reason"]), null, 2),
+  );
+} else if (mode === "triage") {
+  if (!selected || !flags["--triage"])
+    throw new Error("triage <attempt-id> --triage <diagnosis.json>");
+  console.log(
+    JSON.stringify(
+      await runner.triage(selected, await readJson(path(flags["--triage"]))),
+      null,
+      2,
+    ),
+  );
 } else if (mode === "review") {
   if (!selected || !flags["--review"])
     throw new Error("review <attempt-id> --review <completed-review.json>");
@@ -179,5 +206,5 @@ if (mode === "list") {
   console.log(JSON.stringify(await runner.retryCleanup(selected), null, 2));
 } else
   throw new Error(
-    "Use list [plugin] | prepare <case> --config <file> | run <attempt> | collect <attempt> | inspect <attempt> | review <attempt> --review <file> | regrade <attempt> | report | reconcile-task <attempt> --task <id>",
+    "Use list [plugin] | prepare <case> --config <file> | run <attempt> | collect <attempt> | inspect <attempt> | review <attempt> --review <file> | regrade <attempt> --reason <reason> | triage <attempt> --triage <file> | report | reconcile-task <attempt> --task <id>",
   );

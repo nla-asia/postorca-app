@@ -61,7 +61,8 @@ npm run eval -- run <attempt-id>
 npm run eval -- inspect <attempt-id>
 npm run eval -- collect <attempt-id>
 npm run eval -- review <attempt-id> --review .data/completed-review.json
-npm run eval -- regrade <attempt-id>
+npm run eval -- regrade <attempt-id> --reason "Evidence-based grader correction"
+npm run eval -- triage <attempt-id> --triage .data/diagnosis.json
 npm run eval -- report
 ```
 
@@ -111,6 +112,8 @@ evidence/                 original media bytes, fixture observations, verifier o
 result.json               programmatic checks, semantic checks and combined verdict
 review-template.json      required semantic items and frozen evidence/case hashes
 review.json               accepted observer identity, reasoning and evidence references
+triage-template.json      failure/blocker/tool-error issues awaiting root-cause investigation
+triage.json               evidence-bound agent/infrastructure/eval findings and next actions
 history/                  previous grading results and reviews
 ```
 
@@ -129,8 +132,17 @@ observer actually watched/listened. That remains the observer's responsibility.
 
 Reviews bind to the frozen case, programmatic grading output and hashes of all
 retained evidence. New collection, changed media/observations, or changed checks
-invalidate the prior approval. Regrading archives the old result; it never starts
+invalidate the prior approval. Changing grading policy requires an explicit
+regrade reason; inspect/report retain older stored judgments and flag the required
+regrade instead of silently applying a new policy. Regrading archives the old result; it never starts
 another product task, model call, fixture, or paid generation.
+
+Execution, acceptance, and root-cause diagnosis are separate. Recovered tool
+errors remain measured and require investigation but do not universally fail an
+otherwise completed task. Explicit case error budgets still apply. See the
+[failure investigation policy](EVAL_FAILURE_POLICY.md) for the three causes,
+mixed/unknown diagnoses, correction safeguards, and the versioned download-case
+correction. Triage cannot override a verdict or erase a frozen criterion.
 
 Tool counts and failures are measured. Model token totals and monetary cost are
 currently reported as `null`, not zero: the task API does not expose a complete
@@ -277,7 +289,8 @@ an incomplete or blocked attempt into a pass.
 
 For repeated runs, prepare and execute individual fresh attempts using the same
 contract, parameters and runtime. Inspect each result before another paid run.
-`report` gives every attempt and the current consecutive passing streak; failures,
+`report` groups by grading-policy version as well as frozen contract/runtime, and
+gives every attempt and the current consecutive passing streak; failures,
 blocked attempts and unreviewed attempts reset the streak. No batch command
 automatically chains paid runs before required independent review.
 

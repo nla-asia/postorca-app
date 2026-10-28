@@ -537,3 +537,263 @@ test("the notebook verifier checks independent events and the delivered document
     "failed",
   );
 });
+
+test("recovered errors are diagnostic; declared error budgets still fail", async (t) => {
+  const root = await sandbox(t),
+    api = fakeApi({ error: true });
+  const runner = new EvalRunner(root, { token: "token", fetch: api.fetch });
+  const run = await runner.prepare(entry(), runtime);
+  await runner.run(run.id, runtime.fingerprint);
+  const accepted = await reviewed(runner, run.id);
+  assert.equal(accepted.product_execution, "completed");
+  assert.equal(accepted.verdict, "passed");
+  assert.equal(accepted.metrics.failed_tool_calls, 1);
+  assert.equal(accepted.triage.status, "awaiting_triage");
+  assert.equal(accepted.triage_issues.length, 1);
+  const budgeted = await runner.prepare(
+    entry({ trajectory: { max_failed_tool_calls: 0 } }),
+    runtime,
+  );
+  const budgetRunner = new EvalRunner(root, {
+    token: "token",
+    fetch: fakeApi({ error: true }).fetch,
+  });
+  await budgetRunner.run(budgeted.id, runtime.fingerprint);
+  assert.equal((await reviewed(budgetRunner, budgeted.id)).verdict, "failed");
+});
+
+test("unlaunched preparations do not count as failures or reliability attempts", async (t) => {
+  const root = await sandbox(t),
+    runner = new EvalRunner(root);
+  await runner.prepare(entry(), runtime);
+  const report = await runner.report();
+  assert.equal(report.attempts[0].observer_execution, "prepared");
+  assert.equal(report.groups[0].attempts, 0);
+  assert.equal(report.groups[0].prepared, 1);
+  assert.equal(report.groups[0].failed, 0);
+  assert.throws(
+    () => caseSchema.parse({ ...entry(), revision: 2 }),
+    /correction note/,
+  );
+});
+
+test("agent, infrastructure and eval diagnoses cannot override acceptance", async (t) => {
+  const root = await sandbox(t),
+    api = fakeApi({ error: true });
+  const runner = new EvalRunner(root, { token: "token", fetch: api.fetch });
+  const agent = await runner.prepare(
+    entry({ trajectory: { max_failed_tool_calls: 0 } }),
+    runtime,
+  );
+  await runner.run(agent.id, runtime.fingerprint);
+  await reviewed(runner, agent.id);
+  const result = await runner.grade(agent.id);
+  const diagnosis = {
+    case_hash: result.case_hash,
+    evidence_hash: result.evidence_hash,
+    grading_hash: result.grading_hash,
+    reviewer: "Independent investigator",
+    findings: [
+      {
+        id: "bad-arguments",
+        side: "agent",
+        status: "confirmed",
+        check_ids: result.triage_issues.map((i) => i.id),
+        reason:
+          "The retained call was rejected for invalid arguments, not a missing service",
+        evidence: ["evidence.json#/calls/0"],
+        next_action:
+          "Fix argument selection using the existing tool schema; retain the error budget",
+      },
+    ],
+  };
+  // All issue IDs must be covered; diagnosis is never an acceptance override.
+  const recorded = await runner.triage(agent.id, diagnosis);
+  assert.equal(recorded.verdict, "failed");
+  assert.equal(recorded.triage.findings[0].side, "agent");
+  await assert.rejects(
+    runner.triage(agent.id, {
+      ...diagnosis,
+      findings: [{ ...diagnosis.findings[0], check_ids: ["invented"] }],
+    }),
+    /cover every/,
+  );
+  const infra = await runner.prepare(
+    entry({ prerequisites: ["browser_connected"] }),
+    runtime,
+  );
+  await runner.run(infra.id, runtime.fingerprint);
+  const blocked = await runner.grade(infra.id);
+  const infraRecord = await runner.triage(infra.id, {
+    case_hash: blocked.case_hash,
+    evidence_hash: null,
+    grading_hash: blocked.grading_hash,
+    reviewer: "Observer",
+    findings: [
+      {
+        id: "missing-connection",
+        side: "infrastructure",
+        status: "confirmed",
+        check_ids: blocked.triage_issues.map((i) => i.id),
+        reason:
+          "The readiness precondition was absent before any product mutation",
+        evidence: ["run.json#/error"],
+        next_action:
+          "Restore and independently verify the connection, then prepare a fresh attempt",
+      },
+    ],
+  });
+  assert.equal(infraRecord.verdict, "blocked");
+  const evalRunner = new EvalRunner(root, {
+    token: "token",
+    fetch: fakeApi().fetch,
+  });
+  const evalRun = await evalRunner.prepare(
+    entry({
+      verifier: {
+        executable: process.execPath,
+        args: ["-e", "console.log('{}')"],
+      },
+    }),
+    runtime,
+  );
+  await evalRunner.run(evalRun.id, runtime.fingerprint);
+  const broken = await evalRunner.grade(evalRun.id);
+  const evalRecord = await evalRunner.triage(evalRun.id, {
+    case_hash: broken.case_hash,
+    evidence_hash: broken.evidence_hash,
+    grading_hash: broken.grading_hash,
+    reviewer: "Observer",
+    findings: [
+      {
+        id: "broken-verifier",
+        side: "eval",
+        status: "confirmed",
+        check_ids: broken.triage_issues.map((i) => i.id),
+        reason:
+          "The verifier returned no outcome checks; agent output does not establish evaluator correctness",
+        evidence: ["evidence/verifier.json"],
+        next_action:
+          "Repair the verifier contract and test negative outputs; do not lower acceptance",
+      },
+    ],
+  });
+  assert.equal(evalRecord.verdict, "blocked");
+  const summary = await runner.report();
+  assert.deepEqual(summary.triage_findings_by_side, {
+    agent: 1,
+    infrastructure: 1,
+    eval: 1,
+    unclassified: 0,
+  });
+  await writeFile(
+    join(runner.folder(agent.id), "evidence", "later.txt"),
+    "new evidence",
+  );
+  assert.equal((await runner.grade(agent.id)).triage.status, "stale");
+});
+
+test("policy corrections require a reason and archive the old judgment without editing the case or execution", async (t) => {
+  const root = await sandbox(t),
+    api = fakeApi({ error: true });
+  const runner = new EvalRunner(root, { token: "token", fetch: api.fetch });
+  const run = await runner.prepare(entry(), runtime);
+  await runner.run(run.id, runtime.fingerprint);
+  const folder = runner.folder(run.id),
+    original = await readJson(join(folder, "result.json"));
+  const legacy = { ...original, grading_policy_version: 1, verdict: "failed" };
+  await json(join(folder, "result.json"), legacy);
+  const launch = await readJson(join(folder, "run.json"));
+  launch.execution = "failed";
+  await json(join(folder, "run.json"), launch);
+  const caseBytes = await readFile(join(folder, "case.json"), "utf8"),
+    runBytes = await readFile(join(folder, "run.json"), "utf8");
+  await assert.rejects(runner.grade(run.id), /explicit correction reason/);
+  assert.equal((await runner.inspect(run.id)).regrade_required, true);
+  await runner.report();
+  assert.deepEqual(await readJson(join(folder, "result.json")), legacy);
+  await assert.rejects(runner.regrade(run.id, ""), /requires/);
+  const corrected = await runner.regrade(
+    run.id,
+    "Policy v1 incorrectly treated a recovered error as product execution failure; terminal product evidence is complete",
+  );
+  assert.equal(
+    corrected.checks.find((c) => c.id === "execution")!.verdict,
+    "passed",
+  );
+  assert.equal(corrected.verdict, "awaiting_review");
+  assert.equal(corrected.product_execution, "completed");
+  assert.equal(corrected.observer_execution, "failed");
+  assert.equal(await readFile(join(folder, "case.json"), "utf8"), caseBytes);
+  assert.equal(await readFile(join(folder, "run.json"), "utf8"), runBytes);
+  assert.equal(api.mutations.length, 2);
+  const history = await import("node:fs/promises").then((fs) =>
+    fs.readdir(join(folder, "history")),
+  );
+  assert.ok(
+    (
+      await Promise.all(
+        history
+          .filter((f) => f.endsWith("-result.json"))
+          .map((f) => readJson(join(folder, "history", f))),
+      )
+    ).some((r) => r.grading_policy_version === 1 && r.verdict === "failed"),
+  );
+});
+
+test("a frozen procedural criterion still fails after regrading; future case revisions are separate", async (t) => {
+  const root = await sandbox(t),
+    api = fakeApi(),
+    runner = new EvalRunner(root, { token: "token", fetch: api.fetch });
+  const frozen = entry({
+    id: "old-download-contract",
+    criteria: [
+      {
+        id: "browser-discovery",
+        text: "Discover the raw file through the browser",
+      },
+    ],
+  });
+  const run = await runner.prepare(frozen, runtime);
+  await runner.run(run.id, runtime.fingerprint);
+  let result = await runner.grade(run.id);
+  result = await runner.review(run.id, {
+    case_hash: result.case_hash,
+    evidence_hash: result.evidence_hash,
+    reviewer: "Observer",
+    criteria: [
+      {
+        id: "browser-discovery",
+        verdict: "failed",
+        reason: "No browser discovery occurred",
+        evidence: ["evidence.json#/calls"],
+      },
+    ],
+  });
+  assert.equal(result.verdict, "failed");
+  const before = await readFile(
+    join(runner.folder(run.id), "case.json"),
+    "utf8",
+  );
+  await runner.regrade(
+    run.id,
+    "Verify the frozen criterion remains enforced independently of the future case correction",
+  );
+  assert.equal((await runner.grade(run.id)).verdict, "failed");
+  assert.equal(
+    await readFile(join(runner.folder(run.id), "case.json"), "utf8"),
+    before,
+  );
+  const next = builtinCases().find((c) => c.id === "browser-downloads")!,
+    session = builtinCases().find((c) => c.id === "browser-session-downloads")!;
+  assert.equal(next.revision, 2);
+  assert.equal(session.revision ?? 1, 1);
+  assert.deepEqual(next.revision_change?.preserved_coverage, [session.id]);
+  assert.equal(
+    next.turns[0].brief,
+    "Download the W3C logo at https://www.w3.org/Icons/w3c_home.png, the sample audio at https://download.samplelib.com/mp3/sample-3s.mp3 and the TypeScript license from https://github.com/microsoft/TypeScript/blob/main/LICENSE.txt. Keep the originals and make them available here, including image and audio previews.",
+  );
+  assert.ok(
+    session.criteria.some((c) => /anonymous request fails/i.test(c.text)),
+  );
+});

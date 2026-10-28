@@ -5,6 +5,12 @@
  * membership does not mean a case has an automated runner or grader.
  */
 export type BrowserEvalCase = {
+  revision?: number;
+  revision_change?: {
+    from: number;
+    reason: string;
+    preserved_coverage: string[];
+  };
   id: string;
   name: string;
   brief: string;
@@ -122,11 +128,17 @@ export const browserCases: BrowserEvalCase[] = [
   },
   {
     id: "downloads",
+    revision: 2,
+    revision_change: {
+      from: 1,
+      reason:
+        "The public-file business request permits direct downloads. The v1 hidden browser-discovery requirement measured an unstated procedure; original-byte, delivery and transport requirements remain unchanged.",
+      preserved_coverage: ["browser-session-downloads"],
+    },
     name: "Public-file downloads",
     brief: "Download the W3C logo at https://www.w3.org/Icons/w3c_home.png, the sample audio at https://download.samplelib.com/mp3/sample-3s.mp3 and the TypeScript license from https://github.com/microsoft/TypeScript/blob/main/LICENSE.txt. Keep the originals and make them available here, including image and audio previews.",
     success_criteria: `- All three saved originals match independently downloaded source bytes and hashes.
 - The logo and MP3 are delivered as image/audio artifacts; the license is delivered as the actual text file rather than a GitHub page.
-- Browser discovery/session transfer of the GitHub raw file is evidenced separately from direct public-URL transfer.
 - Files can be retrieved through authenticated PostOrca access and downloaded intact without manual Save clicks.
 - Transport controls reject errors, excessive sizes, partial files and non-HTML filenames backed by login HTML; redirects preserve the intended bytes.
 - All opened tabs are closed; automated source checks and scripted transport/UI controls are reported separately.`,

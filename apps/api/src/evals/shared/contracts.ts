@@ -79,6 +79,15 @@ export type Check = z.infer<typeof checkSchema>;
 export const caseSchema = z
   .object({
     id: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9-]*$/),
+    revision: z.number().int().positive().optional(),
+    revision_change: z
+      .object({
+        from: z.number().int().positive(),
+        reason: z.string().trim().min(1),
+        preserved_coverage: z.array(z.string().min(1)).min(1),
+      })
+      .strict()
+      .optional(),
     plugin: z.string().min(1),
     title: z.string().min(1),
     grading_mode: z.enum(["programmatic", "llm", "hybrid"]).default("hybrid"),
@@ -147,8 +156,22 @@ export const caseSchema = z
   })
   .strict()
   .superRefine((value, ctx) => {
+    if ((value.revision ?? 1) > 1 && !value.revision_change)
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "A revised case requires a correction note and preserved coverage",
+      });
     if (new Set(value.criteria.map((c) => c.id)).size !== value.criteria.length)
       ctx.addIssue({ code: "custom", message: "Criterion IDs must be unique" });
+    if (
+      value.revision_change &&
+      (!value.revision || value.revision_change.from >= value.revision)
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "A revision correction must identify an earlier version",
+      });
     if (value.grading_mode !== "programmatic" && !value.criteria.length)
       ctx.addIssue({
         code: "custom",
@@ -253,6 +276,7 @@ export type Run = {
   started_at?: string;
   finished_at?: string;
   observer_error?: string;
+  followups_stopped?: { after_turn: string; reason: string };
   steps: { intent_at: string; turn_id?: string }[];
   error?: string;
 };
@@ -264,3 +288,41 @@ export const reviewSchema = z
     criteria: z.array(checkSchema),
   })
   .strict();
+
+/** Root-cause diagnosis is separate from acceptance. It cannot override a check. */
+export const triageSchema = z
+  .object({
+    case_hash: z.string(),
+    evidence_hash: z.string().nullable(),
+    grading_hash: z.string(),
+    reviewer: z.string().trim().min(1),
+    findings: z
+      .array(
+        z
+          .object({
+            id: z.string().min(1),
+            side: z.enum(["agent", "infrastructure", "eval", "unclassified"]),
+            status: z.enum(["confirmed", "investigating"]),
+            check_ids: z.array(z.string().min(1)).min(1),
+            reason: z.string().trim().min(1),
+            evidence: z.array(z.string().min(1)).min(1),
+            next_action: z.string().trim().min(1),
+          })
+          .strict(),
+      )
+      .min(1),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (new Set(value.findings.map((f) => f.id)).size !== value.findings.length)
+      ctx.addIssue({ code: "custom", message: "Finding IDs must be unique" });
+    if (
+      value.findings.some(
+        (f) => f.side === "unclassified" && f.status !== "investigating",
+      )
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "Unclassified findings must remain investigating",
+      });
+  });

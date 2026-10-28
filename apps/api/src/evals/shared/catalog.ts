@@ -25,6 +25,8 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
   const browser = browserCases.map((c) =>
     caseSchema.parse({
       id: `browser-${c.id}`,
+      ...(c.revision ? { revision: c.revision } : {}),
+      ...(c.revision_change ? { revision_change: c.revision_change } : {}),
       plugin: "browser",
       title: c.name,
       turns: [{ brief: c.brief }],
