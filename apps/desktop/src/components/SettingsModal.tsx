@@ -143,11 +143,17 @@ export default function SettingsModal({
             <div className="settings-group">
               <div className="setting-row">
                 <div>
-                  <strong>Working with your agent</strong>
+                  <strong>Support</strong>
                   <p>
-                    Use Agent to develop your brand direction and content ideas.
-                    Review proposals in your Inbox, see planned content in the
-                    Calendar, and manage your agent’s rhythm in Routines.
+                    Questions or problems? Email{" "}
+                    <a
+                      href="mailto:nla@autopilotstartup.com"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      nla@autopilotstartup.com
+                    </a>
+                    .
                   </p>
                 </div>
               </div>
