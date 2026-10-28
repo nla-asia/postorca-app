@@ -291,15 +291,10 @@ h1 {
   border-bottom: 1px solid var(--line);
   padding: 0 32px;
 }
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  color: var(--muted);
-  font-size: 12px;
-}
-.breadcrumb span {
-  color: var(--secondary);
+.topbar-title {
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--text);
 }
 .page-content {
   padding: 47px 56px 24px;
