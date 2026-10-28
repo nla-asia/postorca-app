@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PostOrca",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Lets the PostOrca desktop app work in your browser, in its own Orca tab group, with your existing sign-ins.",
   "minimum_chrome_version": "125",
   "homepage_url": "https://orca.atpa.site",
