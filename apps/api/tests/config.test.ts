@@ -12,7 +12,7 @@ test("configuration has local defaults and accepts trimmed origins", () => {
       jwtSecret: secret,
       port: 3001,
       origins: ["http://127.0.0.1:5173", "http://localhost:5173"],
-      openai: null,
+      orca: null,
     },
   );
   assert.deepEqual(
@@ -27,7 +27,7 @@ test("configuration has local defaults and accepts trimmed origins", () => {
       jwtSecret: secret,
       port: 4100,
       origins: ["https://app.example.com", "http://localhost:5173"],
-      openai: null,
+      orca: null,
     },
   );
 });
@@ -86,15 +86,57 @@ test("the model provider is optional, but its key and model are set together", (
   const base = { DATABASE_URL: databaseUrl, JWT_SECRET: secret };
   assert.deepEqual(
     configFromEnv({ ...base, OPENAI_API_KEY: "sk-test", OPENAI_MODEL: "gpt-test" })
-      .openai,
-    { apiKey: "sk-test", model: "gpt-test" },
+      .orca,
+    { provider: "openai", apiKey: "sk-test", model: "gpt-test" },
+  );
+  assert.deepEqual(
+    configFromEnv({
+      ...base,
+      META_MODEL_API_KEY: "meta-test",
+      META_MODEL: "muse-test",
+    }).orca,
+    { provider: "meta", apiKey: "meta-test", model: "muse-test" },
   );
   assert.throws(
     () => configFromEnv({ ...base, OPENAI_API_KEY: "sk-test" }),
-    /openai\.model: Set OPENAI_MODEL together with OPENAI_API_KEY/,
+    /orca\.model: Set OPENAI_MODEL together with OPENAI_API_KEY/,
   );
   assert.throws(
     () => configFromEnv({ ...base, OPENAI_MODEL: "gpt-test" }),
-    /openai\.apiKey: Set OPENAI_API_KEY together with OPENAI_MODEL/,
+    /orca\.apiKey: Set OPENAI_API_KEY together with OPENAI_MODEL/,
+  );
+  assert.throws(
+    () => configFromEnv({ ...base, META_MODEL_API_KEY: "meta-test" }),
+    /orca\.model: Set META_MODEL together with META_MODEL_API_KEY/,
+  );
+});
+
+test("Meta is preferred when both providers are set, and ORCA_PROVIDER overrides it", () => {
+  const env = {
+    DATABASE_URL: databaseUrl,
+    JWT_SECRET: secret,
+    OPENAI_API_KEY: "sk-test",
+    OPENAI_MODEL: "gpt-test",
+    META_MODEL_API_KEY: "meta-test",
+    META_MODEL: "muse-test",
+  };
+  assert.equal(configFromEnv(env).orca?.provider, "meta");
+  assert.deepEqual(configFromEnv({ ...env, ORCA_PROVIDER: "openai" }).orca, {
+    provider: "openai",
+    apiKey: "sk-test",
+    model: "gpt-test",
+  });
+  assert.throws(
+    () => configFromEnv({ ...env, ORCA_PROVIDER: "other" }),
+    /Set ORCA_PROVIDER to openai or meta/,
+  );
+  assert.throws(
+    () =>
+      configFromEnv({
+        DATABASE_URL: databaseUrl,
+        JWT_SECRET: secret,
+        ORCA_PROVIDER: "meta",
+      }),
+    /orca\.apiKey: Set META_MODEL_API_KEY together with META_MODEL/,
   );
 });

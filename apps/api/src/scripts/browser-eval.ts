@@ -247,7 +247,7 @@ try {
       throw new Error(
         "Desktop/browser readiness must be verified within the past five minutes.",
       );
-    if (!config.openai)
+    if (!config.orca)
       throw new Error(
         "Model provider must be configured before preparing a live run.",
       );
@@ -300,7 +300,7 @@ try {
       success_criteria: entry.success_criteria,
       parameters: entry.parameters,
       prepared_at: now.toISOString(),
-      model: config.openai.model,
+      model: config.orca.model,
       platform: process.platform,
       commit: git("rev-parse", "HEAD"),
       dirty: git("status", "--porcelain"),
@@ -370,7 +370,7 @@ try {
         );
       if (JSON.stringify(await fingerprints()) !== JSON.stringify(record.hashes))
         throw new Error("Eval/runtime sources changed since prepare.");
-      if (record.model !== config.openai?.model)
+      if (record.model !== config.orca?.model)
         throw new Error("Model changed since prepare.");
       if ((await activeTurns()).length)
         throw new Error("Another turn is active; do not start.");

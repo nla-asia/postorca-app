@@ -17,6 +17,7 @@ import {
   loadRates,
 } from "../src/api-usage/pricing.js";
 import { openAIUsage } from "../src/api-usage/openai.js";
+import { MetaProvider } from "../src/providers/meta.js";
 import { OpenAIProvider } from "../src/providers/openai.js";
 import { OpenAIImageProvider } from "../src/providers/openai-image.js";
 import { ElevenLabsProvider } from "../src/providers/elevenlabs.js";
@@ -170,6 +171,43 @@ test("unknown model/missing meters/nondefault tiers remain unknown; long-context
       .meters.ordinary_input_tokens,
     undefined,
   );
+});
+
+test("Meta Model API turns go to Meta and are priced from its rates", async (t) => {
+  const s = await scope();
+  const urls: string[] = [];
+  t.mock.method(globalThis, "fetch", async (url: unknown) => {
+    urls.push(String(url));
+    return Response.json({
+      ...result(),
+      model: "muse-spark-1.3",
+      usage: {
+        input_tokens: 1000,
+        input_tokens_details: { cached_tokens: 400 },
+        output_tokens: 200,
+        output_tokens_details: { reasoning_tokens: 50 },
+      },
+    });
+  });
+  await withApiUsage(s, () =>
+    new MetaProvider("test-key", "muse-spark-1.3").respond({
+      instructions: "Test",
+      messages: [],
+      tools: [],
+      signal: new AbortController().signal,
+    }),
+  );
+  assert.deepEqual(urls, ["https://api.meta.ai/v1/responses"]);
+  const {
+    rows: [row],
+  } = await s.db.query("SELECT * FROM api_requests WHERE turn_id=$1", [
+    s.turnId,
+  ]);
+  assert.equal(row.provider, "meta");
+  assert.equal(row.model, "muse-spark-1.3");
+  assert.equal(row.credit_state, "settled");
+  // 600 uncached at $1.25, 400 cached at $0.15 and 200 output at $4.25 per million.
+  assert.equal(row.estimated_cost, "0.001660000000");
 });
 
 test("SDK retries have separate rows; incomplete paid results retain usage", async (t) => {

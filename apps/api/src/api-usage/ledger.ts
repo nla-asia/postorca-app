@@ -132,9 +132,11 @@ export const usageFetch: typeof fetch = async (input, init) => {
   const provider =
     url.hostname === "api.openai.com"
       ? "openai"
-      : url.hostname === "api.elevenlabs.io"
-        ? "elevenlabs"
-        : null;
+      : url.hostname === "api.meta.ai"
+        ? "meta"
+        : url.hostname === "api.elevenlabs.io"
+          ? "elevenlabs"
+          : null;
   if (!provider) return globalThis.fetch(input, init);
   const body = init?.body;
   let args: Record<string, unknown> = {};

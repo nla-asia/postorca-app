@@ -11,12 +11,15 @@ export class OpenAIProvider implements Provider {
   constructor(
     apiKey: string,
     private model: string,
+    /** Another host serving the same Responses API, such as Meta Model API. */
+    baseURL?: string,
   ) {
     // Model calls have no side effects, so connection drops, 429s and 5xxs are
     // retried with the SDK's backoff instead of failing the whole turn. A step with a
     // few images can take over a minute, so the timeout leaves room for that.
     this.client = new OpenAI({
       apiKey,
+      baseURL,
       timeout: 180_000,
       maxRetries: 3,
       fetch: usageFetch,

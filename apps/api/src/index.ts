@@ -5,6 +5,7 @@ import { attachDesktopSocket } from "./desktop/connections.js";
 import { configFromEnv } from "./config.js";
 import { createDatabase, ping } from "./db.js";
 import { catalogDrift } from "./plugins/catalog.js";
+import { MetaProvider } from "./providers/meta.js";
 import { OpenAIProvider } from "./providers/openai.js";
 import { failInterruptedTurns } from "./repositories/turns.js";
 import { Scheduler } from "./scheduler.js";
@@ -24,15 +25,19 @@ try {
   await db.end();
   throw error;
 }
-const agent = config.openai
+const { orca } = config;
+const agent = orca
   ? createAgent(
       db,
-      new OpenAIProvider(config.openai.apiKey, config.openai.model),
+      orca.provider === "meta"
+        ? new MetaProvider(orca.apiKey, orca.model)
+        : new OpenAIProvider(orca.apiKey, orca.model),
     )
   : null;
-if (!agent)
+if (orca) console.log(`Orca runs on ${orca.provider} (${orca.model}).`);
+else
   console.warn(
-    "Orca is off: set OPENAI_API_KEY and OPENAI_MODEL to run Agent chat, work and routines.",
+    "Orca is off: set META_MODEL_API_KEY and META_MODEL (or OPENAI_API_KEY and OPENAI_MODEL) to run Agent chat, work and routines.",
   );
 // Routines run only when Orca can execute them; otherwise they stay due and run
 // once on the first tick after a model is configured.

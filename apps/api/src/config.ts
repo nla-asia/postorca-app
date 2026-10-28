@@ -7,6 +7,19 @@ const origin = z.url({ protocol: /^https?$/ }).refine((value) => {
     return false;
   }
 }, "Use an HTTP(S) origin without paths, credentials, or a trailing slash.");
+/** Each model provider's credential and model variables. */
+const providerEnv = {
+  openai: { apiKey: "OPENAI_API_KEY", model: "OPENAI_MODEL" },
+  meta: { apiKey: "META_MODEL_API_KEY", model: "META_MODEL" },
+} as const;
+const providerConfig = <P extends keyof typeof providerEnv>(provider: P) => {
+  const { apiKey, model } = providerEnv[provider];
+  return z.object({
+    provider: z.literal(provider),
+    apiKey: z.string().min(1, `Set ${apiKey} together with ${model}.`),
+    model: z.string().min(1, `Set ${model} together with ${apiKey}.`),
+  });
+};
 const schema = z.object({
   databaseUrl: z.string().min(1, "DATABASE_URL is required."),
   jwtSecret: z
@@ -15,13 +28,33 @@ const schema = z.object({
   port: z.coerce.number().int().min(1).max(65535),
   origins: z.array(origin).min(1),
   /** Orca runs turns only when a model is configured. */
-  openai: z
-    .object({
-      apiKey: z.string().min(1, "Set OPENAI_API_KEY together with OPENAI_MODEL."),
-      model: z.string().min(1, "Set OPENAI_MODEL together with OPENAI_API_KEY."),
-    })
+  orca: z
+    .discriminatedUnion(
+      "provider",
+      [providerConfig("openai"), providerConfig("meta")],
+      { error: "Set ORCA_PROVIDER to openai or meta." },
+    )
     .nullable(),
 });
+
+/** ORCA_PROVIDER picks the provider; without it, Meta is used when its variables are
+ * set, then OpenAI. */
+function orcaFromEnv(env: NodeJS.ProcessEnv) {
+  const configured = (Object.keys(providerEnv) as (keyof typeof providerEnv)[])
+    .reverse()
+    .find(
+      (provider) =>
+        env[providerEnv[provider].apiKey] || env[providerEnv[provider].model],
+    );
+  const provider = env.ORCA_PROVIDER || configured;
+  if (!provider) return null;
+  const names = providerEnv[provider as keyof typeof providerEnv];
+  return {
+    provider,
+    apiKey: names ? (env[names.apiKey] ?? "") : "",
+    model: names ? (env[names.model] ?? "") : "",
+  };
+}
 
 export function configFromEnv(env: NodeJS.ProcessEnv = process.env) {
   const result = schema.safeParse({
@@ -33,10 +66,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env) {
     )
       .split(",")
       .map((value) => value.trim()),
-    openai:
-      env.OPENAI_API_KEY || env.OPENAI_MODEL
-        ? { apiKey: env.OPENAI_API_KEY ?? "", model: env.OPENAI_MODEL ?? "" }
-        : null,
+    orca: orcaFromEnv(env),
   });
   if (!result.success) {
     const messages = result.error.issues.map(
