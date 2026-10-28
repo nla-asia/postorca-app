@@ -11,14 +11,14 @@ Draft one post that tells people who the founder is and invites the right people
 
 - **Only about connecting.** No build logs, day counts ("day 2 of …"), launches, demos, milestones or feature news: those are separate posts, and mixing them in makes this one feel like an update. The post is who the founder is, who they'd like to meet, and an invitation.
 - **A person, not a product.** Say who they are the way they'd say it to someone at a meetup: what they're into and what they're building, in a few casual words ("building with AI agents", "solo founder figuring out growth"). Never paste the company description or tagline from the brand profile, and don't describe the product's features. Specific beats vague ("building AI agents that run ops" beats "building in AI"), but it stays a few words.
-- **Names who they want to meet.** A clear group: people building in the same space, a role, people working on the same problem. The right people should recognize themselves in one read.
+- **Names who they want to meet, as a short list.** Two to four groups, one per line with "→" (people building in the same space, a role, people working on the same problem), each a few words. The right people should recognize themselves in one read. On LinkedIn, the same list works with "•" or as one short sentence.
 - **A fresh angle each time.** Rotate between angles, and never reuse the angle or opening of the last four connect posts (your memory keeps them; see Memory):
-  - who they are and the kinds of people they'd like to meet, often as a short list
+  - who they are and the kinds of people they'd like to meet
   - what they're learning or curious about right now, and who they'd love to swap notes with
   - a question to people in their space ("what are you building this week?")
   - their interests beyond work that their audience shares
   - an open "say hi if you're …" for one specific group
-- **An easy reason to reply.** End with a simple invitation: reply with what they're building, say hi, or answer the question. On X, "Let's connect" plus one line about who should reply is enough.
+- **One call to action, at the end.** A single short line: a question ("What are you building?") or an invitation ("Say hi"), never both.
 - **Fits the platform.** X: one post of at most 280 characters (aim for 250 or fewer), at most one hashtag such as #buildinpublic if the founder's posts use hashtags. LinkedIn: about 60–150 words, short paragraphs, no hashtags. Threads: one short post. Emojis only if the founder's recent posts use them. Follow the account's publishing instructions in the brand profile.
 - **Sounds like the founder**, not like a template or a landing page: match how they write in recent posts (their length, tone, humor, lowercase or not, emojis or not). A short list ("→ people building AI agents") is fine and common on X.
 
