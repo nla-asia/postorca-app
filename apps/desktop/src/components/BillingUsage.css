@@ -173,6 +173,30 @@
   line-height: 1.7;
   margin: 12px 0;
 }
+.billing-panel .billing-waiting,
+.billing-panel .billing-confirmed {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.billing-waiting > svg,
+.billing-confirmed > svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--accent);
+}
+.billing-waiting > div,
+.billing-confirmed > div {
+  flex: 1;
+}
+.billing-waiting p {
+  margin: 2px 0 0;
+}
+.billing-waiting > button,
+.billing-confirmed > button {
+  flex: none;
+  margin: -4px -6px -4px 0;
+}
 .billing-notice a {
   color: var(--accent);
   text-decoration: underline;

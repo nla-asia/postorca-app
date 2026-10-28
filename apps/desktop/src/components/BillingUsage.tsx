@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowUpRight,
+  CircleCheck,
   Clock3,
   Megaphone,
   RefreshCw,
@@ -8,6 +9,12 @@ import {
   Wallet,
 } from "lucide-react";
 import { api } from "../lib/api";
+import {
+  baselineOf,
+  paymentLanded,
+  type Baseline,
+  type BillingAction,
+} from "../lib/billing";
 import { Button, Modal } from "./ui";
 import "./BillingUsage.css";
 
@@ -80,6 +87,9 @@ const plans: { id: PlanId; icon: typeof Sparkles; pitch: string }[] = [
     pitch: "For daily content across every account.",
   },
 ];
+/** While Stripe is open, check often: its webhook lands seconds after payment. */
+const WATCH_MS = 3000;
+const WATCH_FOR_MS = 10 * 60 * 1000;
 
 export default function BillingUsage() {
   const [data, setData] = useState<Billing | null>(null);
@@ -91,6 +101,13 @@ export default function BillingUsage() {
   const [showAll, setShowAll] = useState(false);
   const [reload, setReload] = useState(0);
   const [switchTo, setSwitchTo] = useState<PlanId | null>(null);
+  const [waiting, setWaiting] = useState<{
+    action: BillingAction;
+    baseline: Baseline;
+    until: number;
+  } | null>(null);
+  const [confirmed, setConfirmed] = useState("");
+  const watching = waiting !== null;
   useEffect(() => {
     let active = true,
       inFlight = false;
@@ -123,21 +140,33 @@ export default function BillingUsage() {
       }
     };
     void load();
+    // The browser covering this window makes it "hidden", so keep checking while
+    // a payment is pending.
     const refresh = () => {
-      if (document.visibilityState === "visible") void load();
+      if (watching || document.visibilityState === "visible") void load();
     };
     window.addEventListener("focus", refresh);
-    const timer = window.setInterval(refresh, 15000);
+    const timer = window.setInterval(refresh, watching ? WATCH_MS : 15000);
     return () => {
       active = false;
       controller.abort();
       window.removeEventListener("focus", refresh);
       window.clearInterval(timer);
     };
-  }, [reload]);
-  const start = useCallback(async (action: PackageId | "portal") => {
+  }, [reload, watching]);
+  useEffect(() => {
+    if (!waiting || !data) return;
+    const landed = paymentLanded(waiting.action, waiting.baseline, data);
+    if (landed) {
+      setConfirmed(landed);
+      setPaymentUrl(null);
+      setWaiting(null);
+    } else if (Date.now() > waiting.until) setWaiting(null);
+  }, [data, waiting]);
+  const start = useCallback(async (action: BillingAction) => {
     setBusy(action);
     setActionError("");
+    setConfirmed("");
     setPaymentUrl(null);
     try {
       const result = await api<{ url: string }>(
@@ -158,6 +187,12 @@ export default function BillingUsage() {
       )
         throw new Error("The server returned an invalid payment URL.");
       setPaymentUrl(url.href);
+      if (data)
+        setWaiting({
+          action,
+          baseline: baselineOf(data),
+          until: Date.now() + WATCH_FOR_MS,
+        });
       window.open(url.href, "_blank", "noopener,noreferrer");
     } catch (failure) {
       setActionError(
@@ -166,7 +201,7 @@ export default function BillingUsage() {
     } finally {
       setBusy(null);
     }
-  }, []);
+  }, [data]);
   const changePlan = useCallback(async (plan: PlanId) => {
     setBusy(plan);
     setActionError("");
@@ -229,6 +264,51 @@ export default function BillingUsage() {
         <div role="alert" className="billing-notice">
           {actionError}
         </div>
+      )}
+      {waiting ? (
+        <div className="billing-notice billing-waiting" role="status">
+          <RefreshCw size={14} aria-hidden="true" className="billing-refreshing" />
+          <div>
+            <strong>
+              {waiting.action === "portal"
+                ? "Watching for changes in Stripe…"
+                : "Waiting for your payment…"}
+            </strong>
+            <p>
+              {waiting.action === "portal"
+                ? "Changes you make in your browser show up here on their own."
+                : "Finish checkout in your browser. This updates on its own a few seconds after Stripe confirms."}{" "}
+              {paymentUrl && (
+                <a href={paymentUrl} target="_blank" rel="noopener noreferrer">
+                  Open Stripe again
+                </a>
+              )}
+            </p>
+          </div>
+          <Button variant="ghost" onClick={() => setWaiting(null)}>
+            Stop
+          </Button>
+        </div>
+      ) : confirmed ? (
+        <div className="billing-notice billing-confirmed" role="status">
+          <CircleCheck size={16} aria-hidden="true" />
+          <div>
+            <strong>{confirmed}</strong>
+          </div>
+          <Button variant="ghost" onClick={() => setConfirmed("")}>
+            Dismiss
+          </Button>
+        </div>
+      ) : (
+        paymentUrl && (
+          <div className="billing-notice" role="status">
+            Finished in your browser? Your balance updates here once Stripe
+            confirms; use Refresh to check now.{" "}
+            <a href={paymentUrl} target="_blank" rel="noopener noreferrer">
+              Open Stripe again
+            </a>
+          </div>
+        )
       )}
       {!data && !loadError && (
         <p role="status" className="billing-loading">
@@ -405,15 +485,6 @@ export default function BillingUsage() {
               </Button>
             </div>
           </Modal>
-          {paymentUrl && (
-            <div className="billing-notice" role="status">
-              Finish in your browser, then return here. Your balance refreshes
-              automatically.{" "}
-              <a href={paymentUrl} target="_blank" rel="noopener noreferrer">
-                Open Stripe again
-              </a>
-            </div>
-          )}
           <div className="billing-activity-heading">
             <h4>Credit activity</h4>
             <span>Grants, usage, and pending requests</span>
