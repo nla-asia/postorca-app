@@ -2,16 +2,16 @@ import "../env.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
-import { createOpenAIImageProviderFromEnv } from "../providers/openai-image.js";
+import { createImageProviderFromEnv } from "../providers/meta-image.js";
 import { createElevenLabsProviderFromEnv } from "../providers/elevenlabs.js";
 
 /** Explicit paid check, matching the original: one draft image, short speech, transcription. */
 export async function runMediaSmoke() {
-  const images = createOpenAIImageProviderFromEnv();
+  const images = createImageProviderFromEnv();
   const audio = createElevenLabsProviderFromEnv();
   if (!images || !audio)
     throw new Error(
-      "Set OPENAI_IMAGE_API_KEY and ELEVENLABS_API_KEY in apps/api/.env.",
+      "Set an image key (META_MODEL_API_KEY or OPENAI_IMAGE_API_KEY) and ELEVENLABS_API_KEY in apps/api/.env.",
     );
   const started = new Date().toISOString();
   const directory = fileURLToPath(
@@ -34,7 +34,8 @@ export async function runMediaSmoke() {
       await writeFile(path, image.data);
       const width = image.data.readUInt32BE(16),
         height = image.data.readUInt32BE(20);
-      if (width !== 1024 || height !== 1024)
+      // Muse Image treats size as an aspect ratio, so only squareness is checked.
+      if (width !== height || width < 1024)
         throw new Error("The generated image has unexpected dimensions.");
       console.log(`Image saved: ${path}`);
       return {

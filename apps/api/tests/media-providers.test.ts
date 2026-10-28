@@ -6,6 +6,11 @@ import {
   createOpenAIImageProviderFromEnv,
 } from "../src/providers/openai-image.js";
 import {
+  MetaImageProvider,
+  META_IMAGE_MODEL,
+  createImageProviderFromEnv,
+} from "../src/providers/meta-image.js";
+import {
   ElevenLabsProvider,
   ElevenLabsError,
   createElevenLabsProviderFromEnv,
@@ -84,6 +89,64 @@ test("image revisions upload the source and PNG mask; invalid masks fail before 
     /masks must be PNG/,
   );
   assert.equal(edits, 1);
+});
+
+test("Muse Image requests PNGs from Meta, maps low quality to one pass, and takes no mask", async (t) => {
+  const calls: any[] = [];
+  t.mock.method(globalThis, "fetch", async (url: string, init: RequestInit) => {
+    calls.push({ url, init });
+    return Response.json({ data: [{ b64_json: png.toString("base64") }] });
+  });
+  const provider = new MetaImageProvider("meta-key");
+  await provider.generateImage(
+    { prompt: "A small studio", quality: "low", size: "1536x1024" },
+    { safetyIdentifier: "founder-hash" },
+  );
+  assert.equal(calls[0].url, "https://api.meta.ai/v1/images/generations");
+  assert.equal(
+    new Headers(calls[0].init.headers).get("authorization"),
+    "Bearer meta-key",
+  );
+  assert.deepEqual(JSON.parse(calls[0].init.body), {
+    prompt: "A small studio",
+    size: "1536x1024",
+    model: META_IMAGE_MODEL,
+    n: 1,
+    output_format: "png",
+    reasoning_strength: "low",
+    user: "founder-hash",
+  });
+  const image = new Blob([png], { type: "image/png" });
+  await provider.editImage({ image, prompt: "Make it blue" });
+  assert.equal(calls[1].url, "https://api.meta.ai/v1/images/edits");
+  const form = calls[1].init.body as FormData;
+  assert.ok(form.get("image") instanceof Blob);
+  assert.equal(form.get("model"), META_IMAGE_MODEL);
+  assert.equal(form.get("reasoning_strength"), "high");
+  await assert.rejects(
+    provider.editImage({ image, mask: image, prompt: "Blue" }),
+    /takes no mask/,
+  );
+  assert.equal(calls.length, 2);
+});
+
+test("images use Muse Image when Meta is configured unless IMAGE_PROVIDER=openai", (t) => {
+  for (const key of ["META_MODEL_API_KEY", "OPENAI_IMAGE_API_KEY", "IMAGE_PROVIDER"]) {
+    const old = process.env[key];
+    t.after(() => {
+      if (old === undefined) delete process.env[key];
+      else process.env[key] = old;
+    });
+  }
+  process.env.META_MODEL_API_KEY = "meta-key";
+  process.env.OPENAI_IMAGE_API_KEY = "image-key";
+  delete process.env.IMAGE_PROVIDER;
+  assert.ok(createImageProviderFromEnv() instanceof MetaImageProvider);
+  process.env.IMAGE_PROVIDER = "openai";
+  assert.ok(createImageProviderFromEnv() instanceof OpenAIImageProvider);
+  delete process.env.META_MODEL_API_KEY;
+  delete process.env.IMAGE_PROVIDER;
+  assert.ok(createImageProviderFromEnv() instanceof OpenAIImageProvider);
 });
 
 test("failed paid image calls are not retried and malformed PNG responses are rejected", async (t) => {

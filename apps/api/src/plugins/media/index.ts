@@ -3,10 +3,8 @@ import { createHash } from "node:crypto";
 import OpenAI from "openai";
 import { z } from "zod";
 import { HttpError } from "../../handlers/errors.js";
-import {
-  createOpenAIImageProviderFromEnv,
-  imageOptionsSchema,
-} from "../../providers/openai-image.js";
+import { createImageProviderFromEnv } from "../../providers/meta-image.js";
+import { imageOptionsSchema } from "../../providers/openai-image.js";
 import {
   createElevenLabsProviderFromEnv,
   ElevenLabsError,
@@ -29,11 +27,11 @@ import type {
 const text = z.string().trim().min(1);
 const title = text.max(200);
 function imageProvider() {
-  const provider = createOpenAIImageProviderFromEnv();
+  const provider = createImageProviderFromEnv();
   if (!provider)
     throw new HttpError(
       503,
-      "Image generation is unavailable. Set OPENAI_IMAGE_API_KEY on the server.",
+      "Image generation is unavailable. Set META_MODEL_API_KEY or OPENAI_IMAGE_API_KEY on the server.",
     );
   return provider;
 }
@@ -185,6 +183,11 @@ export const mediaPlugin: PluginDefinition = {
       imageArgs.extend({ file: text, mask_file: text.optional() }).strict(),
       async (context, { title, file, mask_file, ...args }) => {
         const provider = imageProvider();
+        if (mask_file && !provider.supportsMask)
+          throw new HttpError(
+            400,
+            "This image model edits from the prompt alone. Describe the area to change in the prompt and leave out mask_file.",
+          );
         const image = await ownedBlob(context, file, "image");
         const mask = mask_file
           ? await ownedBlob(context, mask_file, "image")

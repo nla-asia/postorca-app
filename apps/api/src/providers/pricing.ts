@@ -55,6 +55,18 @@ export const PROVIDER_PRICING = [
   })),
   ...["image.generate", "image.edit"].map((operation) => ({
     enabled: true,
+    id: `meta-muse-image-1.0-${operation}-2026-10-28`,
+    source: "https://dev.meta.ai/docs/pricing-rate-limits",
+    provider: "meta",
+    model: "muse-image-1.0",
+    operation,
+    currency: "USD",
+    effectiveFrom: "2026-10-28T00:00:00Z",
+    // Failed or safety-filtered images are not billed.
+    prices: [{ meter: "generated_images", amount: "0.01", perUnits: 1 }],
+  })),
+  ...["image.generate", "image.edit"].map((operation) => ({
+    enabled: true,
     id: `openai-flare-${operation}-2026-10-27`,
     source,
     provider: "openai",

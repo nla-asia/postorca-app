@@ -112,7 +112,10 @@ async function preflight(context: Context, needsModel: boolean) {
     const orca = orcaFromEnv(process.env);
     if (!orca?.apiKey || !orca.model)
       throw new Error("The agent model is not configured.");
-    if (!process.env.OPENAI_IMAGE_API_KEY || !process.env.ELEVENLABS_API_KEY)
+    if (
+      !(process.env.META_MODEL_API_KEY || process.env.OPENAI_IMAGE_API_KEY) ||
+      !process.env.ELEVENLABS_API_KEY
+    )
       throw new Error(
         "Set both media provider credentials before running paid cases.",
       );

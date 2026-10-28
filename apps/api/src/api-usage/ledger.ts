@@ -279,6 +279,14 @@ export const usageFetch: typeof fetch = async (input, init) => {
       settings.response_status = safeId(data?.status);
     }
     const usage = openAIUsage(numericTree(data?.usage));
+    // Muse Image bills per generated image; its token counts are informational.
+    if (
+      provider === "meta" &&
+      operation.startsWith("image.") &&
+      response?.ok &&
+      Array.isArray(data?.data)
+    )
+      usage.meters.generated_images = data.data.length;
     if (provider === "elevenlabs" && response?.ok) {
       const characterCost = response.headers.get("character-cost");
       if (

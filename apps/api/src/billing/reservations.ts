@@ -41,6 +41,12 @@ export function requestReservation(
           1_000_000 +
         (number("max_output_tokens", 128000) * rate[1]) / 1_000_000;
   }
+  if (
+    provider === "meta" &&
+    model === "muse-image-1.0" &&
+    ["image.generate", "image.edit"].includes(operation)
+  )
+    usd = 0.01 * Math.max(1, number("n", 1));
   if (provider === "elevenlabs") {
     if (
       ["eleven_v3", "eleven_multilingual_v2"].includes(model) &&
