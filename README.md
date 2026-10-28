@@ -72,6 +72,7 @@ To let Orca use your browser, open `chrome://extensions`, turn on Developer mode
 | `npm run desktop:package` | Build the macOS installer |
 | `npm run connectors:start` | Start the Gmail/Drive connector service |
 | `npm run web:dev` | Start the website at `http://127.0.0.1:3000` |
+| `npm run credits:add -- <email> <credits>` | Add credits to an account, e.g. a local test account |
 
 Deployment is covered in [DEPLOY.md](DEPLOY.md).
 

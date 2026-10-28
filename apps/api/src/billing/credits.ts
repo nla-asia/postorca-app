@@ -255,6 +255,32 @@ export async function getCreditSummary(db: Database, userId: string) {
     };
   });
 }
+/**
+ * Operator-only: adds credits to an account by email, e.g. to top up a local or
+ * test account (npm run credits:add). Returns the new balance.
+ */
+export async function addCredits(
+  db: Database,
+  email: string,
+  credits: string,
+  description = "Credits added by an operator",
+) {
+  if (units(credits) <= 0n) throw new Error("Add a positive number of credits.");
+  const {
+    rows: [user],
+  } = await db.query("SELECT id FROM users WHERE lower(email)=lower($1)", [
+    email.trim(),
+  ]);
+  if (!user) throw new Error(`No account with the email ${email}.`);
+  await account(db, user.id, (client) =>
+    client.query(
+      `INSERT INTO credit_ledger(user_id,amount,description,reference)
+       VALUES ($1,$2,$3,'operator:' || gen_random_uuid())`,
+      [user.id, credits, description],
+    ),
+  );
+  return { userId: String(user.id), ...(await getCreditSummary(db, user.id)) };
+}
 /** Operator-only reconciliation. Historical uncharged rows are never backcharged. */
 export async function reconcileApiCredits(
   db: Database,

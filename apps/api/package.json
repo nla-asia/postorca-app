@@ -18,6 +18,7 @@
     "media:smoke": "tsx src/scripts/media-smoke.ts",
     "video:eval": "tsx src/scripts/video-eval.ts",
     "api:usage": "tsx src/scripts/api-usage.ts",
+    "credits:add": "tsx src/scripts/add-credits.ts",
     "db:upgrade-legacy": "tsx src/upgrade-legacy.ts"
   },
   "dependencies": {

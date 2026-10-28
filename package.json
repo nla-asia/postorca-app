@@ -36,6 +36,7 @@
     "media:smoke": "npm run media:smoke --workspace @postorca/api",
     "video:eval": "npm run video:eval --workspace @postorca/api --",
     "api:usage": "npm run api:usage --workspace @postorca/api --",
+    "credits:add": "npm run credits:add --workspace @postorca/api --",
     "deploy": "bash scripts/deploy.sh",
     "desktop:package:prod": "bash scripts/package-desktop-prod.sh",
     "version:set": "node scripts/set-version.mjs",

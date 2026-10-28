@@ -11,7 +11,7 @@ import { createUser } from "../src/repositories/users.js";
 import { issueToken } from "../src/middleware/auth.js";
 import { createApp } from "../src/app.js";
 import { configFromEnv } from "../src/config.js";
-import { getCreditSummary } from "../src/billing/credits.js";
+import { addCredits, getCreditSummary } from "../src/billing/credits.js";
 import { membershipPackages } from "../src/billing/terms.js";
 import {
   applyBillingEvent,
@@ -459,4 +459,15 @@ test("billing HTTP routes isolate accounts, disable unconfigured payments, verif
     200,
   );
   assert.equal((await getCreditSummary(f.db, user.id)).balance, 250);
+});
+
+test("operators add credits by email, on top of the welcome credits", async () => {
+  const email = `${randomUUID()}@example.test`;
+  const user = await createUser(f.db, "Top up", email, "test-password");
+  const added = await addCredits(f.db, email.toUpperCase(), "100");
+  assert.equal(added.userId, user.id);
+  assert.equal(added.balance, 350);
+  assert.equal((await addCredits(f.db, email, "0.5")).balance, 350.5);
+  await assert.rejects(addCredits(f.db, email, "0"), /positive/);
+  await assert.rejects(addCredits(f.db, "nobody@example.test", "10"), /No account/);
 });

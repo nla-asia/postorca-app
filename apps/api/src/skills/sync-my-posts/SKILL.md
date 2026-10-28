@@ -24,8 +24,9 @@ Do these steps in order. The run has a limit on steps and time, so share it fair
 ## How far back
 
 - **An account's first sync** (no line in memory yet): read back until you have saved **20 posts or reached posts older than six months, whichever comes first**, and the same for its replies or comments. Older posts are left out for good; later syncs never go back for them.
-- **Every later sync**: read back to **one day before the account's last sync** in memory. The overlap refreshes stats and catches posts that loaded late. Never go further back than six months.
-- **More to read than fits** (for example the first sync after weeks of pauses): save what you reached, write in its line how far back you got, and go on to the next account. The next run continues from there.
+- **Every later sync**: before opening the account, call `list_my_posts` for it to see what's already saved. Read from the newest post down and **stop at the first post that's already saved** (a pinned post doesn't count): everything below it was read before. An account with nothing new is done after its first screen. Refresh the stats of the saved posts on that screen, then stop. Never go further back than six months.
+- **An unfinished sync** (its line says "more to read"): first do the above, then continue from the date it reached.
+- **More to read than fits** (for example after weeks of pauses): save what you reached, write in its line how far back you got and "more to read", and go on to the next account. The next run continues from there.
 
 ## Where to read
 
@@ -59,11 +60,11 @@ Use `save_my_post`, one post per call. Make all of a screen's calls in the same 
 - `media_type` when the post has an image, video or several images.
 - `media_description`: only for a new post that is just an image or video, with no caption and no alt text. Describe it in one or two lines from a `browser_screenshot`. Never re-describe a saved post. A post PostOrca drafted already has its description.
 
-Saving a post again only refreshes it, so re-saving posts in the overlap is fine. To refresh only a saved post's stats, pass its `id` and `stats`.
+Saving a post again only refreshes it, so re-saving one you already have is harmless. To refresh only a saved post's stats, pass its `id` and `stats`.
 
 ## Posts that are gone
 
-A post saved in the overlap window that you didn't see on the profile may have been deleted. Open its link once: if the platform says it doesn't exist, call `delete_my_post` with its id (from `list_my_posts`). If the page only fails to load, leave it.
+A saved post that should be on the screen you read (it's newer than the oldest post shown there) but isn't may have been deleted. Open its link once: if the platform says it doesn't exist, call `delete_my_post` with its id (from `list_my_posts`). If the page only fails to load, leave it.
 
 ## Memory
 
