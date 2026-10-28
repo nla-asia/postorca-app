@@ -1,0 +1,303 @@
+# External eval runner
+
+The shared runner lives in `apps/api/src/evals/shared/` and is invoked with
+`npm run eval -- ...`. It calls the existing product task API. It adds no product
+routes, database tables, UI, or LLM-judge service. An external observer (Codex or
+a person) reviews the actual evidence and records semantic judgments.
+
+## Autopilot reuse assessment
+
+Reference inspected: `D:/www/autopilot/autopilot-backend`.
+
+| Autopilot source | Decision in PostOrca |
+| --- | --- |
+| `docs/guides/EVAL_CREATION_GUIDE.md` | Reuse the separation of real user assignments, hidden expectations, fixtures, trajectory assertions, and semantic review. Preserve failures; distinguish evaluator/environment defects from agent failures. |
+| `src/models/Eval.ts` | Adapt its task, grading mode, fixture, and criterion concepts to versioned local case JSON. No eval database. |
+| `src/eval/programmatic_judge.ts` | Adapt required/alternative/forbidden tool assertions, argument/result matchers, and explicit call/error budgets into a pure evidence grader. No repository imports. All required checks must pass; no percentage threshold can hide a failed requirement. |
+| `src/eval/eval_judge.ts` | Reuse separate programmatic and semantic results and hybrid acceptance. Replace the judge API call with a recorded external review. |
+| `src/eval/cli_browser_eval_judge.ts` | Reuse independent outcome verification as a principle. Case verifier scripts inspect fixture events, native observations, or actual output files rather than trusting the final answer. |
+| `src/eval/eval_fixture_service.ts` | Adapt checksum-pinned inputs and prepare/observe/cleanup lifecycle to external commands. Leave S3 signing, Electron fixture transport, and Autopilot infrastructure behind. |
+| `src/eval/eval_runner.ts` | Reuse attempt history and repeated-run reporting concepts. Leave its agent factory, application repositories, training UI, and database machinery behind. |
+
+Nothing imports the sibling Autopilot checkout at runtime. Existing source fixture
+directories are not automatically trusted as the published checksum-pinned archive.
+
+## One lifecycle
+
+1. `prepare` freezes the complete case, resolved brief parameters, observer readiness,
+   model declaration, Git commit/dirty state, and a content fingerprint of tracked
+   and non-ignored local files. No product task or paid call is started.
+2. `run` verifies readiness and fixture pins, then prepares the fixture. It creates
+   a normal `work` task and submits only the user briefs. It collects each turn
+   before advancing. A failed turn or tool error stops paid follow-ups.
+3. The runner collects the real task, tool calls/results, media artifacts and tool
+   screenshots. Authenticated file downloads are retained with byte counts and
+   SHA-256. This establishes downloaded bytes; equality to original provider/source
+   bytes requires a separate verifier or review with independent source evidence.
+4. Fixture observation happens after execution and before cleanup. A verifier can
+   inspect the retained evidence. Fixture cleanup runs even after setup/observer
+   failures where execution is known to have settled.
+5. `inspect`/`regrade` computes programmatic checks and writes a review template.
+6. The observer inspects the original request and actual deliverables, completes
+   each required review item, and submits it with `review`.
+7. `report` shows every attempt, counts by verdict, and the current passing streak,
+   grouped by case, frozen contract, and runtime fingerprint.
+
+Programmatic, `llm` (external semantic review), and hybrid modes share this lifecycle.
+Execution completion and outcome acceptance are separate. Overall verdicts are
+`passed`, `failed`, `blocked`, or `awaiting_review`. Deterministic failures cannot
+be overridden by a semantic pass. Missing evidence is not acceptance.
+
+## Commands
+
+Run from the repository root. Paths passed to the CLI resolve from the invoking
+directory, including when npm forwards to the API workspace.
+
+```sh
+npm run eval -- list
+npm run eval -- list browser
+npm run eval -- prepare browser-x-post-research --config .data/eval-config.json
+npm run eval -- run <attempt-id>
+npm run eval -- inspect <attempt-id>
+npm run eval -- collect <attempt-id>
+npm run eval -- review <attempt-id> --review .data/completed-review.json
+npm run eval -- regrade <attempt-id> --reason "Evidence-based grader correction"
+npm run eval -- triage <attempt-id> --triage .data/diagnosis.json
+npm run eval -- report
+```
+
+`POSTORCA_EVAL_API` defaults to `http://127.0.0.1:3001/api`.
+`POSTORCA_EVAL_TOKEN` must contain an existing founder session token; obtain it
+through the normal sign-in flow. The runner does not mint credentials or bypass
+authentication. Tokens are never written into attempt records or command arguments.
+Hook processes do not inherit this token.
+
+Example ignored observer config:
+
+```json
+{
+  "model": "the-actual-configured-agent-model",
+  "parameters": { "topic or product": "Claude Code" },
+  "readiness": {
+    "browser_connected": {
+      "reason": "Independently checked the signed-in desktop and connected browser extension.",
+      "checked_at": "2026-10-28T20:00:00+07:00"
+    }
+  }
+}
+```
+
+Readiness checks must be at most five minutes old at first launch. Supply every
+prerequisite listed by `list`. This timestamp is an example, not a ready-to-use
+attestation. The model is operator-declared: confirm the actual server model and
+matching deployed checkout before preparing. A local fingerprint does not prove
+the version of a remote server. The runner records these limits rather than
+claiming remote runtime attestation.
+
+Brief placeholders must be supplied explicitly (`departure date`, `return date`,
+`Bangkok neighborhood`, `date`, etc.). Research windows anchor to the recorded
+launch time; review publication dates against that timestamp. Frozen briefs are
+never rewritten between attempts to turn a prior failure into a pass.
+
+## Evidence and review
+
+Default storage is ignored `.data/evals/<attempt-id>/`:
+
+```text
+case.json                 frozen assignment, expectations, hooks and fixture pins
+run.json                  execution state, task/turn launch intents and IDs
+events/                   atomic timestamped lifecycle records
+evidence.json             full task, normalized calls, downloaded-file manifest
+evidence/                 original media bytes, fixture observations, verifier output
+result.json               programmatic checks, semantic checks and combined verdict
+review-template.json      required semantic items and frozen evidence/case hashes
+review.json               accepted observer identity, reasoning and evidence references
+triage-template.json      failure/blocker/tool-error issues awaiting root-cause investigation
+triage.json               evidence-bound agent/infrastructure/eval findings and next actions
+history/                  previous grading results and reviews
+```
+
+Copy `review-template.json` outside the attempt, set `reviewer` (for example
+`Codex, <actual model/version>`), then fill every criterion's verdict, reasoning
+and evidence references. References are attempt-relative files with optional JSON
+pointers, e.g. `evidence.json#/task/turns/0/messages/4` or
+`evidence/<downloaded-video>.mp4`. They must exist and stay inside the attempt.
+The template contains instructions to assess, not a prefilled approval.
+
+Only mark `passed` after inspecting the relevant evidence. Video motion and sound
+require actual playback; transcription or sampled frames alone cannot establish
+listening quality. Use `blocked` or `awaiting_review` when inspection is unavailable.
+The CLI validates complete coverage and evidence references, not whether an
+observer actually watched/listened. That remains the observer's responsibility.
+
+Reviews bind to the frozen case, programmatic grading output and hashes of all
+retained evidence. New collection, changed media/observations, or changed checks
+invalidate the prior approval. Changing grading policy requires an explicit
+regrade reason; inspect/report retain older stored judgments and flag the required
+regrade instead of silently applying a new policy. Regrading archives the old result; it never starts
+another product task, model call, fixture, or paid generation.
+
+Execution, acceptance, and root-cause diagnosis are separate. Recovered tool
+errors remain measured and require investigation but do not universally fail an
+otherwise completed task. Explicit case error budgets still apply. See the
+[failure investigation policy](EVAL_FAILURE_POLICY.md) for the three causes,
+mixed/unknown diagnoses, correction safeguards, and the versioned download-case
+correction. Triage cannot override a verdict or erase a frozen criterion.
+
+Tool counts and failures are measured. Model token totals and monetary cost are
+currently reported as `null`, not zero: the task API does not expose a complete
+usage ledger. Live ledger/trace collection is a separate adapter still to add.
+The wall-clock limit is an observer timeout, not product cancellation. Tool-call
+budgets are grading requirements, not injected changes to the product agent loop.
+
+## Fixtures and programmatic verification
+
+Supply `fixture` and/or `verifier` in the observer config. Every command has:
+
+```json
+{
+  "executable": "absolute-path-to-node",
+  "args": ["absolute-path-to-observer-script.mjs", "prepare"],
+  "timeout_ms": 60000
+}
+```
+
+The runner appends the absolute attempt folder as the final argument and invokes
+the executable directly, without a shell. Hooks are trusted observer code. They
+must emit one JSON object on stdout and send logs to stderr. Output is saved in
+`evidence/fixture-prepare.json`, `fixture-observe.json`, `fixture-cleanup.json`, or
+`verifier.json`. Nonzero exit, invalid JSON, or timeout is an observer/environment
+failure and cannot become an accepted agent outcome.
+
+```json
+{
+  "fixture": {
+    "files": [{ "path": "/absolute/input-or-bundle.zip", "sha256": "64-lowercase-hex-digits" }],
+    "prepare": { "executable": "/absolute/node", "args": ["/absolute/fixture.mjs", "prepare"] },
+    "observe": { "executable": "/absolute/node", "args": ["/absolute/fixture.mjs", "observe"] },
+    "cleanup": { "executable": "/absolute/node", "args": ["/absolute/fixture.mjs", "cleanup"] }
+  },
+  "verifier": { "executable": "/absolute/node", "args": ["/absolute/verify.mjs"] }
+}
+```
+
+Pin all fixture inputs and external observer scripts in `files`; repository scripts
+are also covered by the runtime fingerprint. Setup should copy/extract into an
+attempt-owned workspace, reset deterministic state, start the production fixture,
+and health-check it. Save process/resource ownership before performing setup so
+cleanup can handle partial failure. Cleanup must be idempotent and affect only
+resources owned by this attempt. Observation must read actual fixture events or
+state without completing the agent's missing work.
+
+Verifier output:
+
+```json
+{
+  "checks": [{
+    "id": "quote-total",
+    "verdict": "passed",
+    "reason": "Independent fixture event has quantity 3 and total USD 62.75.",
+    "evidence": ["evidence/fixture-observe.json#/quote"]
+  }]
+}
+```
+
+`scripts/evals/verify-notebook-quote.mjs` is an example outcome verifier. Its
+observer contract is described in that file. It never submits the fixture form.
+`scripts/evals/notebook-fixture.mjs` supplies the matching deterministic local
+site at `http://127.0.0.1:4107`: use its `prepare`, `observe`, and `cleanup`
+commands as the lifecycle hooks, pin the script's SHA-256, and use the quote
+verifier as the final verifier hook. The fixture calculates totals from submitted
+quantities, rejects invalid input, and records actual form events. Its cleanup
+uses an attempt-specific ownership nonce and refuses to stop a different server.
+Fixture commands are extension points, not automatic imports of every Autopilot
+site; each fixture still needs its actual startup/reset/observation adapter.
+
+For custom cases, supply the complete `case` object in the config with its ID,
+plugin, title, turns, grading mode, semantic criteria and trajectory assertions.
+Matcher operators mirror Autopilot: `equals`, `contains`, `regex`, `exists`,
+`starts_with`, `includes_any`, `array_min_length`, `min`. Dotted/indexed argument
+and result paths are supported. Forbidden calls count failed attempts too.
+Required calls default to successful calls. Budgets count individual calls,
+never model responses. Prefer result assertions and independent outcome verifiers
+over merely asserting that a tool was invoked.
+
+## Existing case migration
+
+All 47 agent cases are registered: Browser 20, Computer 6, Media 1, Video 20.
+There is no special three-case browser allowlist.
+
+- Browser cases retain their original success contracts for external review.
+  Fixture cases require pinned lifecycle hooks before execution. They are not
+  automatically programmatically graded merely because a definition exists.
+- Computer cases reuse their existing deterministic graders and freeze their
+  original expected values. Configure a `verifier` that returns
+  `computer_evidence: { observed: <native observer readback>, controlReleased: true }`
+  alongside optional `checks`. The grader gets calls, final text and artifacts
+  from the product task, never from observer-supplied replacements. A missing
+  computer observer blocks launch; the legacy standalone runners still provide
+  the existing native observer/desktop bridge implementations as references.
+- Video cases reuse `gradeVideo` with frozen expectations, plus required external
+  inspection of actual media properties and complete playback. B7 creates a fresh
+  B5 parent and runs its two follow-ups in the same task. Export counts and
+  expectations are checked separately for each turn.
+- Media M1 checks image creation, speech creation, real image editing and speech
+  reuse; visual/listening quality, persistence and original-source equality remain
+  explicit external review requirements.
+- F6 requires the observer's empty-colour setup and restoration plan. Supplied
+  screenshot/music cases require their actual assets. Do not fabricate substitutes.
+
+The shared runner uses normal work tasks. Calendar scheduling coverage from the
+legacy media/video runner is separate. Provider smoke checks and renderer unit
+checks also remain separate; they are not agent-eval successes. Legacy entry points
+remain available for historical evidence/native harness compatibility while live
+parity is established. New work should use the shared runner.
+
+Some inherited briefs explicitly describe temporary checks or prescribe tools.
+They are preserved for migration continuity; do not describe those historical
+contracts as uncoached natural-work baselines. New L2/L3 briefs should be ordinary
+user assignments without evaluation language or hidden answer leakage.
+
+## Interrupted work and repeatability
+
+The runner writes task/turn launch intent before submitting. An uncertain response
+never triggers an automatic repeat. `run <same-attempt>` resumes an existing task
+and reconciles an uncertain turn from the real user message. If task creation's
+response was lost, independently find the existing task, then use:
+
+```sh
+npm run eval -- reconcile-task <attempt-id> --task <existing-task-id>
+npm run eval -- run <attempt-id>
+```
+
+An active-attempt lock prevents a new attempt from overlapping unresolved work.
+A process writer lock prevents simultaneous resumes. After a process crash,
+`recover-writer <attempt-id>` removes only a lock whose recorded process is dead;
+it does not release the unresolved execution's ownership. Never manually delete
+an active lock to start another paid run.
+
+After observer timeout the fixture is retained because product work may still be
+running. Collect/inspect the existing task and resume this attempt once its state
+is understood. The original timeout deadline does not reset on resume. Settled
+observer failures remain blocked in the report; fix the defect and prepare a new
+attempt after cleanup. Failed attempts remain part of the history.
+
+If cleanup itself failed, use `cleanup <attempt-id>` to retry it. The runner first
+confirms that no product turn is active and refuses cleanup of an unresolved task
+creation. This releases ownership only after cleanup succeeds; it does not turn
+an incomplete or blocked attempt into a pass.
+
+For repeated runs, prepare and execute individual fresh attempts using the same
+contract, parameters and runtime. Inspect each result before another paid run.
+`report` groups by grading-policy version as well as frozen contract/runtime, and
+gives every attempt and the current consecutive passing streak; failures,
+blocked attempts and unreviewed attempts reset the streak. No batch command
+automatically chains paid runs before required independent review.
+
+## Validation
+
+`apps/api/tests/shared-eval.test.ts` exercises the shared lifecycle with a simulated
+product transport and real observer subprocesses: lost responses, duplication
+prevention, prerequisite/fixture failures, follow-up stopping, pending/invalidated
+reviews, evidence references, fixture cleanup and retained timeout ownership.
+These are runner checks, not claims that live PostOrca agent cases passed.

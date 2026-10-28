@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "eval": "tsx src/scripts/eval.ts",
     "dev": "tsx watch src/index.ts",
     "check": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",

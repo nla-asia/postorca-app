@@ -82,6 +82,7 @@ The extension also supports compatible local companions for other agents. See th
 | --- | --- |
 | `npm test` | Run all tests |
 | `npm run check` | Type-check every workspace |
+| `npm run eval -- list` | List the shared external agent evals; see [the runner guide](docs/EVAL_RUNNER.md) |
 | `npm run build` | Build every workspace |
 | `npm run desktop:package` | Build the macOS installer |
 | `npm run connectors:start` | Start the Gmail/Drive connector service |
