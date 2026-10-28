@@ -28,23 +28,24 @@ export default function Privacy() {
         <h1>Privacy policy</h1>
         <p className="privacy-updated">Last updated: October 28, 2026</p>
         <p className="privacy-intro">
-          The PostOrca extension connects your browser to the PostOrca desktop
-          app so Orca can carry out browser tasks using your existing website
-          sign-ins. This policy covers the extension and the browser-task data
-          processed by the companion desktop app and PostOrca service.
+          PostOrca Browser Bridge connects your browser to the PostOrca desktop
+          app or a compatible local companion so an agent can carry out browser
+          tasks using your existing website sign-ins. This policy describes the
+          extension and PostOrca&apos;s own processing. Third-party companions
+          have their own data practices, as explained below.
         </p>
 
         <section aria-labelledby="scope">
-          <h2 id="scope">Where Orca works</h2>
+          <h2 id="scope">Where the bridge works</h2>
           <p>
-            Orca opens and controls its own tabs. These are normally placed in a
+            The bridge opens tabs on behalf of the selected companion. These are normally placed in a
             green Orca tab group; some tasks, such as recording, use a separate
-            window. The extension checks that a tab was opened by Orca before
+            window. The extension checks that a tab was opened by the bridge before
             forwarding commands or browser events for it. It does not routinely
             scan your other tabs or collect your browser history.
           </p>
           <p>
-            Orca uses the browser profile in which you installed the extension.
+            The bridge uses the browser profile in which you installed the extension.
             Websites in Orca tabs can therefore use your existing signed-in
             sessions. Content accessible in those tabs can include private or
             sensitive information.
@@ -70,7 +71,8 @@ export default function Privacy() {
               version, connection status, and connection errors.</li>
           </ul>
           <p>
-            The extension stores the profile identifier in local extension
+            The extension stores the selected companion&apos;s native host name
+            and profile identifier in local extension
             storage. Connection status and the IDs of Orca-owned tabs are kept
             in browser session storage. It does not ask you to enter website
             passwords into the extension.
@@ -80,18 +82,19 @@ export default function Privacy() {
         <section aria-labelledby="processing">
           <h2 id="processing">How information moves and is used</h2>
           <p>
-            The extension discovers the desktop app through Chrome native
+            The extension discovers the selected local companion through Chrome native
             messaging and connects to an authenticated relay on your own
             computer. The extension itself connects to that local relay rather
             than directly to an AI provider.
           </p>
           <p>
-            Browser tasks are not processed entirely on your device. The desktop
+            When using the PostOrca desktop app, browser tasks are not processed entirely on your device. The desktop
             app sends task results, including page content and requested
             screenshots or files, to the PostOrca server. The service stores task
             history and attachments and sends relevant task context to the AI
             provider to generate responses and decide the next task action.
-            The current text-model integration uses OpenAI. Technical logs and
+            The current default AI provider is Meta; the service also supports
+            OpenAI, depending on its configured model. Technical logs and
             diagnostic traces may also contain task context and results.
           </p>
           <p>
@@ -103,10 +106,36 @@ export default function Privacy() {
           </p>
         </section>
 
+        <section aria-labelledby="third-party">
+          <h2 id="third-party">Other agents and companion software</h2>
+          <p>
+            In Connection settings, you can select a separately installed native
+            messaging host for a compatible agent or application. Changing that
+            host changes which local companion receives browser content, debugging
+            results, screenshots, and connection metadata. The extension still
+            connects to a relay on this computer; the selected companion may
+            transmit that data elsewhere.
+          </p>
+          <p>
+            Using a third-party companion does not automatically send browser-task
+            data to PostOrca. That companion&apos;s operator controls any server or
+            AI processing, storage, sharing, and deletion. Review its privacy
+            policy and access controls before connecting. PostOrca cannot delete
+            information held by an independent companion; direct those requests
+            to its operator.
+          </p>
+          <p>
+            The downloadable standalone example runs locally without a PostOrca
+            account, API server, or AI provider. It stores local pairing and
+            connection files while running and does not upload browser content.
+            Software built on that example may handle data differently.
+          </p>
+        </section>
+
         <section aria-labelledby="sharing">
           <h2 id="sharing">Sharing and limited use</h2>
           <p>
-            Browser-task data is processed by PostOrca and the hosting, storage,
+            When using PostOrca, browser-task data is processed by PostOrca and the hosting, storage,
             and AI service providers needed to deliver the requested features.
             We do not sell browser-task data or use it for advertising or
             unrelated profiling. We may disclose information when legally
@@ -145,7 +174,7 @@ export default function Privacy() {
           <h2 id="choices">Your controls</h2>
           <p>
             You can close Orca tabs, cancel Chrome&apos;s debugger connection,
-            disable or uninstall the extension, or quit the desktop app to stop
+            disable or uninstall the extension, or stop the selected companion to stop
             browser control. Cancel any scheduled browser routines in PostOrca
             if you no longer want them to run. Stopping a task does not undo
             actions already completed or delete information already processed.

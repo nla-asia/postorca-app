@@ -398,6 +398,7 @@ export default function Home() {
           <a href="#pricing">Pricing</a>
           <a href="#questions">Questions</a>
           <a href="/privacy/">Privacy</a>
+          <a href="/developers/browser-bridge/">For developers</a>
           <a href="/">
             orca.atpa.site
             <ArrowUpRight size={12} />

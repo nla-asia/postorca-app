@@ -74,6 +74,8 @@ AI usage is paid for in credits. One credit buys $0.04 of real provider cost (25
 
 On the plans, the rest of the price covers servers, payment fees and running PostOrca; Extra credits put the whole price into AI usage. New accounts receive welcome credits once (`apps/api/src/settings.ts`). Unused credits roll over. Upgrading charges the new plan in full and starts a new month with its credits; downgrading applies at the next renewal. Rates and plans live in `apps/api/src/billing/terms.ts`; Stripe runs in test mode.
 
+The extension also supports compatible local companions for other agents. See the [Browser Bridge developer guide](docs/browser-bridge.md) for the standalone Node.js example, protocol, and integration instructions. No PostOrca account or API server is needed for that example.
+
 ## Scripts
 
 | Command | Description |
