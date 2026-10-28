@@ -3,6 +3,7 @@ import {
   Clock3,
   Inbox,
   MessageSquare,
+  Newspaper,
   Target,
 } from "lucide-react";
 export const navigation = [
@@ -17,6 +18,10 @@ export const navigation = [
   {
     name: "Calendar",
     icon: CalendarDays,
+  },
+  {
+    name: "Posts",
+    icon: Newspaper,
   },
   {
     name: "Routines",

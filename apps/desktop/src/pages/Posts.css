@@ -1,0 +1,206 @@
+.posts-toolbar {
+  gap: 16px;
+}
+
+.posts-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 8px;
+  color: var(--muted);
+}
+
+.posts-search input {
+  width: 220px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.posts-accounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--secondary);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 11px;
+  min-height: 33px;
+}
+
+.account-chip .platform {
+  width: 19px;
+  height: 19px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.account-chip .platform.instagram {
+  font-size: 18px;
+}
+
+.account-chip .platform.linkedin {
+  font-size: 9px;
+}
+
+.account-chip:hover {
+  background: var(--surface-hover);
+}
+
+.account-chip.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-weight: 550;
+}
+
+.posts-freshness {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 10px 0 19px;
+}
+
+.posts-list {
+  display: grid;
+  gap: 13px;
+}
+
+.post-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px 24px 17px;
+  background: var(--surface);
+}
+
+.post-card h3 {
+  font-family: Manrope, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.25px;
+  margin: 12px 0 0;
+}
+
+.post-actions {
+  display: flex;
+  gap: 2px;
+  margin: -6px -10px -6px 0;
+}
+
+.post-actions a.icon-button {
+  color: var(--secondary);
+  display: inline-flex;
+}
+
+.post-text {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.post-truncated {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.post-context {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.post-context a {
+  color: var(--secondary);
+  overflow-wrap: anywhere;
+}
+
+.post-media {
+  display: flex;
+  gap: 9px;
+  margin-top: 13px;
+  padding: 10px 12px;
+  border: 1px dashed var(--strong-line);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.post-media svg {
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.post-media-label {
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--secondary);
+}
+
+.post-media p {
+  margin-top: 3px;
+  color: var(--secondary);
+  font-style: italic;
+}
+
+.post-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.post-stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--secondary);
+}
+
+.post-stats .pill {
+  gap: 5px;
+}
+
+.post-checked {
+  color: var(--muted);
+}
+
+.post-bottom > .pill {
+  gap: 5px;
+  margin-left: auto;
+}
+
+.post-hidden {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px dashed var(--strong-line);
+  border-radius: 10px;
+  padding: 8px 12px 8px 20px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.posts-more {
+  justify-self: center;
+  margin-top: 4px;
+}
+
+@media (max-width: 800px) {
+  .post-card {
+    padding: 16px 18px;
+  }
+  .posts-search input {
+    width: 150px;
+  }
+}

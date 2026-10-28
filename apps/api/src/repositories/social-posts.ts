@@ -346,6 +346,18 @@ export async function deletePost(db: Queryable, userId: string, id: string) {
   return deleted ?? null;
 }
 
+/** Undoes deletePost. Returns null when the founder has no such post. */
+export async function restorePost(db: Queryable, userId: string, id: string) {
+  const {
+    rows: [restored],
+  } = await db.query<{ id: string }>(
+    `UPDATE social_posts SET deleted_at = NULL, updated_at = now()
+     WHERE id = $1 AND user_id = $2 RETURNING id`,
+    [id, userId],
+  );
+  return restored ?? null;
+}
+
 /** Records that the account's posts were just read from its profile. */
 export async function markAccountRead(
   db: Queryable,
