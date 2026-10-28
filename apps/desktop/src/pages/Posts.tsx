@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowUpRight,
+  CircleCheck,
+  CircleDashed,
+  Clock3,
   EyeOff,
   Image,
   Newspaper,
@@ -84,6 +87,15 @@ const postedOn = (value: string) =>
     hour: "numeric",
     minute: "2-digit",
   });
+/** How fresh an account's saved posts are: read in the last day, earlier, or never. */
+function syncState(account: Account) {
+  if (!account.posts_synced_at)
+    return { tone: "never", Icon: CircleDashed, label: "Not read yet" };
+  const label = `Last read ${ago(account.posts_synced_at)}`;
+  return Date.now() - new Date(account.posts_synced_at).getTime() < 86_400_000
+    ? { tone: "fresh", Icon: CircleCheck, label }
+    : { tone: "stale", Icon: Clock3, label };
+}
 const statLabel = (key: string, value: number) =>
   `${value.toLocaleString()} ${value !== 1 ? key : key.endsWith("ies") ? `${key.slice(0, -3)}y` : key.replace(/s$/, "")}`;
 /** "@handle" for an X or Threads post link, else the link without its scheme. */
@@ -185,7 +197,6 @@ export default function Posts({
   };
 
   const accounts = result?.accounts ?? [];
-  const shown = accounts.filter((a) => !account || a.id === account);
   return (
     <div className="page-content posts-page">
       <div className="section-toolbar posts-toolbar">
@@ -226,29 +237,29 @@ export default function Posts({
           >
             All accounts
           </button>
-          {accounts.map((item) => (
-            <button
-              type="button"
-              key={item.id}
-              className={`account-chip ${account === item.id ? "selected" : ""}`}
-              aria-pressed={account === item.id}
-              onClick={() => setAccount(item.id)}
-            >
-              <Platform name={item.platform} />
-              <span>{item.name}</span>
-            </button>
-          ))}
+          {accounts.map((item) => {
+            const sync = syncState(item);
+            return (
+              <button
+                type="button"
+                key={item.id}
+                className={`account-chip ${account === item.id ? "selected" : ""}`}
+                aria-pressed={account === item.id}
+                aria-label={`${item.name}, ${item.platform}. ${sync.label}`}
+                title={sync.label}
+                onClick={() => setAccount(item.id)}
+              >
+                <Platform name={item.platform} />
+                <span>{item.name}</span>
+                <sync.Icon
+                  size={13}
+                  className={`account-sync ${sync.tone}`}
+                  aria-hidden="true"
+                />
+              </button>
+            );
+          })}
         </div>
-      )}
-      {shown.length > 0 && (
-        <p className="posts-freshness">
-          {shown
-            .map(
-              (item) =>
-                `${item.name}: ${item.posts_synced_at ? `last read ${ago(item.posts_synced_at)}` : "not read yet"}`,
-            )
-            .join(" · ")}
-        </p>
       )}
 
       {error && (
