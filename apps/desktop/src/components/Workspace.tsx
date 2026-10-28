@@ -43,7 +43,7 @@ export default function Workspace({
   const [notice, setNotice] = useState("");
   const [profileName, setProfileName] = useState(user.name);
   const [selected, setSelected] = useState<string | null>(null);
-  const [filter, setFilter] = useState<InboxFilter>("For review");
+  const [filter, setFilter] = useState<InboxFilter>("review");
   const work = useWorkTasks(user.id);
   const [brand, setBrand] = useState<Brand | null>(null);
   const [brandError, setBrandError] = useState("");

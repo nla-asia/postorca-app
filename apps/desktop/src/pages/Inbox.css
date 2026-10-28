@@ -20,6 +20,26 @@
   margin-bottom: 19px;
 }
 
+.inbox-page .section-toolbar {
+  padding-bottom: 10px;
+}
+
+.inbox-heading {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.inbox-heading span {
+  background: var(--badge);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 400;
+}
+
 .proposal-list {
   display: grid;
   gap: 13px;
