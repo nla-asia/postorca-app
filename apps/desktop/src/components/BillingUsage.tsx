@@ -29,8 +29,6 @@ type Billing = {
     PackageId,
     { name: string; amount: number; credits: number }
   >;
-  creditTerms: { usdPerCredit: string };
-  welcomeCredits: number;
   credits: {
     balance: number;
     reserved: number;
@@ -101,6 +99,7 @@ export default function BillingUsage() {
   const [showAll, setShowAll] = useState(false);
   const [reload, setReload] = useState(0);
   const [switchTo, setSwitchTo] = useState<PlanId | null>(null);
+  const [pricingOpen, setPricingOpen] = useState(false);
   const [waiting, setWaiting] = useState<{
     action: BillingAction;
     baseline: Baseline;
@@ -163,45 +162,51 @@ export default function BillingUsage() {
       setWaiting(null);
     } else if (Date.now() > waiting.until) setWaiting(null);
   }, [data, waiting]);
-  const start = useCallback(async (action: BillingAction) => {
-    setBusy(action);
-    setActionError("");
-    setConfirmed("");
-    setPaymentUrl(null);
-    try {
-      const result = await api<{ url: string }>(
-        action === "portal" ? "/billing/portal" : "/billing/checkout",
-        {
-          method: "POST",
-          body: JSON.stringify(
-            action === "portal" ? {} : { packageId: action },
-          ),
-        },
-      );
-      const url = new URL(result.url);
-      if (
-        url.protocol !== "https:" ||
-        url.username ||
-        url.password ||
-        !["checkout.stripe.com", "billing.stripe.com"].includes(url.hostname)
-      )
-        throw new Error("The server returned an invalid payment URL.");
-      setPaymentUrl(url.href);
-      if (data)
-        setWaiting({
-          action,
-          baseline: baselineOf(data),
-          until: Date.now() + WATCH_FOR_MS,
-        });
-      window.open(url.href, "_blank", "noopener,noreferrer");
-    } catch (failure) {
-      setActionError(
-        failure instanceof Error ? failure.message : "Unable to open billing.",
-      );
-    } finally {
-      setBusy(null);
-    }
-  }, [data]);
+  const start = useCallback(
+    async (action: BillingAction) => {
+      setPricingOpen(false);
+      setBusy(action);
+      setActionError("");
+      setConfirmed("");
+      setPaymentUrl(null);
+      try {
+        const result = await api<{ url: string }>(
+          action === "portal" ? "/billing/portal" : "/billing/checkout",
+          {
+            method: "POST",
+            body: JSON.stringify(
+              action === "portal" ? {} : { packageId: action },
+            ),
+          },
+        );
+        const url = new URL(result.url);
+        if (
+          url.protocol !== "https:" ||
+          url.username ||
+          url.password ||
+          !["checkout.stripe.com", "billing.stripe.com"].includes(url.hostname)
+        )
+          throw new Error("The server returned an invalid payment URL.");
+        setPaymentUrl(url.href);
+        if (data)
+          setWaiting({
+            action,
+            baseline: baselineOf(data),
+            until: Date.now() + WATCH_FOR_MS,
+          });
+        window.open(url.href, "_blank", "noopener,noreferrer");
+      } catch (failure) {
+        setActionError(
+          failure instanceof Error
+            ? failure.message
+            : "Unable to open billing.",
+        );
+      } finally {
+        setBusy(null);
+      }
+    },
+    [data],
+  );
   const changePlan = useCallback(async (plan: PlanId) => {
     setBusy(plan);
     setActionError("");
@@ -226,6 +231,10 @@ export default function BillingUsage() {
   const canSwitch =
     hasSubscription && ["active", "trialing"].includes(data?.status ?? "");
   const target = switchTo && data ? data.packages[switchTo] : null;
+  const currentPlan =
+    hasSubscription && data?.plan ? data.packages[data.plan] : null;
+  const CurrentIcon =
+    plans.find(({ id }) => id === data?.plan)?.icon ?? Sparkles;
   const upgrading =
     data && switchTo && data.plan
       ? data.packages[switchTo].amount > data.packages[data.plan].amount
@@ -267,7 +276,11 @@ export default function BillingUsage() {
       )}
       {waiting ? (
         <div className="billing-notice billing-waiting" role="status">
-          <RefreshCw size={14} aria-hidden="true" className="billing-refreshing" />
+          <RefreshCw
+            size={14}
+            aria-hidden="true"
+            className="billing-refreshing"
+          />
           <div>
             <strong>
               {waiting.action === "portal"
@@ -321,15 +334,17 @@ export default function BillingUsage() {
             <div className="billing-balance-heading">
               <Wallet size={17} aria-hidden="true" />
               <span>Available allowance</span>
-              <span className="billing-status">
-                {statusLabels[data.status] ?? "Subscription status unavailable"}
-              </span>
+              {!["none", "active"].includes(data.status) && (
+                <span className="billing-status">
+                  {statusLabels[data.status] ??
+                    "Subscription status unavailable"}
+                </span>
+              )}
             </div>
             <div className="billing-balance-number">
               {creditCount(data.credits.balance)}
               <span>credits</span>
             </div>
-            <p>Unused credits roll over. Your balance has no expiry.</p>
             {data.credits.reserved > 0 && (
               <div className="billing-pending">
                 <Clock3 size={13} aria-hidden="true" />
@@ -351,80 +366,18 @@ export default function BillingUsage() {
               allowance is added after a successful payment.
             </p>
           )}
-          <div className="billing-plans">
-            {plans.map(({ id, icon: Icon, pitch }) => {
-              const offer = data.packages[id],
-                current = hasSubscription && data.plan === id;
-              return (
-                <div
-                  key={id}
-                  className={`billing-plan ${current ? "billing-plan-current" : ""}`}
-                >
-                  <div className="billing-plan-title">
-                    <Icon size={16} aria-hidden="true" />
-                    <h5>{offer.name}</h5>
-                    {current && (
-                      <span className="billing-plan-badge">Your plan</span>
-                    )}
-                  </div>
-                  <p className="billing-plan-price">
-                    {price(offer.amount)}
-                    <span>USD / month</span>
-                  </p>
-                  <p className="billing-plan-allowance">
-                    {creditCount(offer.credits)} credits each paid month
-                  </p>
-                  <p className="billing-plan-pitch">{pitch}</p>
-                  {current ? (
-                    <Button
-                      variant="primary"
-                      disabled={!data.hasCustomer || busy !== null}
-                      onClick={() => void start("portal")}
-                    >
-                      {busy === "portal" ? "Opening…" : "Manage subscription"}
-                      <ArrowUpRight size={14} aria-hidden="true" />
-                    </Button>
-                  ) : hasSubscription ? (
-                    <Button
-                      variant="primary"
-                      disabled={
-                        !canSwitch || !data.available[id] || busy !== null
-                      }
-                      onClick={() => setSwitchTo(id)}
-                    >
-                      {data.plan &&
-                      offer.amount > data.packages[data.plan].amount
-                        ? `Upgrade to ${offer.name}`
-                        : `Switch to ${offer.name}`}
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="primary"
-                      disabled={!data.available[id] || busy !== null}
-                      onClick={() => void start(id)}
-                    >
-                      {busy === id ? "Opening…" : "Subscribe"}
-                      <ArrowUpRight size={14} aria-hidden="true" />
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
-            <div className="billing-plan">
-              <div className="billing-plan-title">
-                <Wallet size={16} aria-hidden="true" />
-                <h5>{data.packages.extra.name}</h5>
-              </div>
-              <p className="billing-plan-price">
-                {price(data.packages.extra.amount)}
-                <span>USD / one time</span>
-              </p>
-              <p className="billing-plan-allowance">
-                {creditCount(data.packages.extra.credits)} additional credits
-              </p>
-              <p className="billing-plan-pitch">
-                Top up whenever you need a little more room.
-              </p>
+          <div className="billing-current-plan">
+            <CurrentIcon size={16} aria-hidden="true" />
+            <div className="billing-current-plan-info">
+              <h5>{currentPlan ? currentPlan.name : "Free"}</h5>
+              {currentPlan && (
+                <p>
+                  {price(currentPlan.amount)} a month ·{" "}
+                  {creditCount(currentPlan.credits)} credits each paid month
+                </p>
+              )}
+            </div>
+            <div className="billing-current-plan-actions">
               <Button
                 disabled={!data.available.extra || busy !== null}
                 onClick={() => void start("extra")}
@@ -432,27 +385,123 @@ export default function BillingUsage() {
                 {busy === "extra" ? "Opening…" : "Add credits"}
                 <ArrowUpRight size={14} aria-hidden="true" />
               </Button>
+              <Button
+                variant="primary"
+                disabled={busy !== null}
+                onClick={() => setPricingOpen(true)}
+              >
+                {currentPlan ? "Change plan" : "Upgrade"}
+              </Button>
             </div>
           </div>
-          <p className="billing-footnote">
-            One credit covers ${data.creditTerms.usdPerCredit} of AI usage. Each
-            Orca reply is charged what it really cost, rounded up to a whole
-            credit. New accounts receive {creditCount(data.welcomeCredits)}{" "}
-            welcome credits once.{" "}
-            {Object.values(data.available).some(Boolean)
-              ? "Payments currently use Stripe test mode."
-              : "Payments are not available yet."}
-          </p>
-          {data.hasCustomer && !hasSubscription && (
+          {data.hasCustomer && (
             <Button
               variant="ghost"
+              className="billing-portal-link"
               disabled={busy !== null}
               onClick={() => void start("portal")}
             >
-              Billing history &amp; payment methods
+              {busy === "portal"
+                ? "Opening…"
+                : hasSubscription
+                  ? "Manage subscription, invoices & payment methods"
+                  : "Billing history & payment methods"}
               <ArrowUpRight size={14} aria-hidden="true" />
             </Button>
           )}
+          <Modal
+            open={pricingOpen}
+            onOpenChange={setPricingOpen}
+            title="Choose a plan"
+            className="billing-pricing"
+          >
+            <div className="billing-plans">
+              {plans.map(({ id, icon: Icon, pitch }) => {
+                const offer = data.packages[id],
+                  current = hasSubscription && data.plan === id;
+                return (
+                  <div
+                    key={id}
+                    className={`billing-plan ${current ? "billing-plan-current" : ""}`}
+                  >
+                    <div className="billing-plan-title">
+                      <Icon size={16} aria-hidden="true" />
+                      <h5>{offer.name}</h5>
+                      {current && (
+                        <span className="billing-plan-badge">Your plan</span>
+                      )}
+                    </div>
+                    <p className="billing-plan-price">
+                      {price(offer.amount)}
+                      <span>USD / month</span>
+                    </p>
+                    <p className="billing-plan-allowance">
+                      {creditCount(offer.credits)} credits each paid month
+                    </p>
+                    <p className="billing-plan-pitch">{pitch}</p>
+                    {current ? (
+                      <Button
+                        variant="primary"
+                        disabled={!data.hasCustomer || busy !== null}
+                        onClick={() => void start("portal")}
+                      >
+                        {busy === "portal" ? "Opening…" : "Manage subscription"}
+                        <ArrowUpRight size={14} aria-hidden="true" />
+                      </Button>
+                    ) : hasSubscription ? (
+                      <Button
+                        variant="primary"
+                        disabled={
+                          !canSwitch || !data.available[id] || busy !== null
+                        }
+                        onClick={() => {
+                          setPricingOpen(false);
+                          setSwitchTo(id);
+                        }}
+                      >
+                        {data.plan &&
+                        offer.amount > data.packages[data.plan].amount
+                          ? `Upgrade to ${offer.name}`
+                          : `Switch to ${offer.name}`}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        disabled={!data.available[id] || busy !== null}
+                        onClick={() => void start(id)}
+                      >
+                        {busy === id ? "Opening…" : "Subscribe"}
+                        <ArrowUpRight size={14} aria-hidden="true" />
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+              <div className="billing-plan">
+                <div className="billing-plan-title">
+                  <Wallet size={16} aria-hidden="true" />
+                  <h5>{data.packages.extra.name}</h5>
+                </div>
+                <p className="billing-plan-price">
+                  {price(data.packages.extra.amount)}
+                  <span>USD / one time</span>
+                </p>
+                <p className="billing-plan-allowance">
+                  {creditCount(data.packages.extra.credits)} additional credits
+                </p>
+                <p className="billing-plan-pitch">
+                  Top up whenever you need a little more room.
+                </p>
+                <Button
+                  disabled={!data.available.extra || busy !== null}
+                  onClick={() => void start("extra")}
+                >
+                  {busy === "extra" ? "Opening…" : "Add credits"}
+                  <ArrowUpRight size={14} aria-hidden="true" />
+                </Button>
+              </div>
+            </div>
+          </Modal>
           <Modal
             open={target !== null}
             onOpenChange={(open) => !open && busy === null && setSwitchTo(null)}
