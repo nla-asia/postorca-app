@@ -211,3 +211,47 @@
 .reply-state.done {
   color: var(--accent);
 }
+
+/* In the task's list: one compact row per reply. */
+.reply-row strong em {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.artifact-row.reply-row > span:nth-child(2) {
+  min-width: 0;
+}
+
+.artifact-row.reply-row small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reply-row.handled {
+  opacity: 0.6;
+}
+
+.reply-row .idea-status.done {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.reply-avatar.small {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+}
+
+/* In the dialog, the card is the dialog's content. */
+.reply-dialog .reply-card {
+  border: 0;
+  margin: 8px -4px 0;
+  background: transparent;
+}
+
+.reply-dialog .reply-card.done,
+.reply-dialog .reply-card.skipped {
+  opacity: 1;
+}

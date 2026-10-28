@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   BarChart2,
   Check,
+  ChevronRight,
   Copy,
   ExternalLink,
   Heart,
@@ -58,6 +59,44 @@ function Stats({ stats }: { stats?: Record<string, number | string> }) {
   );
 }
 
+/** A reply in the task's list: who, a line of the reply, and where it stands. Opens the card. */
+export function ReplyRow({
+  item,
+  onOpen,
+}: {
+  item: TaskArtifact;
+  onOpen: () => void;
+}) {
+  const reply = parseReply(item);
+  if (!reply) return null;
+  const handle = reply.target.handle?.replace(/^@/, "");
+  return (
+    <button
+      className={`artifact-row reply-row ${item.state ? "handled" : ""}`}
+      onClick={onOpen}
+    >
+      <span className="reply-avatar small">{initial(reply.target.author)}</span>
+      <span>
+        <strong>
+          {reply.target.author}
+          {handle && <em> @{handle}</em>}
+        </strong>
+        <small>{reply.text}</small>
+      </span>
+      <span className={`idea-status ${item.state === "done" ? "done" : ""}`}>
+        {item.state === "done"
+          ? "Done"
+          : item.state === "skipped"
+            ? "Skipped"
+            : reply.intent === "connect"
+              ? "Connect"
+              : "Reply"}
+      </span>
+      <ChevronRight size={16} />
+    </button>
+  );
+}
+
 /**
  * A draft reply to someone else's post: their post, the founder's reply under it
  * (editable), and the actions to post it: reply (prefilled where the platform
@@ -69,6 +108,7 @@ export default function ReplyCard({
   account,
   readOnly,
   onChanged,
+  onHandled,
   notify,
 }: {
   taskId: string;
@@ -76,6 +116,8 @@ export default function ReplyCard({
   account: Account;
   readOnly: boolean;
   onChanged: () => void;
+  /** Called after the founder marks it done or skipped, e.g. to move to the next one. */
+  onHandled?: () => void;
   notify: (message: string) => void;
 }) {
   const reply = parseReply(item);
@@ -134,12 +176,17 @@ export default function ReplyCard({
       open(reply.target.url);
     }
   };
-  const setState = (state: "done" | "skipped" | null) =>
-    patch({ state }).catch(() => notify("Couldn't update. Try again."));
+  const setState = async (state: "done" | "skipped" | null) => {
+    try {
+      await patch({ state });
+      if (state) onHandled?.();
+    } catch {
+      notify("Couldn't update. Try again.");
+    }
+  };
 
   return (
     <article
-      id={`artifact-${item.id}`}
       className={`reply-card ${done ? "done" : ""} ${skipped ? "skipped" : ""}`}
       aria-label={item.title}
     >

@@ -18,7 +18,7 @@ import { turnActions } from "../lib/toolActions";
 import Markdown, { type ArtifactLink } from "./Markdown";
 import { ArtifactRow, ArtifactViewer, type Viewable } from "./Artifacts";
 import { PostSchedule, PublishPanel } from "./Publishing";
-import ReplyCard from "./ReplyCard";
+import ReplyCard, { ReplyRow } from "./ReplyCard";
 import { founderAccount, parseReply } from "../lib/social";
 import type { Brand } from "../lib/brand";
 import { api } from "../lib/api";
@@ -83,6 +83,7 @@ export default function WorkDetail({
   const [viewing, setViewing] = useState<Viewable | null>(null);
   const [ideaId, setIdeaId] = useState<string | null>(null);
   const [ideaNote, setIdeaNote] = useState("");
+  const [replyId, setReplyId] = useState<string | null>(null);
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
   // The founder's own accounts, shown on their side of reply cards.
@@ -182,11 +183,27 @@ export default function WorkDetail({
   const idea = ideaId
     ? artifacts.find((item) => item.id === ideaId)
     : undefined;
+  const reply = replyId
+    ? artifacts.find((item) => item.id === replyId)
+    : undefined;
+  // After Done or Skip, move on to the next reply still waiting in the same run.
+  const nextReply = () => {
+    if (!reply) return setReplyId(null);
+    const list = artifacts.filter(
+      (item) => item.kind === "reply" && item.turn_id === reply.turn_id,
+    );
+    const after = list.slice(list.indexOf(reply) + 1);
+    const next = [...after, ...list].find(
+      (item) => !item.state && item.id !== reply.id,
+    );
+    setReplyId(next?.id ?? null);
+  };
   const openArtifact = (item: TaskArtifact) => {
     if (item.kind === "idea") {
       setIdeaNote("");
       setIdeaId(item.id);
-    } else setViewing({ type: "artifact", id: item.id });
+    } else if (item.kind === "reply") setReplyId(item.id);
+    else setViewing({ type: "artifact", id: item.id });
   };
   const replyAccount = (item: TaskArtifact) => {
     const reply = parseReply(item);
@@ -197,12 +214,6 @@ export default function WorkDetail({
     if (!item) return null;
     if (item.kind === "url" && /^https?:\/\//i.test(item.content))
       return () => window.open(item.content, "_blank", "noreferrer");
-    // Replies are cards on the page already: take the founder to it.
-    if (item.kind === "reply")
-      return () =>
-        document
-          .getElementById(`artifact-${item.id}`)
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
     return () => openArtifact(item);
   };
   return (
@@ -361,14 +372,10 @@ export default function WorkDetail({
                           <ReplyProgress artifacts={turn.artifacts} />
                           {turn.artifacts.map((item) =>
                             item.kind === "reply" ? (
-                              <ReplyCard
+                              <ReplyRow
                                 key={item.id}
-                                taskId={task.id}
                                 item={item}
-                                account={replyAccount(item)}
-                                readOnly={archived}
-                                onChanged={() => void load()}
-                                notify={notify}
+                                onOpen={() => openArtifact(item)}
                               />
                             ) : item.kind === "idea" ? (
                               <button
@@ -600,6 +607,26 @@ export default function WorkDetail({
               )
             )}
           </div>
+        )}
+      </Modal>
+      <Modal
+        open={!!reply}
+        onOpenChange={(open) => !open && setReplyId(null)}
+        title={reply?.title ?? "Reply"}
+        wide
+        className="reply-dialog"
+      >
+        {reply && (
+          <ReplyCard
+            key={reply.id}
+            taskId={task.id}
+            item={reply}
+            account={replyAccount(reply)}
+            readOnly={archived}
+            onChanged={() => void load()}
+            onHandled={nextReply}
+            notify={notify}
+          />
         )}
       </Modal>
       <ArtifactViewer
