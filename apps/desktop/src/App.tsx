@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import AuthScreen from "./components/AuthScreen";
 import Workspace from "./components/Workspace";
+import WorkingFolderSetup from "./components/WorkingFolderSetup";
 import {
   api,
   ApiError,
@@ -81,15 +82,17 @@ export default function App() {
       />
     );
   return (
-    <Workspace
-      key={user.id}
-      user={user}
-      onLogOut={() => {
-        setNotice("");
-        signOut();
-      }}
-      theme={theme}
-      onThemeChange={setTheme}
-    />
+    <WorkingFolderSetup key={user.id} onLogOut={signOut}>
+      <Workspace
+        key={user.id}
+        user={user}
+        onLogOut={() => {
+          setNotice("");
+          signOut();
+        }}
+        theme={theme}
+        onThemeChange={setTheme}
+      />
+    </WorkingFolderSetup>
   );
 }

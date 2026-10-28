@@ -115,7 +115,6 @@ ipcMain.handle("session:set", (event, value) => {
     });
     desktop?.setSession(session);
     BrowserWindow.fromWebContents(event.sender)?.maximize();
-    askForWorkingFolder(BrowserWindow.fromWebContents(event.sender));
   }
 });
 ipcMain.handle("session:refresh", (event) =>
@@ -159,14 +158,6 @@ ipcMain.handle("working-folder:choose", (event) =>
     ? workingFolder.choose(BrowserWindow.fromWebContents(event.sender))
     : null,
 );
-// A signed-in founder without a working folder is asked for one, once per launch;
-// they can choose or change it later in Settings.
-let askedForFolder = false;
-function askForWorkingFolder(win) {
-  if (askedForFolder || !session || workingFolder.get() || !win) return;
-  askedForFolder = true;
-  void workingFolder.choose(win);
-}
 
 // Shown notifications are held until dismissed: one that is garbage-collected
 // stops answering clicks.
@@ -246,7 +237,6 @@ function createWindow() {
     return { action: "deny" };
   });
   window.webContents.on("will-navigate", (event) => event.preventDefault());
-  window.webContents.once("did-finish-load", () => askForWorkingFolder(window));
 
   const loading =
     !app.isPackaged && process.argv.includes("--dev")
