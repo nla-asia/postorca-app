@@ -99,6 +99,17 @@ export function postIdFromUrl(platform: string, url: string) {
   }
 }
 
+/**
+ * When a post was published, read from its ID where the platform encodes it: X IDs
+ * carry the creation time in milliseconds (bits 22 and up). Null elsewhere.
+ */
+export function postedAtFromId(platform: string, postId: string | null) {
+  if (platform !== "X" || !postId || !/^\d{15,20}$/.test(postId)) return null;
+  return new Date(
+    Number((BigInt(postId) >> 22n) + 1288834974657n),
+  ).toISOString();
+}
+
 /** The text as stored: capped, with whether it was cut and its full length. */
 export function capText(text: string | null | undefined) {
   if (text == null)
@@ -197,6 +208,9 @@ export async function savePost(
   const postId =
     post.post_id?.trim() ||
     (post.url ? postIdFromUrl(target.platform, post.url) : null);
+  // A plain repost's link is the original post, whose time isn't the repost's.
+  const exactTime =
+    post.kind === "repost" ? null : postedAtFromId(target.platform, postId);
   const text = capText(post.text);
   const stats =
     post.stats && Object.keys(post.stats).length ? post.stats : null;
@@ -219,7 +233,8 @@ export async function savePost(
        media_type = CASE WHEN EXCLUDED.media_type = 'none' THEN social_posts.media_type ELSE EXCLUDED.media_type END,
        media_description = coalesce(social_posts.media_description, EXCLUDED.media_description),
        reply_to_url = coalesce(EXCLUDED.reply_to_url, social_posts.reply_to_url),
-       posted_at = coalesce(social_posts.posted_at, EXCLUDED.posted_at),
+       posted_at = CASE WHEN $18::boolean THEN EXCLUDED.posted_at
+         ELSE coalesce(social_posts.posted_at, EXCLUDED.posted_at) END,
        stats = CASE WHEN $15::jsonb IS NOT NULL THEN EXCLUDED.stats ELSE social_posts.stats END,
        stats_checked_at = CASE WHEN $15::jsonb IS NOT NULL THEN now() ELSE social_posts.stats_checked_at END,
        -- Who published it outranks the sync that later saw it.
@@ -242,10 +257,11 @@ export async function savePost(
       post.media_type ?? "none",
       post.media_description ?? null,
       post.reply_to_url ?? null,
-      post.posted_at ?? null,
+      exactTime ?? post.posted_at ?? null,
       stats ? JSON.stringify(stats) : null,
       source,
       post.artifact_id ?? null,
+      exactTime !== null,
     ],
   );
   return saved;

@@ -11,6 +11,7 @@ import {
 import {
   capText,
   POST_TEXT_LIMIT,
+  postedAtFromId,
   postIdFromUrl,
 } from "../src/repositories/social-posts.js";
 import { executeTool } from "../src/tools/index.js";
@@ -96,6 +97,14 @@ test("post IDs come from each platform's links, and text is capped", () => {
   ];
   for (const [platform, url, id] of cases)
     assert.equal(postIdFromUrl(platform, url), id, url);
+
+  // X IDs carry their creation time; other platforms' don't.
+  assert.equal(
+    postedAtFromId("X", "2115247081459974280"),
+    "2026-10-28T00:59:38.267Z",
+  );
+  assert.equal(postedAtFromId("X", "100"), null);
+  assert.equal(postedAtFromId("Threads", "2115247081459974280"), null);
 
   assert.deepEqual(capText("short"), {
     text: "short",
@@ -255,6 +264,57 @@ test("save_my_post saves one post by its link, updates by id, and delete_my_post
     ).rows[0].n,
     2,
   );
+});
+
+test("on X the post time comes from its ID; other times must be ISO with a zone", async () => {
+  const { userId, context, link } = await founder();
+  await link("X", "https://x.com/maker", "x");
+  await link("Threads", "https://www.threads.net/@maker", "threads");
+  const url = "https://x.com/maker/status/2115247081459974280";
+  await assert.rejects(
+    run(context, "save_my_post", {
+      account: "Threads",
+      kind: "post",
+      url: "https://www.threads.net/@maker/post/Abc",
+      posted_at: "Oct 28, 2026, 7:59 AM",
+    }),
+    /ISO 8601 date-time with its time zone/,
+  );
+  await run(context, "save_my_post", {
+    account: "Threads",
+    kind: "post",
+    url: "https://www.threads.net/@maker/post/Abc",
+    posted_at: "2026-10-28T07:59:00+07:00",
+  });
+  await run(context, "save_my_post", {
+    account: "X",
+    kind: "reply",
+    url,
+    text: "Sure!",
+  });
+  // A rounded time given later doesn't replace the exact one.
+  await run(context, "save_my_post", {
+    account: "X",
+    kind: "reply",
+    url,
+    posted_at: "2026-10-28T00:59:00Z",
+  });
+  // A plain repost's ID is the original post's, so its time isn't taken from it.
+  await run(context, "save_my_post", {
+    account: "X",
+    kind: "repost",
+    url: "https://x.com/other/status/2115247081459974281",
+  });
+  const { rows } = await fixture.db.query(
+    `SELECT kind, platform, to_char(posted_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS') AS at
+     FROM social_posts WHERE user_id=$1 ORDER BY platform, kind`,
+    [userId],
+  );
+  assert.deepEqual(rows, [
+    { kind: "post", platform: "Threads", at: "2026-10-28T00:59:00.000" },
+    { kind: "reply", platform: "X", at: "2026-10-28T00:59:38.267" },
+    { kind: "repost", platform: "X", at: null },
+  ]);
 });
 
 test("list_my_posts and search_my_posts read the founder's own posts with their freshness", async () => {

@@ -89,7 +89,11 @@ const postFields = {
   media_type: z.enum(MEDIA_TYPES),
   media_description: z.string().min(1).max(2000),
   reply_to_url: z.url({ protocol: /^https?$/ }).max(2048),
-  posted_at: z.iso.datetime({ offset: true }),
+  posted_at: z.iso.datetime({
+    offset: true,
+    error:
+      "posted_at must be an ISO 8601 date-time with its time zone, e.g. 2026-10-28T07:59:00+07:00. Convert the time the page shows; on X leave it out, it is read from the post's ID.",
+  }),
   stats: z.record(z.string(), z.number().nonnegative()),
 };
 
@@ -139,7 +143,7 @@ export const socialPostTools: Tool[] = [
     definition: {
       name: "save_my_post",
       description:
-        "Save one post you read on the founder's own profile, so routines can read it without the browser; call it once per post. Give kind, url (the post's own link; its ID is taken from it), text exactly as the founder wrote it (only their words; an Instagram caption or the article's opening), title for articles, posted_at, reply_to_url for replies and quotes, media_type, and stats as numbers (likes, replies, reposts, views…). For a plain repost, only kind and url. media_description is your one- or two-line description of an image or video; give it only for a new post with no caption or alt text, since a saved description is kept. Saving a post already saved (same link) refreshes its text and stats. To change a saved post, pass its id (from list_my_posts) with only the fields that change.",
+        "Save one post you read on the founder's own profile, so routines can read it without the browser; call it once per post. Give kind, url (the post's own link; its ID is taken from it), text exactly as the founder wrote it (only their words; an Instagram caption or the article's opening), title for articles, posted_at (ISO 8601 with time zone, e.g. 2026-10-28T07:59:00+07:00, converted from the time the page shows; leave it out on X, where it is read exactly from the post's ID), reply_to_url for replies and quotes, media_type, and stats as numbers (likes, replies, reposts, views…). For a plain repost, only kind and url. media_description is your one- or two-line description of an image or video; give it only for a new post with no caption or alt text, since a saved description is kept. Saving a post already saved (same link) refreshes its text and stats. To change a saved post, pass its id (from list_my_posts) with only the fields that change.",
       parameters: object(
         {
           id: {
