@@ -32,7 +32,7 @@ Do these steps in order. The run has a limit on steps and time, so share it fair
 
 Per platform (the account's URL is in the brand profile):
 
-- **X**: posts: the profile (posts, quotes, plain reposts, articles). Replies: `/with_replies`. Skip the pinned post when judging how far back you are. If X shows "Something went wrong" with Retry, click Retry once; if it fails again, skip the account and say so.
+- **X**: posts: the profile (posts, quotes, plain reposts, articles). Replies: `/with_replies`. Skip the pinned post when judging how far back you are. X often shows "Something went wrong" with Retry: click Retry and snapshot again once it has loaded; if it still fails, close the tab and open the page again (also try the other page, posts or replies, which often loads when one doesn't). Only after that fails, skip the account for this run and say so.
 - **Threads**: posts: the profile's Threads tab. Replies: its Replies tab.
 - **LinkedIn**: posts: `/recent-activity/all/` (posts and reposts). Comments: `/recent-activity/comments/`, saved as kind `reply`: save the founder's comment as `text`, the post it's on as `reply_to_url`, and as `url` the comment's own link (the one with `commentUrn` in it) when the page shows one, otherwise the post's link. Never open other people's profiles.
 - **Instagram**: posts: the profile grid (Instagram has no replies page). A grid item's label often has the caption or alt text; open a post only when it's new and you need its caption, date or kind (reel, carousel). Stories expire after a day: save one only if it's showing.
