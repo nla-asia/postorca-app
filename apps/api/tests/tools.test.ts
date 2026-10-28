@@ -197,13 +197,20 @@ test("completing a profile seeds default routines, and deleting their link pause
     onboarding_status: "completed",
   });
   assert.ok(profile.default_routines_created.length > 0);
+  // The posts sync covers every account, so only the link's own routines pause.
   const deleted = await run(context, "delete_brand_link", { id: link.id });
-  assert.equal(deleted.routines_paused, profile.default_routines_created.length);
+  assert.equal(
+    deleted.routines_paused,
+    profile.default_routines_created.length - 1,
+  );
   const { rows } = await fixture.db.query(
-    "SELECT active FROM routines WHERE user_id=$1",
+    "SELECT platform, active FROM routines WHERE user_id=$1",
     [userId],
   );
-  assert.ok(rows.length && rows.every((row) => row.active === false));
+  assert.ok(
+    rows.length &&
+      rows.every((row) => row.active === (row.platform === null)),
+  );
 });
 
 test("artifact tools deliver text, links and ideas to their own task only", async () => {

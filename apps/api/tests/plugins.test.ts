@@ -263,6 +263,7 @@ test("migrate projects the code-defined plugin catalog and core skills into the 
     { name: "people-to-connect", dir: "skills/people-to-connect", plugin_code: null },
     { name: "product-demo-capture", dir: "skills/product-demo-capture", plugin_code: null },
     { name: "publish-post", dir: "skills/publish-post", plugin_code: null },
+    { name: "sync-my-posts", dir: "skills/sync-my-posts", plugin_code: null },
     { name: "video-build-log", dir: "plugins/video/skills/video-build-log", plugin_code: "video" },
     { name: "video-create", dir: "plugins/video/skills/video-create", plugin_code: "video" },
     { name: "video-event-invite", dir: "plugins/video/skills/video-event-invite", plugin_code: "video" },
