@@ -79,12 +79,22 @@ export default function QuestionWidget({
           <p className="question-hint">Select all that apply.</p>
         )}
         <div
-          className={`question-options ${question.options.some((option) => typeof option !== "string") ? "cards" : ""}`}
+          className={`question-options ${
+            question.options.some(
+              (option) =>
+                typeof option !== "string" && option.preview !== option.label,
+            )
+              ? "cards"
+              : ""
+          }`}
         >
           {question.options.map((choice) => {
             const option = typeof choice === "string" ? choice : choice.label;
+            // A preview that only repeats the label is a plain choice.
             const preview =
-              typeof choice === "string" ? undefined : choice.preview;
+              typeof choice === "string" || choice.preview === choice.label
+                ? undefined
+                : choice.preview;
             return (
               <label
                 key={option}

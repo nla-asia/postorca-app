@@ -11,6 +11,7 @@ import {
 import type { Brand, BrandProject } from "../lib/brand";
 import { api } from "../lib/api";
 import { Button } from "../components/ui";
+import Markdown from "../components/Markdown";
 import "./BrandProfile.css";
 import "../components/tabs.css";
 import "../components/forms.css";
@@ -285,7 +286,9 @@ function Voice() {
     );
   return voice ? (
     <>
-      <pre className="brand-voice">{voice}</pre>
+      <div className="brand-voice">
+        <Markdown text={voice} />
+      </div>
       <p className="brand-empty">
         Orca writes in this voice and updates it from your posts and edits. Ask
         Orca to change it.
