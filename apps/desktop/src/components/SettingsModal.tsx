@@ -1,5 +1,4 @@
 import BillingUsage from "./BillingUsage";
-import { useEffect, useState } from "react";
 import {
   CircleHelp,
   LogOut,
@@ -29,7 +28,6 @@ export default function SettingsModal({
   onThemeChange,
   user,
   onLogOut,
-  onOpenBrandProfile,
   tab,
   onTabChange,
 }: {
@@ -39,15 +37,9 @@ export default function SettingsModal({
   onThemeChange: (theme: Theme) => void;
   user: AuthUser;
   onLogOut: () => void;
-  onOpenBrandProfile?: () => void;
   tab: SettingsTab;
   onTabChange: (tab: SettingsTab) => void;
 }) {
-  const [workingFolder, setWorkingFolder] = useState<string | null>(null);
-  useEffect(() => {
-    if (open) void window.postorca?.workingFolder.get().then(setWorkingFolder);
-  }, [open]);
-
   return (
     <Modal
       open={open}
@@ -114,47 +106,14 @@ export default function SettingsModal({
                 </div>
               </div>
 
-              <span className="field-section-label">Workspace</span>
+              <span className="field-section-label">About</span>
               <div className="settings-group">
                 <div className="setting-row">
                   <div>
-                    <strong>Brand profile</strong>
-                    <p>{user.name || "Your profile"} · Personal workspace</p>
+                    <strong>PostOrca</strong>
+                    <p>Version {__APP_VERSION__}</p>
                   </div>
-                  {onOpenBrandProfile && (
-                    <Button
-                      onClick={() => {
-                        onOpenChange(false);
-                        onOpenBrandProfile();
-                      }}
-                    >
-                      Edit profile
-                    </Button>
-                  )}
                 </div>
-                {window.postorca && (
-                  <div className="setting-row">
-                    <div>
-                      <strong>Working folder</strong>
-                      <p>
-                        {workingFolder ??
-                          "Not set. Orca can only use files in this folder and your project folders."}
-                      </p>
-                    </div>
-                    <Button
-                      onClick={async () => {
-                        const chosen =
-                          await window.postorca?.workingFolder.choose();
-                        if (chosen) setWorkingFolder(chosen);
-                      }}
-                    >
-                      {workingFolder ? "Change" : "Choose folder"}
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <div className="preview-notice">
-                Appearance is saved on this device.
               </div>
             </>
           )}
@@ -175,13 +134,6 @@ export default function SettingsModal({
                   </Button>
                 </div>
               </div>
-              <Button
-                className="account-billing-link"
-                onClick={() => onTabChange("Billing & Usage")}
-              >
-                <Wallet size={15} aria-hidden="true" />
-                Billing &amp; Usage
-              </Button>
             </>
           )}
 

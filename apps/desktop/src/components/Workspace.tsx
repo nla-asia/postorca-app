@@ -110,14 +110,6 @@ export default function Workspace({
       onThemeChange={onThemeChange}
       user={{ ...user, name: profileName }}
       onLogOut={onLogOut}
-      onOpenBrandProfile={
-        completed && !setupDone
-          ? () => {
-              setSelected(null);
-              setPage("Brand Profile");
-            }
-          : undefined
-      }
     />
   );
   if (!brand)
@@ -197,6 +189,8 @@ export default function Workspace({
             filter={filter}
             onFilterChange={setFilter}
             onSelect={openWork}
+            onChanged={() => void work.reload()}
+            notify={setNotice}
           />
         )}
         {page === "Inbox" && selected && (

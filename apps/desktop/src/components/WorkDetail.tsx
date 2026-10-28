@@ -521,16 +521,17 @@ export default function WorkDetail({
               {approved ? "Approved" : "Approve"}
             </Button>
             <Button
-              onClick={() =>
-                void act(
+              onClick={async () => {
+                const archived = await act(
                   () =>
                     api(`/tasks/${task.id}`, {
                       method: "PATCH",
                       body: JSON.stringify({ action: "archive" }),
                     }),
                   "Work archived.",
-                )
-              }
+                );
+                if (archived) onBack();
+              }}
               disabled={archived || working || busy}
             >
               <Archive size={15} />
