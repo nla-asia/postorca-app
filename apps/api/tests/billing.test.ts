@@ -90,7 +90,7 @@ const sub = (status = "active", plan = "builder") => ({
 const prices: Record<string, number> = {
   price_builder: 2900,
   price_influencer: 6900,
-  price_extra: 1000,
+  price_extra: 2000,
 };
 function fakeStripe(
   state: {
@@ -200,8 +200,8 @@ test("plans buy credits with the part of their price set aside for AI usage; Str
   assert.equal(membershipPackages.builder.credits, 500);
   assert.equal(membershipPackages.influencer.amount, 6900);
   assert.equal(membershipPackages.influencer.credits, 1500);
-  assert.equal(membershipPackages.extra.amount, 1000);
-  assert.equal(membershipPackages.extra.credits, 200);
+  assert.equal(membershipPackages.extra.amount, 2000);
+  assert.equal(membershipPackages.extra.credits, 500);
   await packagePrice(fakeStripe(), "builder");
   await packagePrice(fakeStripe(), "influencer");
   await packagePrice(fakeStripe(), "extra");
@@ -335,11 +335,11 @@ test("top-ups grant only paid, owner-bound, exact line items and deduplicate asy
       status: "complete",
       payment_status: "paid",
       currency: "usd",
-      amount_total: 1000,
+      amount_total: 2000,
       client_reference_id: user.id,
       metadata: purchaseMetadata("extra", "price_extra", user.id),
     },
-    lines: [{ price: { id: "price_extra" }, quantity: 1, amount_total: 1000 }],
+    lines: [{ price: { id: "price_extra" }, quantity: 1, amount_total: 2000 }],
   };
   const stripe = fakeStripe(state);
   await applyBillingEvent(
@@ -355,7 +355,7 @@ test("top-ups grant only paid, owner-bound, exact line items and deduplicate asy
     }),
     stripe,
   );
-  assert.equal((await getCreditSummary(f.db, user.id)).balance, 450);
+  assert.equal((await getCreditSummary(f.db, user.id)).balance, 750);
   state.session.client_reference_id = randomUUID();
   const invalid = event("checkout.session.completed", {
     id: "cs_pack",

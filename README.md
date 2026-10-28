@@ -70,9 +70,9 @@ AI usage is paid for in credits. One credit buys $0.04 of real provider cost (25
 | --- | --- | --- | --- |
 | Builder | $29 / month | 500 each paid month | $20 |
 | Influencer | $69 / month | 1,500 each paid month | $60 |
-| Extra credits | $10 once | 200 | $8 |
+| Extra credits | $20 once | 500 | $20 |
 
-The rest of each price covers servers, payment fees and running PostOrca. New accounts receive welcome credits once (`apps/api/src/settings.ts`). Unused credits roll over. Upgrading charges the new plan in full and starts a new month with its credits; downgrading applies at the next renewal. Rates and plans live in `apps/api/src/billing/terms.ts`; Stripe runs in test mode.
+On the plans, the rest of the price covers servers, payment fees and running PostOrca; Extra credits put the whole price into AI usage. New accounts receive welcome credits once (`apps/api/src/settings.ts`). Unused credits roll over. Upgrading charges the new plan in full and starts a new month with its credits; downgrading applies at the next renewal. Rates and plans live in `apps/api/src/billing/terms.ts`; Stripe runs in test mode.
 
 ## Scripts
 

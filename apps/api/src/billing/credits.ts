@@ -1,6 +1,7 @@
 import { transaction, type Database, type Queryable } from "../db.js";
 import { HttpError } from "../handlers/errors.js";
-import { creditTerms, welcomeCredits } from "./terms.js";
+import { settings } from "../settings.js";
+import { creditTerms } from "./terms.js";
 import { requestReservation } from "./reservations.js";
 
 export class CreditError extends HttpError {
@@ -46,7 +47,7 @@ export async function ensureWelcomeCredits(db: Queryable, userId: string) {
   await db.query(
     `INSERT INTO credit_ledger(user_id,amount,description,reference)
     VALUES ($1,$2,'Welcome credits',$3) ON CONFLICT (reference) DO NOTHING`,
-    [userId, welcomeCredits(), `welcome:${userId}`],
+    [userId, settings.welcomeCredits, `welcome:${userId}`],
   );
 }
 async function account<T>(
