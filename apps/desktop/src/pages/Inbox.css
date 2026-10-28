@@ -130,3 +130,34 @@
     font-size: 14px;
   }
 }
+
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 36px;
+  margin-bottom: 13px;
+}
+
+.bulk-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.bulk-check input,
+.card-check {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.proposal-card.checked {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}

@@ -1,9 +1,6 @@
 .billing-panel {
   margin-top: 0;
 }
-.account-billing-link {
-  margin-top: 18px;
-}
 .billing-heading-row {
   display: flex;
   align-items: flex-start;

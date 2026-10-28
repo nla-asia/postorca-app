@@ -1,5 +1,8 @@
 /// <reference types="vite/client" />
 
+/** Desktop package version injected by Vite. */
+declare const __APP_VERSION__: string;
+
 /** Bridge exposed by Electron; absent in a plain browser. */
 interface Window {
   postorca?: {

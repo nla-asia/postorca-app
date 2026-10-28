@@ -1,4 +1,6 @@
-import { ArrowRight, CheckCheck } from "lucide-react";
+import { useState } from "react";
+import { Archive, ArrowRight, CheckCheck } from "lucide-react";
+import { api } from "../lib/api";
 import { Button, Pill, Platform } from "../components/ui";
 import type { WorkTask } from "../lib/schedules";
 import { workState, type WorkState } from "../lib/useWorkTasks";
@@ -41,6 +43,8 @@ export default function Inbox({
   filter,
   onFilterChange: setFilter,
   onSelect,
+  onChanged,
+  notify,
 }: {
   tasks: WorkTask[] | null;
   error: string;
@@ -49,7 +53,49 @@ export default function Inbox({
   filter: InboxFilter;
   onFilterChange: (filter: InboxFilter) => void;
   onSelect: (id: string) => void;
+  onChanged: () => void;
+  notify: (message: string) => void;
 }) {
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [archiving, setArchiving] = useState(false);
+  const shown = tasks?.filter((task) => inTab(task, filter)) ?? [];
+  const checkable = shown.filter((task) =>
+    ["review", "approved", "failed"].includes(workState(task)),
+  );
+  const selected = checkable.filter((task) => checked.has(task.id));
+  const changeFilter = (next: InboxFilter) => {
+    setChecked(new Set());
+    setFilter(next);
+  };
+  const archiveSelected = async () => {
+    if (archiving || !selected.length) return;
+    setArchiving(true);
+    let archived = 0;
+    let failure = "";
+    for (const task of selected) {
+      try {
+        await api(`/tasks/${task.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ action: "archive" }),
+        });
+        archived++;
+        setChecked((current) => {
+          const next = new Set(current);
+          next.delete(task.id);
+          return next;
+        });
+      } catch (error) {
+        failure = error instanceof Error ? error.message : "Unable to archive.";
+      }
+    }
+    onChanged();
+    const remaining = selected.length - archived;
+    notify(
+      `${archived} archived.` +
+        (remaining ? ` ${remaining} could not be archived. ${failure}` : ""),
+    );
+    setArchiving(false);
+  };
   return (
     <div className="page-content inbox-page">
       <div className="section-toolbar">
@@ -64,7 +110,8 @@ export default function Inbox({
               aria-controls="inbox-results"
               tabIndex={filter === tab ? 0 : -1}
               className={filter === tab ? "selected" : ""}
-              onClick={() => setFilter(tab)}
+              disabled={archiving}
+              onClick={() => changeFilter(tab)}
               onKeyDown={(event) => {
                 if (
                   !["ArrowRight", "ArrowLeft", "Home", "End"].includes(
@@ -82,7 +129,7 @@ export default function Inbox({
                           (event.key === "ArrowRight" ? 1 : -1) +
                           tabs.length) %
                         tabs.length;
-                setFilter(tabs[next]);
+                changeFilter(tabs[next]);
                 document.getElementById(`inbox-tab-${next}`)?.focus();
               }}
             >
@@ -100,6 +147,41 @@ export default function Inbox({
           <Button onClick={onRetry}>Try again</Button>
         </div>
       )}
+      {checkable.length > 0 && (
+        <div className="bulk-bar">
+          <label className="bulk-check">
+            <input
+              type="checkbox"
+              aria-label="Select all"
+              disabled={archiving}
+              checked={selected.length === checkable.length}
+              ref={(box) => {
+                if (box)
+                  box.indeterminate =
+                    selected.length > 0 && selected.length < checkable.length;
+              }}
+              onChange={() =>
+                setChecked(new Set(
+                  selected.length === checkable.length
+                    ? []
+                    : checkable.map((task) => task.id),
+                ))
+              }
+            />
+            {selected.length ? `${selected.length} selected` : "Select all"}
+          </label>
+          {selected.length > 0 && (
+            <Button
+              variant="ghost"
+              disabled={archiving}
+              onClick={() => void archiveSelected()}
+            >
+              <Archive size={15} aria-hidden="true" />
+              {archiving ? "Archiving…" : "Archive"}
+            </Button>
+          )}
+        </div>
+      )}
       <div
         className="proposal-list"
         id="inbox-results"
@@ -112,19 +194,22 @@ export default function Inbox({
                 Loading…
               </div>
             )
-          : tasks
-              .filter((task) => inTab(task, filter))
-              .map((task) => {
+          : shown.map((task) => {
                 const state = workState(task);
                 return (
                   <article
                     key={task.id}
-                    className="proposal-card"
+                    className={`proposal-card${checked.has(task.id) ? " checked" : ""}`}
                     tabIndex={0}
                     role="button"
-                    onClick={() => onSelect(task.id)}
+                    onClick={() => {
+                      if (!archiving) onSelect(task.id);
+                    }}
                     onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
+                      if (
+                        !archiving &&
+                        (event.key === "Enter" || event.key === " ")
+                      ) {
                         event.preventDefault();
                         onSelect(task.id);
                       }
@@ -132,6 +217,24 @@ export default function Inbox({
                   >
                     <div className="proposal-top">
                       <div className="proposal-meta">
+                        {checkable.includes(task) && (
+                          <input
+                            type="checkbox"
+                            className="card-check"
+                            aria-label={`Select ${task.title}`}
+                            checked={checked.has(task.id)}
+                            disabled={archiving}
+                            onClick={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => event.stopPropagation()}
+                            onChange={() =>
+                              setChecked((current) => {
+                                const next = new Set(current);
+                                if (!next.delete(task.id)) next.add(task.id);
+                                return next;
+                              })
+                            }
+                          />
+                        )}
                         {task.platform && (
                           <>
                             <Platform name={task.platform} />
@@ -174,7 +277,7 @@ export default function Inbox({
                   </article>
                 );
               })}
-        {tasks?.filter((task) => inTab(task, filter)).length === 0 && (
+        {tasks !== null && shown.length === 0 && (
           <div className="empty-state">
             <CheckCheck size={30} aria-hidden="true" />
             <h3>
