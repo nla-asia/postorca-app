@@ -20,6 +20,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-bottom: 19px;
 }
 
 .account-chip {
@@ -60,10 +61,23 @@
   font-weight: 550;
 }
 
-.posts-freshness {
-  font-size: 11px;
+.account-sync {
+  margin-left: 1px;
+}
+
+/* A filled disc with a white check: read in the last day. */
+.account-sync.fresh {
+  color: var(--surface);
+  fill: var(--accent);
+}
+
+.account-sync.stale {
+  color: var(--secondary);
+}
+
+.account-sync.never {
   color: var(--muted);
-  margin: 10px 0 19px;
+  opacity: 0.7;
 }
 
 .posts-list {
