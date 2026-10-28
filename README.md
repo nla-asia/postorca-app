@@ -62,6 +62,8 @@ npm run dev
 
 To let Orca use your browser, open `chrome://extensions`, turn on Developer mode, choose **Load unpacked** and select `apps/browser-extension`.
 
+The extension also supports compatible local companions for other agents. See the [Browser Bridge developer guide](docs/browser-bridge.md) for the standalone Node.js example, protocol, and integration instructions. No PostOrca account or API server is needed for that example.
+
 ## Scripts
 
 | Command | Description |

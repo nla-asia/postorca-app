@@ -8,6 +8,7 @@ dist/
 .DS_Store
 Thumbs.db
 coverage/
+/apps/website/public/downloads/postorca-browser-companion.tgz
 .data/
 /apps/api/storage/
 /apps/desktop/build/

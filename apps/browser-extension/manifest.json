@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "PostOrca",
+  "name": "PostOrca Browser Bridge",
   "version": "0.2.0",
-  "description": "Lets the PostOrca desktop app work in your browser, in its own Orca tab group, with your existing sign-ins.",
+  "description": "Connect PostOrca or a compatible local AI agent to Chrome for browser tasks using your existing sign-ins.",
   "minimum_chrome_version": "125",
   "homepage_url": "https://orca.atpa.site",
   "icons": {
@@ -13,7 +13,6 @@
   },
   "permissions": [
     "debugger",
-    "tabs",
     "tabGroups",
     "storage",
     "alarms",
@@ -23,12 +22,13 @@
     "service_worker": "background.js",
     "type": "module"
   },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
   "action": {
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png"
     },
-    "default_title": "PostOrca",
+    "default_title": "PostOrca Browser Bridge",
     "default_popup": "popup.html"
   },
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzmqPXO8KNIOj0wpBiZACXYpCEigYuvtXbS0/wf0TSGwdyA0+1LG/owQIJL2upRTX7bKv6Q/LuG8O71zZQVRAskzQORmFK9UUUTOD0e9O3xz9OuTDvpwVq/ygEyIfhuwbHIs29bXWgedlC1rjwWncbpyO91gzYoBuom56C/LopP9q5DDp8KuA7hHAZl3O0FHQD7ZeDyHA9cHMiJW5ejryaQfG7FmLQW7IuZ/Bv9sTQajHYNby9UGwH0L2jVq4JB0sJxvO1JZ/zh+7q6LmQmV0D+DxTsANZrmm8QHyolZJzUESdcuWqyTZ5GECe80nQ3wPruvZnj419KrEqV31eNnEyQIDAQAB"
