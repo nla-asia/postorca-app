@@ -35,15 +35,7 @@ export const PROVIDER_PRICING = [
   ...(
     [
       ["muse-wonder-1.0", "4.00", "0.20", "20.00"],
-      ...["muse-spark-1.3", "muse-spark-1.2", "muse-spark-1.1"].map((model) => [
-        model,
-        "1.25",
-        "0.15",
-        "4.25",
-      ]),
-      ...["muse-spark-1.3-contributor", "muse-spark-1.2-contributor"].map(
-        (model) => [model, "0.10", "0.002", "0.20"],
-      ),
+      ["muse-spark-1.3", "1.25", "0.15", "4.25"],
     ] as const
   ).map(([model, input, cached, output]) => ({
     enabled: true,

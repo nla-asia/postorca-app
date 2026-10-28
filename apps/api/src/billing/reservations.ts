@@ -32,10 +32,6 @@ export function requestReservation(
     const rates: Record<string, [number, number]> = {
       "muse-wonder-1.0": [4, 20],
       "muse-spark-1.3": [1.25, 4.25],
-      "muse-spark-1.2": [1.25, 4.25],
-      "muse-spark-1.1": [1.25, 4.25],
-      "muse-spark-1.3-contributor": [0.1, 0.2],
-      "muse-spark-1.2-contributor": [0.1, 0.2],
     };
     const rate = rates[model];
     if (rate)

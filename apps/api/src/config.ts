@@ -39,7 +39,7 @@ const schema = z.object({
 
 /** ORCA_PROVIDER picks the provider; without it, Meta is used when its variables are
  * set, then OpenAI. */
-function orcaFromEnv(env: NodeJS.ProcessEnv) {
+export function orcaFromEnv(env: NodeJS.ProcessEnv) {
   const configured = (Object.keys(providerEnv) as (keyof typeof providerEnv)[])
     .reverse()
     .find(

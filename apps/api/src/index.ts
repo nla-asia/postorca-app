@@ -5,8 +5,7 @@ import { attachDesktopSocket } from "./desktop/connections.js";
 import { configFromEnv } from "./config.js";
 import { createDatabase, ping } from "./db.js";
 import { catalogDrift } from "./plugins/catalog.js";
-import { MetaProvider } from "./providers/meta.js";
-import { OpenAIProvider } from "./providers/openai.js";
+import { orcaProvider } from "./providers/meta.js";
 import { failInterruptedTurns } from "./repositories/turns.js";
 import { Scheduler } from "./scheduler.js";
 
@@ -26,14 +25,7 @@ try {
   throw error;
 }
 const { orca } = config;
-const agent = orca
-  ? createAgent(
-      db,
-      orca.provider === "meta"
-        ? new MetaProvider(orca.apiKey, orca.model)
-        : new OpenAIProvider(orca.apiKey, orca.model),
-    )
-  : null;
+const agent = orca ? createAgent(db, orcaProvider(orca)) : null;
 if (orca) console.log(`Orca runs on ${orca.provider} (${orca.model}).`);
 else
   console.warn(

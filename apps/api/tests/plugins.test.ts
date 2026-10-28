@@ -360,6 +360,10 @@ test("plugin tools and skills are available only while the task's plugin is acti
     script = [call("activate_plugin", { code: null })];
     assert.equal((await ask(founder.token)).active_plugin, null);
     assert.ok(!offered[1].includes("demo_open"));
+    // The string "null" some models send for the enum's null choice also deactivates.
+    await activate(founder.token);
+    script = [call("activate_plugin", { code: "null" })];
+    assert.equal((await ask(founder.token)).active_plugin, null);
     script = [call("read_skill", { name: "demo-use" })];
     assert.deepEqual(await ask(founder.token), {
       error: "Skill demo-use is not a core skill or part of the active plugin.",

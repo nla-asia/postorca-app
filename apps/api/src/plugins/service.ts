@@ -171,7 +171,13 @@ export async function executePluginTool(
 ) {
   if (name === "activate_plugin") {
     const { code } = z
-      .object({ code: z.string().nullable() })
+      .object({
+        // Some models write the null choice of the enum as the string "null".
+        code: z
+          .string()
+          .nullable()
+          .transform((value) => (value === "null" ? null : value)),
+      })
       .strict()
       .parse(rawArgs);
     const plugin =
