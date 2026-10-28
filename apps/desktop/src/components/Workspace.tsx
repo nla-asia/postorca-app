@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronRight, Sparkles, X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 import Sidebar from "./Sidebar";
 import ConnectApps from "./ConnectApps";
 import SettingsModal, { type SettingsTab } from "./SettingsModal";
@@ -173,10 +173,7 @@ export default function Workspace({
         <InAppNotifications onOpen={openWork} />
         {page !== "Agent" && !(page === "Inbox" && selected) && (
           <header className="topbar">
-            <div className="breadcrumb">
-              Your space <ChevronRight size={13} aria-hidden="true" />
-              <span>{page}</span>
-            </div>
+            <h1 className="topbar-title">{page}</h1>
           </header>
         )}
         {page === "Agent" && <Agent chat={chat} />}
