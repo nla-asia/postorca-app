@@ -11,7 +11,7 @@ import type {
 } from "./contracts.js";
 
 // Version changes require explicit, reasoned regrading of stored attempts.
-export const gradingPolicyVersion = 2;
+export const gradingPolicyVersion = 3;
 export function executionCheck(run: Run, evidence?: Evidence): Check {
   const settled = ["completed", "failed"].includes(run.execution);
   const turns = evidence?.task.turns ?? [];

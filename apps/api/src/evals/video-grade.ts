@@ -254,9 +254,11 @@ export function gradeVideo(
         );
     }
   }
-  const prompts = named("media_generate_image").map((call) =>
-    String(call.args.prompt ?? ""),
-  );
+  // Rejected calls produce no image whose style can be evaluated. Keep those
+  // calls in errors/usage and paid-retry checks; assess style on successful work.
+  const prompts = named("media_generate_image")
+    .filter((call) => !call.failed)
+    .map((call) => String(call.args.prompt ?? ""));
   if (prompts.length)
     check(
       "Requested candid phone-style images",

@@ -101,6 +101,39 @@ test("graded video uses successful tool results, exact supplied figures and pers
   assert.equal(result.files[0], video);
 });
 
+test("image style ignores rejected work without hiding errors or actual non-candid images", () => {
+  for (const [prompt, expected] of [
+    ["Candid smartphone photograph", true],
+    ["Polished studio illustration", false],
+  ] as const) {
+    const messages = [
+      ...call(
+        "media_generate_image",
+        { prompt: "Narration script", voice_id: "voice" },
+        { error: "Invalid arguments: unrecognized voice_id" },
+        "rejected",
+      ),
+      ...call("media_generate_image", { prompt }, {}, "created"),
+      ...call(
+        "media_generate_image",
+        { prompt: "Candid phone photograph" },
+        {},
+        "another-created",
+      ),
+    ];
+    const result = gradeVideo(b5, messages, [], 1);
+    assert.equal(
+      result.checks.find(
+        (check) => check.name === "Requested candid phone-style images",
+      )!.ok,
+      expected,
+    );
+    assert.equal(result.errors.length, 1);
+    assert.match(result.errors[0], /Invalid arguments/);
+    assert.equal(result.usage.media_generate_image, 3);
+  }
+});
+
 test("paid retries are detected even when skill reads separate the failed and repeated calls", () => {
   const messages = [
     ...call(
