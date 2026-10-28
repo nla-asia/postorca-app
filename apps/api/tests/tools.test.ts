@@ -78,6 +78,7 @@ test("each task kind gets its tools; chat-only tools stay out of background work
       "list_my_posts",
       "search_my_posts",
       "save_my_post",
+      "mark_my_posts_synced",
       "delete_my_post",
     ])
       assert.ok(names(kind).includes(name), `${name} in ${kind}`);
