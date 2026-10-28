@@ -8,6 +8,7 @@ import { migrate } from "../src/migrate.js";
 import { memoryIndex } from "../src/memory.js";
 import { createUser } from "../src/repositories/users.js";
 import {
+  appendMessage,
   createTask,
   createTurn,
   createWorkTask,
@@ -17,6 +18,7 @@ import {
   createArtifact,
   updateDocumentArtifact,
 } from "../src/repositories/artifacts.js";
+import { completeTurn } from "../src/repositories/turns.js";
 import { executeTool, toolsForTask, type DispatchTask } from "../src/tools/index.js";
 import { temporaryPostgres } from "./postgres.js";
 
@@ -80,6 +82,7 @@ test("each task kind gets its tools; chat-only tools stay out of background work
       "save_my_post",
       "mark_my_posts_synced",
       "delete_my_post",
+      "list_content_feedback",
     ])
       assert.ok(names(kind).includes(name), `${name} in ${kind}`);
   }
@@ -198,11 +201,11 @@ test("completing a profile seeds default routines, and deleting their link pause
     onboarding_status: "completed",
   });
   assert.ok(profile.default_routines_created.length > 0);
-  // The posts sync covers every account, so only the link's own routines pause.
+  // The posts sync and voice review cover every account, so only the link's own routines pause.
   const deleted = await run(context, "delete_brand_link", { id: link.id });
   assert.equal(
     deleted.routines_paused,
-    profile.default_routines_created.length - 1,
+    profile.default_routines_created.length - 2,
   );
   const { rows } = await fixture.db.query(
     "SELECT platform, active FROM routines WHERE user_id=$1",
@@ -382,6 +385,76 @@ test("list_content_ideas returns the founder's recent ideas, newest first", asyn
     { ideas: [], message: "No content ideas in the last 7 days." },
   );
   await assert.rejects(run(context, "list_content_ideas", { days: 61 }));
+});
+
+test("list_content_feedback returns the founder's messages in content tasks of the last day", async () => {
+  const userId = await account();
+  const call = (name: string, args: unknown) => ({
+    callId: randomUUID(),
+    name,
+    arguments: JSON.stringify(args),
+  });
+  // A routine's run: its instructions, a first draft, then the founder's change requests.
+  const contentTask = async (owner: string, workType = "content") => {
+    const { task, turn } = await createWorkTask(
+      fixture.db,
+      owner,
+      "Daily quote",
+      "Read the daily-quote skill with read_skill, then follow it.",
+      "X",
+    );
+    await fixture.db.query("UPDATE tasks SET work_type=$2 WHERE id=$1", [task.id, workType]);
+    await appendMessage(fixture.db, turn.id, "tool_call", call("create_artifact", {
+      kind: "document",
+      title: "Post",
+      content: "Shipping beats planning. What do you think? 🚀",
+    }));
+    await createArtifact(fixture.db, task.id, turn.id, {
+      kind: "document",
+      title: "Post",
+      content: "Shipping beats planning. What do you think? 🚀",
+    });
+    await appendMessage(fixture.db, turn.id, "assistant", { text: "Here is today's draft." });
+    await completeTurn(fixture.db, turn.id);
+    return task.id as string;
+  };
+  const feedback = async (taskId: string, text: string) => {
+    const turn = await createTurn(fixture.db, userId, taskId, text);
+    await appendMessage(fixture.db, turn.id, "tool_call", call("edit_document", {
+      id: randomUUID(),
+      edits: [{ find: " What do you think? 🚀", replace: "" }],
+    }));
+    await appendMessage(fixture.db, turn.id, "assistant", { text: "Done: no question, no emoji." });
+    await completeTurn(fixture.db, turn.id);
+    return turn.id as string;
+  };
+  const edited = await contentTask(userId);
+  await feedback(edited, "don't end on a question, and drop the emoji");
+  // Feedback older than the window, a task with no feedback, other work, another founder.
+  const old = await contentTask(userId);
+  const oldTurn = await feedback(old, "shorter");
+  await fixture.db.query("UPDATE messages SET created_at=now()-interval '2 days' WHERE turn_id=$1", [oldTurn]);
+  await contentTask(userId);
+  await feedback(await contentTask(userId, "general"), "make it about pricing");
+  const context = { userId, taskId: "unused", turnId: "unused" };
+  const { tasks } = await run(context, "list_content_feedback", {});
+  assert.deepEqual(tasks.map((task: any) => task.task_id), [edited]);
+  const [task] = tasks;
+  assert.equal(task.platform, "X");
+  assert.deepEqual(task.first_drafts, ["Shipping beats planning. What do you think? 🚀"]);
+  assert.equal(task.feedback.length, 1);
+  assert.equal(task.feedback[0].founder, "don't end on a question, and drop the emoji");
+  assert.deepEqual(task.feedback[0].changes, [[{ find: " What do you think? 🚀", replace: "" }]]);
+  assert.equal(task.feedback[0].orca, "Done: no question, no emoji.");
+  assert.equal(task.drafts_now[0].title, "Post");
+  // A wider window reaches the older feedback, only from that day on.
+  const week = (await run(context, "list_content_feedback", { hours: 72 })).tasks;
+  assert.deepEqual(week.map((task: any) => task.task_id), [edited, old]);
+  assert.deepEqual(
+    await run({ ...context, userId: await account() }, "list_content_feedback", {}),
+    { tasks: [], message: "The founder sent no messages in content tasks in the last 24 hours." },
+  );
+  await assert.rejects(run(context, "list_content_feedback", { hours: 169 }));
 });
 
 test("memory: save, grep, edit, read and delete Markdown files per founder", async () => {
