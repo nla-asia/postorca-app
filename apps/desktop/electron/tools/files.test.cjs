@@ -190,6 +190,7 @@ test("audio reading converts only the selected excerpt inside the project bounda
 });
 
 test("development shared folders are readable, and upload_file sends originals unchanged", async (t) => {
+  const outside = await fs.mkdtemp(path.join(os.tmpdir(), "postorca-outside-"));
   const shared = await fs.realpath(
     await fs.mkdtemp(path.join(os.tmpdir(), "postorca-shared-")),
   );
@@ -202,12 +203,14 @@ test("development shared folders are readable, and upload_file sends originals u
     else process.env.POSTORCA_SHARED_FOLDERS = previous;
     await fs.rm(shared, { recursive: true, force: true });
     await fs.rm(project, { recursive: true, force: true });
+    await fs.rm(outside, { recursive: true, force: true });
   });
   // Development folders come after the working folder and project folders.
   process.env.POSTORCA_SHARED_FOLDERS = shared;
   const original = Buffer.from([0, 1, 2, 3, 255, 254]);
   await fs.writeFile(path.join(shared, "clip.mov"), original);
   await fs.writeFile(path.join(project, "plan.md"), "# Plan\n");
+  await fs.writeFile(path.join(outside, "private.txt"), "outside allowed folders");
   await fs.writeFile(path.join(shared, "empty.dat"), "");
   await fs.mkdir(path.join(shared, "demos"));
 
@@ -251,7 +254,7 @@ test("development shared folders are readable, and upload_file sends originals u
   await fs.truncate(path.join(shared, "empty.dat"), 200 * 1024 * 1024 + 1);
   await assert.rejects(upload_file.run({ path: "empty.dat" }, context), /200 MB/);
   await assert.rejects(
-    upload_file.run({ path: "/etc/hosts" }, context),
+    upload_file.run({ path: path.join(outside, "private.txt") }, context),
     /Not in the working folder or a project folder/,
   );
   assert.equal(sent.length, 1);
