@@ -7,6 +7,7 @@
     "apps/website"
   ],
   "scripts": {
+    "eval": "npm run eval --workspace @postorca/api --",
     "dev": "npm run dev --workspace @postorca/desktop",
     "check": "npm run check --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
