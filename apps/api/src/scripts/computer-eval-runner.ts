@@ -9,12 +9,13 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import EmbeddedPostgres from "embedded-postgres";
-import { configFromEnv } from "../config.js";
+import { configFromEnv, orcaFromEnv } from "../config.js";
+import { settings } from "../settings.js";
 import { createDatabase, ping } from "../db.js";
 import { migrate } from "../migrate.js";
 import { createApp } from "../app.js";
 import { createAgent } from "../agent/router.js";
-import { OpenAIProvider } from "../providers/openai.js";
+import { orcaProvider } from "../providers/meta.js";
 import { issueToken } from "../middleware/auth.js";
 import {
   attachDesktopSocket,
@@ -82,7 +83,7 @@ export async function runComputerEval<Id extends string>(
       hashes,
       key: executionFingerprint(
         hashes,
-        process.env.OPENAI_MODEL ?? "",
+        settings.orca.model,
         process.platform,
       ),
       gradingKey: createHash("sha256")
@@ -257,7 +258,8 @@ export async function runComputerEval<Id extends string>(
     );
   const caseId = selected as ComputerCaseId;
   assertGate(state, caseId, runtime.key);
-  if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_MODEL)
+  const orca = orcaFromEnv(process.env);
+  if (!orca)
     throw new Error("Configure the existing internal-agent model/key first.");
   if (process.platform !== suite.platform)
     throw new Error(
@@ -337,10 +339,7 @@ export async function runComputerEval<Id extends string>(
       throw new Error(
         "Other queued/running turns exist; resolve them before evaluating.",
       );
-    agent = createAgent(
-      db,
-      new OpenAIProvider(process.env.OPENAI_API_KEY, process.env.OPENAI_MODEL),
-    );
+    agent = createAgent(db, orcaProvider(config.orca!));
     server = createApp(db, config, agent).listen(0, "127.0.0.1");
     desktopSocket = attachDesktopSocket(server, config.jwtSecret);
     await new Promise<void>((resolve) => server!.once("listening", resolve));
@@ -410,7 +409,7 @@ export async function runComputerEval<Id extends string>(
     const record = {
       observerBaseline,
       caseId,
-      model: process.env.OPENAI_MODEL,
+      model: orca.model,
       platform: process.platform,
       startedAt: new Date().toISOString(),
       fingerprint: runtime.key,
@@ -425,7 +424,7 @@ export async function runComputerEval<Id extends string>(
       entry,
       preflight: before,
       execution:
-        "Production AgentLoop + OpenAIProvider + authenticated DesktopConnection; no scripted task actions.",
+        "Production AgentLoop + configured model provider + authenticated DesktopConnection; no scripted task actions.",
     };
     await writeFile(join(folder, "run.json"), JSON.stringify(record, null, 2));
     const api = async (route: string, body?: any) => {

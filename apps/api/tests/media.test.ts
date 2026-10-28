@@ -33,7 +33,12 @@ const mp3 = Buffer.from("ID3fixture");
 const mp4 = Buffer.from("\0\0\0\x18ftypmp42fixture");
 const realFetch = globalThis.fetch;
 const savedEnv = Object.fromEntries(
-  ["STORAGE_DIR", "OPENAI_IMAGE_API_KEY", "ELEVENLABS_API_KEY"].map((key) => [
+  [
+    "STORAGE_DIR",
+    "OPENAI_IMAGE_API_KEY",
+    "ELEVENLABS_API_KEY",
+    "META_MODEL_API_KEY",
+  ].map((key) => [
     key,
     process.env[key],
   ]),
@@ -54,9 +59,11 @@ before(async () => {
   process.env.STORAGE_DIR = storage;
   process.env.OPENAI_IMAGE_API_KEY = "test-image";
   process.env.ELEVENLABS_API_KEY = "test-audio";
+  process.env.META_MODEL_API_KEY = "test-meta";
   mock.method(globalThis, "fetch", async (url: any, init: RequestInit = {}) => {
     if (
       !String(url).startsWith("https://api.openai.com/") &&
+      !String(url).startsWith("https://api.meta.ai/") &&
       !String(url).startsWith("https://api.elevenlabs.io/")
     )
       return realFetch(url, init);
@@ -66,7 +73,7 @@ before(async () => {
         { detail: { status: "quota_exceeded", message: "private content" } },
         { status: 401 },
       );
-    if (String(url).includes("openai.com"))
+    if (/openai\.com|meta\.ai/.test(String(url)))
       return Response.json({ data: [{ b64_json: png.toString("base64") }] });
     if (String(url).includes("/voices"))
       return Response.json({
@@ -256,14 +263,43 @@ test("audio tools discover voices and preserve the original tool models, duratio
   assert.equal(requests.length, before);
 });
 
+test("images go to Muse Image and masks are refused before any paid call", async () => {
+  const owner = await founder("media");
+  const generated = await owner.call("media_generate_image", {
+    title: "Studio",
+    prompt: "A small studio",
+  });
+  assert.equal(
+    requests.at(-1)!.url,
+    "https://api.meta.ai/v1/images/generations",
+  );
+  const before = requests.length;
+  await assert.rejects(
+    owner.call("media_edit_image", {
+      title: "Masked",
+      file: generated.ref,
+      mask_file: generated.ref,
+      prompt: "Blue",
+    }),
+    /edits from the prompt alone/,
+  );
+  assert.equal(requests.length, before);
+  await owner.call("media_edit_image", {
+    title: "Blue",
+    file: generated.ref,
+    prompt: "Blue",
+  });
+  assert.equal(requests.at(-1)!.url, "https://api.meta.ai/v1/images/edits");
+});
+
 test("missing credentials and quota failures are actionable and do not repeat paid calls", async () => {
   const owner = await founder("media");
-  delete process.env.OPENAI_IMAGE_API_KEY;
+  delete process.env.META_MODEL_API_KEY;
   await assert.rejects(
     owner.call("media_generate_image", { title: "Studio", prompt: "Studio" }),
-    /OPENAI_IMAGE_API_KEY/,
+    /META_MODEL_API_KEY/,
   );
-  process.env.OPENAI_IMAGE_API_KEY = "test-image";
+  process.env.META_MODEL_API_KEY = "test-meta";
   const before = requests.length;
   failure = true;
   try {

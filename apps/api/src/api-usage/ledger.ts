@@ -132,9 +132,11 @@ export const usageFetch: typeof fetch = async (input, init) => {
   const provider =
     url.hostname === "api.openai.com"
       ? "openai"
-      : url.hostname === "api.elevenlabs.io"
-        ? "elevenlabs"
-        : null;
+      : url.hostname === "api.meta.ai"
+        ? "meta"
+        : url.hostname === "api.elevenlabs.io"
+          ? "elevenlabs"
+          : null;
   if (!provider) return globalThis.fetch(input, init);
   const body = init?.body;
   let args: Record<string, unknown> = {};
@@ -277,6 +279,14 @@ export const usageFetch: typeof fetch = async (input, init) => {
       settings.response_status = safeId(data?.status);
     }
     const usage = openAIUsage(numericTree(data?.usage));
+    // Muse Image bills per generated image; its token counts are informational.
+    if (
+      provider === "meta" &&
+      operation.startsWith("image.") &&
+      response?.ok &&
+      Array.isArray(data?.data)
+    )
+      usage.meters.generated_images = data.data.length;
     if (provider === "elevenlabs" && response?.ok) {
       const characterCost = response.headers.get("character-cost");
       if (

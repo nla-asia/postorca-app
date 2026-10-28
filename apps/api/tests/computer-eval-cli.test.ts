@@ -22,8 +22,7 @@ async function fixture() {
       env: {
         ...process.env,
         POSTORCA_TEST_EVAL_DIR: folder,
-        OPENAI_API_KEY: "",
-        OPENAI_MODEL: "",
+        META_MODEL_API_KEY: "",
         DATABASE_URL: "",
         JWT_SECRET: "",
         ...overrides,
@@ -64,7 +63,7 @@ test("live eval preflight refuses skipped gates and missing models before creati
     });
     if (process.platform === "win32")
       await assert.rejects(f.run(["run", "calculator"], {
-        OPENAI_API_KEY: "test-key-never-used", OPENAI_MODEL: "test-model",
+        META_MODEL_API_KEY: "test-key-never-used",
       }), (error: any) => {
         assert.match(error.stderr, /Invalid API configuration/);
         return true;
