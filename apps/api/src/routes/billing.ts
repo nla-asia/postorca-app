@@ -5,12 +5,12 @@ import type Stripe from "stripe";
 import type { Database } from "../db.js";
 import { HttpError } from "../handlers/errors.js";
 import { findUser } from "../repositories/users.js";
+import { settings } from "../settings.js";
 import { getCreditSummary } from "../billing/credits.js";
 import {
   creditTerms,
   membershipPackages,
   planIds,
-  welcomeCredits,
   type PackageId,
 } from "../billing/terms.js";
 import {
@@ -63,7 +63,7 @@ export function billingRoutes(db: Database) {
       hasCustomer: Boolean(account),
       packages: membershipPackages,
       creditTerms,
-      welcomeCredits: welcomeCredits(),
+      welcomeCredits: settings.welcomeCredits,
       credits: await getCreditSummary(db, res.locals.userId),
     });
   });

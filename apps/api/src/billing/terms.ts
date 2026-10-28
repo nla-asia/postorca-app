@@ -1,4 +1,3 @@
-import { settings } from "../settings.js";
 // Membership and credit terms. Snapshot terms before purchases and usage.
 // One credit buys usdPerCredit of real AI cost; usage is charged at that rate,
 // rounded up to a whole credit once per Orca turn.
@@ -39,6 +38,3 @@ export const planIds = ["builder", "influencer"] as const;
 export type PlanId = (typeof planIds)[number];
 export const isPlan = (value: unknown): value is PlanId =>
   planIds.includes(value as PlanId);
-export function welcomeCredits() {
-  return settings.welcomeCredits;
-}
