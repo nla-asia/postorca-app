@@ -1,6 +1,7 @@
 import { transaction, type Database, type Queryable } from "../db.js";
 import { HttpError } from "../handlers/errors.js";
 import { createRoutine } from "./routines.js";
+import { savePublishedPost } from "./social-posts.js";
 
 export type Publisher = "founder" | "agent";
 export type PublicationRow = {
@@ -151,24 +152,35 @@ export async function cancelPost(db: Database, userId: string, id: string) {
   });
 }
 
-/** Records how a due post ended: posted (with its link) or skipped. */
+/**
+ * Records how a due post ended: posted (with its link) or skipped. A posted one is
+ * also saved among the founder's posts (social_posts).
+ */
 export async function recordPostResult(
-  db: Queryable,
+  db: Database,
   userId: string,
   id: string,
   result: { status: "posted"; url: string } | { status: "skipped" },
 ) {
-  const {
-    rows: [publication],
-  } = await db.query(
-    `UPDATE publications SET status = $3,
-       posted_url = $4, posted_at = CASE WHEN $3 = 'posted' THEN now() END
-     WHERE id = $1 AND user_id = $2 AND status IN ('scheduled', 'due') RETURNING id`,
-    [id, userId, result.status, result.status === "posted" ? result.url : null],
-  );
-  if (!publication)
-    throw new HttpError(404, "No open scheduled post with this id.");
-  return getPublication(db, userId, id);
+  return transaction(db, async (client) => {
+    const {
+      rows: [publication],
+    } = await client.query(
+      `UPDATE publications SET status = $3,
+         posted_url = $4, posted_at = CASE WHEN $3 = 'posted' THEN now() END
+       WHERE id = $1 AND user_id = $2 AND status IN ('scheduled', 'due') RETURNING id`,
+      [id, userId, result.status, result.status === "posted" ? result.url : null],
+    );
+    if (!publication)
+      throw new HttpError(404, "No open scheduled post with this id.");
+    const recorded = await getPublication(client, userId, id);
+    if (recorded.posted_url)
+      await savePublishedPost(client, userId, {
+        ...recorded,
+        posted_url: recorded.posted_url,
+      });
+    return recorded;
+  });
 }
 
 /** The publication a publish task is for, if any. */

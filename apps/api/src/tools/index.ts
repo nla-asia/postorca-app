@@ -6,6 +6,7 @@ import { brandTools } from "./brand.js";
 import { desktopToolset } from "./desktop.js";
 import { memoryTools } from "./memory.js";
 import { questionTool } from "./questions.js";
+import { socialPostTools } from "./social-posts.js";
 import type { DispatchTask, Tool, ToolContext } from "./shared.js";
 import {
   executePluginTool,
@@ -24,6 +25,7 @@ const tools: Tool[] = [
   ...brandTools,
   ...artifactTools,
   ...memoryTools,
+  ...socialPostTools,
   ...desktopToolset,
   ...taskTools,
   questionTool,
