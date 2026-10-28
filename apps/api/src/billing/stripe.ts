@@ -1,7 +1,13 @@
 import Stripe from "stripe";
 import { transaction, type Database, type Queryable } from "../db.js";
 import { HttpError } from "../handlers/errors.js";
-import { creditTerms, membershipPackages, type PackageId } from "./terms.js";
+import {
+  creditTerms,
+  isPlan,
+  membershipPackages,
+  type PackageId,
+  type PlanId,
+} from "./terms.js";
 
 // Test-only rollout: no live charges are enabled.
 export const activeStatuses = new Set([
@@ -12,13 +18,16 @@ export const activeStatuses = new Set([
   "incomplete",
   "paused",
 ]);
-export function stripeConfigured(packageId: PackageId = "membership") {
+/** Changing plans in place is allowed only while payments are current. */
+const changeableStatuses = new Set(["active", "trialing"]);
+/** STRIPE_BUILDER_PRICE_ID, STRIPE_INFLUENCER_PRICE_ID, STRIPE_EXTRA_PRICE_ID. */
+export const priceIdFor = (packageId: PackageId) =>
+  process.env[`STRIPE_${packageId.toUpperCase()}_PRICE_ID`];
+export function stripeConfigured(packageId: PackageId) {
   return Boolean(
     process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") &&
-      process.env.STRIPE_WEBHOOK_SECRET &&
-      (packageId === "membership"
-        ? process.env.STRIPE_MEMBERSHIP_PRICE_ID
-        : process.env.STRIPE_EXTRA_PRICE_ID),
+    process.env.STRIPE_WEBHOOK_SECRET &&
+    priceIdFor(packageId),
   );
 }
 export function getStripe() {
@@ -46,10 +55,7 @@ export function billingReturnUrl() {
   return url.href;
 }
 export async function packagePrice(stripe: Stripe, packageId: PackageId) {
-  const id =
-    packageId === "membership"
-      ? process.env.STRIPE_MEMBERSHIP_PRICE_ID
-      : process.env.STRIPE_EXTRA_PRICE_ID;
+  const id = priceIdFor(packageId);
   if (!id)
     throw new HttpError(503, "Membership pricing has not been configured yet.");
   const price = await stripe.prices.retrieve(id),
@@ -60,7 +66,7 @@ export async function packagePrice(stripe: Stripe, packageId: PackageId) {
     price.currency !== creditTerms.currency ||
     price.unit_amount !== offer.amount ||
     price.billing_scheme !== "per_unit" ||
-    (packageId === "membership"
+    (isPlan(packageId)
       ? !price.recurring ||
         price.recurring.interval !== "month" ||
         price.recurring.interval_count !== 1 ||
@@ -92,11 +98,13 @@ export function purchaseMetadata(
 function purchaseTerms(
   metadata: Stripe.Metadata | null,
   userId: string,
-  packageId: PackageId,
+  kind: "plan" | "extra",
 ) {
   if (!metadata?.postorca_package) return null;
   if (
-    metadata.postorca_package !== packageId ||
+    (kind === "plan"
+      ? !isPlan(metadata.postorca_package)
+      : metadata.postorca_package !== "extra") ||
     metadata.userId !== userId ||
     !metadata.postorca_version ||
     !metadata.postorca_price ||
@@ -128,13 +136,16 @@ async function grantInvoice(
     invoice.livemode ||
     objectId(invoice.customer) !== customerId ||
     invoice.status !== "paid" ||
-    !["subscription_create", "subscription_cycle"].includes(
-      invoice.billing_reason ?? "",
-    )
+    // subscription_update: an upgrade, which starts a new paid month at once.
+    ![
+      "subscription_create",
+      "subscription_cycle",
+      "subscription_update",
+    ].includes(invoice.billing_reason ?? "")
   )
     return;
   const details = invoice.parent?.subscription_details;
-  const terms = purchaseTerms(details?.metadata ?? null, userId, "membership");
+  const terms = purchaseTerms(details?.metadata ?? null, userId, "plan");
   if (!terms || !details) return;
   if (
     invoice.currency !== creditTerms.currency ||
@@ -211,11 +222,16 @@ export async function getBilling(db: Queryable, userId: string) {
   const {
     rows: [row],
   } = await db.query(
-    `SELECT stripe_customer_id AS "customerId",stripe_subscription_id AS "subscriptionId",subscription_status AS status FROM billing_accounts WHERE user_id=$1`,
+    `SELECT stripe_customer_id AS "customerId",stripe_subscription_id AS "subscriptionId",subscription_status AS status,subscription_plan AS plan FROM billing_accounts WHERE user_id=$1`,
     [userId],
   );
   return row as
-    | { customerId: string; subscriptionId: string | null; status: string }
+    | {
+        customerId: string;
+        subscriptionId: string | null;
+        status: string;
+        plan: PlanId | null;
+      }
     | undefined;
 }
 export async function ensureCustomer(
@@ -243,9 +259,7 @@ async function subscriptionsFor(stripe: Stripe, customer: string) {
   });
   if (result.has_more)
     throw new Error("Billing subscription list requires reconciliation.");
-  return result.data.filter(
-    (s) => s.metadata?.postorca_package === "membership",
-  );
+  return result.data.filter((s) => isPlan(s.metadata?.postorca_package));
 }
 export async function applyBillingEvent(
   db: Database,
@@ -269,9 +283,7 @@ export async function applyBillingEvent(
   )
     return;
   const object = event.data.object as
-    | Stripe.Subscription
-    | Stripe.Checkout.Session
-    | Stripe.Invoice;
+    Stripe.Subscription | Stripe.Checkout.Session | Stripe.Invoice;
   const customerId = objectId(object.customer);
   if (!customerId) return;
   await transaction(db, async (client) => {
@@ -299,8 +311,13 @@ export async function applyBillingEvent(
     const subs = await subscriptionsFor(stripe, customerId);
     const current = subs.find((s) => activeStatuses.has(s.status)) ?? subs[0];
     await client.query(
-      `UPDATE billing_accounts SET stripe_subscription_id=$2,subscription_status=$3,updated_at=clock_timestamp() WHERE stripe_customer_id=$1`,
-      [customerId, current?.id ?? null, current?.status ?? "none"],
+      `UPDATE billing_accounts SET stripe_subscription_id=$2,subscription_status=$3,subscription_plan=$4,updated_at=clock_timestamp() WHERE stripe_customer_id=$1`,
+      [
+        customerId,
+        current?.id ?? null,
+        current?.status ?? "none",
+        current?.metadata?.postorca_package ?? null,
+      ],
     );
   });
 }
@@ -318,7 +335,7 @@ export async function startCheckout(
       [user.id],
     );
     if (
-      packageId === "membership" &&
+      isPlan(packageId) &&
       (await subscriptionsFor(stripe, customer)).some((s) =>
         activeStatuses.has(s.status),
       )
@@ -337,7 +354,7 @@ export async function startCheckout(
     const metadata = purchaseMetadata(packageId, price.id, user.id);
     const matching = sessions.data.find(
       (s) =>
-        s.mode === (packageId === "membership" ? "subscription" : "payment") &&
+        s.mode === (isPlan(packageId) ? "subscription" : "payment") &&
         Object.entries(metadata).every(
           ([key, value]) => s.metadata?.[key] === value,
         ),
@@ -345,12 +362,12 @@ export async function startCheckout(
     const session =
       matching ??
       (await stripe.checkout.sessions.create({
-        mode: packageId === "membership" ? "subscription" : "payment",
+        mode: isPlan(packageId) ? "subscription" : "payment",
         customer,
         line_items: [{ price: price.id, quantity: 1 }],
         client_reference_id: user.id,
         metadata,
-        ...(packageId === "membership"
+        ...(isPlan(packageId)
           ? { subscription_data: { metadata } }
           : { payment_intent_data: { metadata } }),
         success_url: billingReturnUrl(),
@@ -358,5 +375,74 @@ export async function startCheckout(
       }));
     if (!session.url) throw new Error("Checkout returned no URL.");
     return { url: session.url };
+  });
+}
+/**
+ * Moves an active subscription to another plan. An upgrade charges the new plan's
+ * full price now and starts a new monthly period, whose paid invoice grants the
+ * full allowance (credits already granted stay). A downgrade takes effect at the
+ * next renewal, so the current paid month is never refunded or re-granted.
+ */
+export async function changePlan(
+  db: Database,
+  stripe: Stripe,
+  userId: string,
+  plan: PlanId,
+) {
+  const price = await packagePrice(stripe, plan);
+  return transaction(db, async (client) => {
+    const {
+      rows: [account],
+    } = await client.query(
+      "SELECT stripe_customer_id FROM billing_accounts WHERE user_id=$1 FOR UPDATE",
+      [userId],
+    );
+    if (!account)
+      throw new HttpError(404, "There is no subscription to change yet.");
+    const customer = account.stripe_customer_id as string;
+    const current = (await subscriptionsFor(stripe, customer)).find((s) =>
+      activeStatuses.has(s.status),
+    );
+    if (!current || !changeableStatuses.has(current.status))
+      throw new HttpError(
+        409,
+        current
+          ? "Update your payment method before changing plans."
+          : "There is no active subscription to change.",
+      );
+    const from = current.metadata.postorca_package as PlanId,
+      items = current.items.data;
+    if (items.length !== 1)
+      throw new Error("Subscription must contain exactly one plan.");
+    if (from === plan && items[0].price.id === price.id) return { plan };
+    const upgrade =
+      membershipPackages[plan].amount > membershipPackages[from].amount;
+    let updated: Stripe.Subscription;
+    try {
+      updated = await stripe.subscriptions.update(current.id, {
+        items: [{ id: items[0].id, price: price.id, quantity: 1 }],
+        metadata: purchaseMetadata(plan, price.id, userId),
+        proration_behavior: "none",
+        ...(upgrade
+          ? {
+              billing_cycle_anchor: "now",
+              // A declined card leaves the subscription unchanged.
+              payment_behavior: "error_if_incomplete",
+            }
+          : {}),
+      });
+    } catch (error) {
+      if (error instanceof Stripe.errors.StripeCardError)
+        throw new HttpError(
+          402,
+          "Your card was declined. Update your payment method and try again.",
+        );
+      throw error;
+    }
+    await client.query(
+      `UPDATE billing_accounts SET stripe_subscription_id=$2,subscription_status=$3,subscription_plan=$4,updated_at=clock_timestamp() WHERE user_id=$1`,
+      [userId, updated.id, updated.status, plan],
+    );
+    return { plan };
   });
 }

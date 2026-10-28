@@ -102,7 +102,7 @@ test("records usage without sensitive payloads, keeps response readable, and rep
   ]);
   assert.equal(row.status, "succeeded");
   assert.equal(row.credit_state, "settled");
-  assert.equal(row.credit_charged, "0.005550000");
+  assert.equal(row.credit_charged, "0.004162500");
   assert.equal(row.user_id, s.userId);
   assert.equal(row.task_id, s.taskId);
   assert.equal(row.provider_request_id, "req_usage");
@@ -475,8 +475,8 @@ test("speech settles provider character counts and tagged Unicode fallback estim
         row.credit_state === "settled" && row.credit_reserved === "0.000000000",
     ),
   );
-  assert.equal(rows[0].credit_charged, "0.053333334");
-  assert.equal(rows[1].credit_charged, "0.026666667");
+  assert.equal(rows[0].credit_charged, "0.040000000");
+  assert.equal(rows[1].credit_charged, "0.020000000");
 });
 
 test("accepted music settles by duration; a rejected generation has no accepted-duration charge", async (t) => {
@@ -509,7 +509,7 @@ test("accepted music settles by duration; a rejected generation has no accepted-
     )
   ).rows;
   assert.equal(rows[0].estimated_cost, "0.075000000000");
-  assert.equal(rows[0].credit_charged, "2.500000000");
+  assert.equal(rows[0].credit_charged, "1.875000000");
   assert.equal(rows[0].credit_state, "settled");
   assert.equal(rows[0].usage_data.meters.accepted_audio_seconds, 30);
   assert.equal(

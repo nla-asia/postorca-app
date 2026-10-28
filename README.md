@@ -62,6 +62,18 @@ npm run dev
 
 To let Orca use your browser, open `chrome://extensions`, turn on Developer mode, choose **Load unpacked** and select `apps/browser-extension`.
 
+## Credits and plans
+
+AI usage is paid for in credits. One credit buys $0.04 of real provider cost (25 credits per dollar). Every model, image and audio request records its actual USD cost; when a request settles, the whole Orca turn it belongs to is charged its total cost in credits, rounded up once to a whole credit. Requests made outside a turn are rounded on their own.
+
+| Plan | Price | Credits | Part of the price spent on AI usage |
+| --- | --- | --- | --- |
+| Builder | $29 / month | 500 each paid month | $20 |
+| Influencer | $69 / month | 1,500 each paid month | $60 |
+| Extra credits | $10 once | 200 | $8 |
+
+The rest of each price covers servers, payment fees and running PostOrca. New accounts receive welcome credits once (`apps/api/src/settings.ts`). Unused credits roll over. Upgrading charges the new plan in full and starts a new month with its credits; downgrading applies at the next renewal. Rates and plans live in `apps/api/src/billing/terms.ts`; Stripe runs in test mode.
+
 ## Scripts
 
 | Command | Description |
