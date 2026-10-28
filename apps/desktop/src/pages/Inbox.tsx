@@ -1,14 +1,18 @@
 import { useState } from "react";
-import { Archive, ArrowRight, CheckCheck } from "lucide-react";
+import {
+  Archive,
+  ArrowLeft,
+  ArrowRight,
+  CheckCheck,
+  History,
+} from "lucide-react";
 import { api } from "../lib/api";
 import { Button, Pill, Platform } from "../components/ui";
 import type { WorkTask } from "../lib/schedules";
 import { workState, type WorkState } from "../lib/useWorkTasks";
 import "./Inbox.css";
-import "../components/tabs.css";
 
-const tabs = ["For review", "Approved", "All activity"] as const;
-export type InboxFilter = (typeof tabs)[number];
+export type InboxFilter = "review" | "history";
 const stateLabel: Record<WorkState, string> = {
   working: "Orca is working",
   failed: "Needs attention",
@@ -16,12 +20,15 @@ const stateLabel: Record<WorkState, string> = {
   approved: "Approved",
   archived: "Archived",
 };
-function inTab(task: WorkTask, tab: InboxFilter) {
-  const state = workState(task);
-  if (tab === "Approved") return state === "approved";
-  if (tab === "For review")
-    return ["working", "review", "failed"].includes(state);
-  return true;
+/** Review holds work in flight or waiting on the founder; history holds what they closed. */
+function inView(task: WorkTask, view: InboxFilter) {
+  const closed = ["approved", "archived"].includes(workState(task));
+  return view === "history" ? closed : !closed;
+}
+function closedAt(task: WorkTask) {
+  return new Date(
+    task.archived_at ?? task.approved_at ?? task.created_at,
+  ).getTime();
 }
 function timeAgo(value: string) {
   const minutes = Math.round((Date.now() - new Date(value).getTime()) / 60000);
@@ -58,7 +65,14 @@ export default function Inbox({
 }) {
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [archiving, setArchiving] = useState(false);
-  const shown = tasks?.filter((task) => inTab(task, filter)) ?? [];
+  const history = filter === "history";
+  const working = (task: WorkTask) => Number(workState(task) === "working");
+  const shown =
+    tasks
+      ?.filter((task) => inView(task, filter))
+      .sort((a, b) =>
+        history ? closedAt(b) - closedAt(a) : working(b) - working(a),
+      ) ?? [];
   const checkable = shown.filter((task) =>
     ["review", "approved", "failed"].includes(workState(task)),
   );
@@ -99,45 +113,22 @@ export default function Inbox({
   return (
     <div className="page-content inbox-page">
       <div className="section-toolbar">
-        <div className="tabs" role="tablist" aria-label="Inbox filters">
-          {tabs.map((tab, index) => (
-            <button
-              type="button"
-              key={tab}
-              id={`inbox-tab-${index}`}
-              role="tab"
-              aria-selected={filter === tab}
-              aria-controls="inbox-results"
-              tabIndex={filter === tab ? 0 : -1}
-              className={filter === tab ? "selected" : ""}
-              disabled={archiving}
-              onClick={() => changeFilter(tab)}
-              onKeyDown={(event) => {
-                if (
-                  !["ArrowRight", "ArrowLeft", "Home", "End"].includes(
-                    event.key,
-                  )
-                )
-                  return;
-                event.preventDefault();
-                const next =
-                  event.key === "Home"
-                    ? 0
-                    : event.key === "End"
-                      ? tabs.length - 1
-                      : (index +
-                          (event.key === "ArrowRight" ? 1 : -1) +
-                          tabs.length) %
-                        tabs.length;
-                changeFilter(tabs[next]);
-                document.getElementById(`inbox-tab-${next}`)?.focus();
-              }}
-            >
-              {tab}
-              {tab === "For review" && <span>{reviewCount}</span>}
-            </button>
-          ))}
-        </div>
+        <h2 className="inbox-heading">
+          {history ? "History" : "For review"}
+          {!history && <span>{reviewCount}</span>}
+        </h2>
+        <Button
+          variant="ghost"
+          disabled={archiving}
+          onClick={() => changeFilter(history ? "review" : "history")}
+        >
+          {history ? (
+            <ArrowLeft size={15} aria-hidden="true" />
+          ) : (
+            <History size={15} aria-hidden="true" />
+          )}
+          {history ? "Back to review" : "History"}
+        </Button>
       </div>
       {error && (
         <div className="inbox-load-error">
@@ -184,9 +175,7 @@ export default function Inbox({
       )}
       <div
         className="proposal-list"
-        id="inbox-results"
-        role="tabpanel"
-        aria-labelledby={`inbox-tab-${tabs.indexOf(filter)}`}
+        aria-label={history ? "Inbox history" : "Work for review"}
       >
         {tasks === null
           ? !error && (
@@ -281,13 +270,11 @@ export default function Inbox({
           <div className="empty-state">
             <CheckCheck size={30} aria-hidden="true" />
             <h3>
-              {filter === "Approved"
-                ? "Good ideas start here"
-                : "You’re all caught up"}
+              {history ? "Nothing here yet" : "You’re all caught up"}
             </h3>
             <p>
-              {filter === "Approved"
-                ? "Work you approve will appear here."
+              {history
+                ? "Work you approve or archive will appear here."
                 : "Work from your routines will show up here."}
             </p>
           </div>
