@@ -16,7 +16,8 @@ import { platforms } from "../schemas/platforms.js";
 
 const id = z.uuid();
 const fields = z.object({
-  platform: z.enum(platforms),
+  // Null: every social account (e.g. the daily posts sync).
+  platform: z.enum(platforms).nullable(),
   title: z.string().trim().min(1).max(120),
   instructions: z.string().trim().min(1).max(4000),
   time: z
@@ -65,7 +66,7 @@ export function routineRoutes(db: Database, agent: AgentRouter | null) {
   router.patch("/:id", async (req, res) => {
     const routineId = id.parse(req.params.id);
     const changes = fields
-      .extend({ run_at: runAt, platform: z.enum(platforms).nullable() })
+      .extend({ run_at: runAt })
       .partial()
       .strict()
       .parse(req.body);

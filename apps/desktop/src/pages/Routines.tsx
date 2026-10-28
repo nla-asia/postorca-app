@@ -5,6 +5,7 @@ import {
   Check,
   ChevronRight,
   Clock3,
+  Layers,
   LoaderCircle,
   Play,
   Plus,
@@ -216,8 +217,14 @@ export default function Routines({
             return (
               <article className="schedule-card" key={routine.id}>
                 <div className="schedule-card-top">
-                  <Platform name={routine.platform} />
-                  <span>{routine.platform}</span>
+                  {routine.platform ? (
+                    <Platform name={routine.platform} />
+                  ) : (
+                    <span className="platform" aria-hidden>
+                      <Layers size={13} />
+                    </span>
+                  )}
+                  <span>{routine.platform ?? "All accounts"}</span>
                   <button
                     className={`switch ${routine.active ? "on" : ""}`}
                     role="switch"
@@ -398,9 +405,12 @@ function RoutineEditor({
         <label>
           Platform
           <select
-            value={draft.platform}
-            onChange={(e) => set("platform", e.target.value as PlatformName)}
+            value={draft.platform ?? ""}
+            onChange={(e) =>
+              set("platform", (e.target.value || null) as PlatformName | null)
+            }
           >
+            <option value="">All accounts</option>
             {PLATFORMS.map((p) => (
               <option key={p}>{p}</option>
             ))}

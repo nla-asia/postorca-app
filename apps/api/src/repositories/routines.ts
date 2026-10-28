@@ -4,6 +4,7 @@ import { appendMessage } from "./tasks.js";
 import { startPublication } from "./publications.js";
 import {
   DEFAULT_ROUTINES,
+  FOUNDER_ROUTINES,
   PLATFORM_BY_KIND,
   WORK_IDEAS_ROUTINE,
   type LinkKind,
@@ -27,7 +28,8 @@ export type RoutineRow = {
   run_at?: Date | string | null;
 };
 export type RoutineFields = {
-  platform: string;
+  /** Null for a routine that covers every social account. */
+  platform: string | null;
   title: string;
   instructions: string;
   time: string;
@@ -300,11 +302,23 @@ export async function createRoutine(
   });
 }
 
+/** Routines counted toward the shared cap: every routine plus pending one-time tasks. */
+async function activeRoutineCount(db: Queryable, userId: string) {
+  const {
+    rows: [{ count }],
+  } = await db.query(
+    "SELECT count(*)::int AS count FROM routines WHERE user_id = $1 AND (run_at IS NULL OR active)",
+    [userId],
+  );
+  return count as number;
+}
+
 /**
- * Creates the default routines (seeds/default-routines.ts) each social link hasn't
- * been given yet, once onboarding is completed and the founder's time zone is known.
- * Runs inside the caller's transaction after profile, link, or time zone writes, and
- * on migrate, so defaults added later reach existing links. A link gets its missing
+ * Creates the default routines (seeds/default-routines.ts) the founder and each
+ * social link haven't been given yet, once onboarding is completed and the
+ * founder's time zone is known. Runs inside the caller's transaction after profile,
+ * link, or time zone writes, and on migrate, so defaults added later reach existing
+ * founders and links. A link gets its missing
  * defaults whole or not at all, so the per-user cap can leave them for later.
  */
 export async function seedDefaultRoutines(db: Queryable, userId: string) {
@@ -323,6 +337,58 @@ export async function seedDefaultRoutines(db: Queryable, userId: string) {
      ORDER BY name, id FOR UPDATE`,
     [userId, Object.keys(PLATFORM_BY_KIND)],
   );
+  const created: {
+    title: string;
+    platform: string | null;
+    account: string | null;
+  }[] = [];
+  if (!links.length) return created;
+  // Founder-wide defaults come first: the per-account ones read what they gather.
+  const {
+    rows: [profile],
+  } = await db.query(
+    "SELECT seeded_routines FROM brand_profiles WHERE user_id = $1 FOR UPDATE",
+    [userId],
+  );
+  const founderDefaults = FOUNDER_ROUTINES.filter(
+    (d) => !profile.seeded_routines.includes(d.skill),
+  );
+  if (founderDefaults.length) {
+    const { rows: existing } = await db.query(
+      "SELECT instructions FROM routines WHERE user_id = $1",
+      [userId],
+    );
+    const missing = founderDefaults.filter(
+      (d) =>
+        !existing.some((row) => row.instructions.includes(`${d.skill} skill`)),
+    );
+    if (
+      missing.length <=
+      MAX_ROUTINES - (await activeRoutineCount(db, userId))
+    ) {
+      for (const routine of missing) {
+        await db.query(
+          `INSERT INTO routines(user_id, platform, title, instructions, time_of_day, days, timezone, active, next_run_at, work_type)
+           VALUES ($1, NULL, $2, $3, $4, $5, $6, true,
+             routine_next_run($4::time, $5::smallint[], $6, now()), $7)`,
+          [
+            userId,
+            routine.title,
+            routine.instructions,
+            routine.time,
+            routine.days,
+            user.timezone,
+            routine.workType,
+          ],
+        );
+        created.push({ title: routine.title, platform: null, account: null });
+      }
+      await db.query(
+        "UPDATE brand_profiles SET seeded_routines = seeded_routines || $2::text[] WHERE user_id = $1",
+        [userId, founderDefaults.map((d) => d.skill)],
+      );
+    }
+  }
   const pending = links
     .map((link) => ({
       link,
@@ -333,15 +399,8 @@ export async function seedDefaultRoutines(db: Queryable, userId: string) {
       ),
     }))
     .filter((item) => item.defaults.length);
-  if (!pending.length) return [];
-  const {
-    rows: [{ count }],
-  } = await db.query(
-    "SELECT count(*)::int AS count FROM routines WHERE user_id = $1 AND (run_at IS NULL OR active)",
-    [userId],
-  );
-  let room = MAX_ROUTINES - count;
-  const created: { title: string; platform: string; account: string }[] = [];
+  if (!pending.length) return created;
+  let room = MAX_ROUTINES - (await activeRoutineCount(db, userId));
   for (const { link, defaults } of pending) {
     const kind = link.kind as LinkKind;
     // A routine the founder already runs on this link for the same skill counts.
@@ -529,8 +588,6 @@ export async function updateRoutine(
         400,
         "Create a Calendar task for a one-time schedule.",
       );
-    if (changes.platform === null)
-      throw new HttpError(400, "Choose a platform for this routine.");
     const next = { ...current, ...changes };
     await client.query(
       `UPDATE routines SET platform = $2, title = $3, instructions = $4, time_of_day = $5,

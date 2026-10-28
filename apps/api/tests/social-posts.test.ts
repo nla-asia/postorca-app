@@ -83,6 +83,11 @@ test("post IDs come from each platform's links, and text is capped", () => {
       "7251111111111111111",
     ],
     [
+      "LinkedIn",
+      "https://www.linkedin.com/feed/update/urn:li:activity:7250000000000000000?commentUrn=urn%3Ali%3Acomment%3A%28activity%3A7250000000000000000%2C7252222222222222222%29",
+      "7252222222222222222",
+    ],
+    [
       "Facebook",
       "https://www.facebook.com/permalink.php?story_fbid=987&id=1",
       "987",
@@ -103,6 +108,10 @@ test("post IDs come from each platform's links, and text is capped", () => {
     postedAtFromId("X", "2115247081459974280"),
     "2026-10-28T00:59:38.267Z",
   );
+  assert.equal(
+    postedAtFromId("LinkedIn", "7507736071296892928"),
+    "2026-09-21T09:42:46.388Z",
+  );
   assert.equal(postedAtFromId("X", "100"), null);
   assert.equal(postedAtFromId("Threads", "2115247081459974280"), null);
 
@@ -120,6 +129,25 @@ test("post IDs come from each platform's links, and text is capped", () => {
     text_truncated: false,
     text_length: null,
   });
+});
+
+test("mark_my_posts_synced records a profile read with nothing new to save", async () => {
+  const { context, link } = await founder();
+  await link("Founder IG", "https://instagram.com/founder", "instagram");
+  const before = await run(context, "list_my_posts", { limit: 1 });
+  assert.equal(before.accounts[0].posts_synced_at, null);
+  assert.deepEqual(
+    await run(context, "mark_my_posts_synced", {
+      account: "https://instagram.com/founder",
+    }),
+    { account: "Founder IG", platform: "Instagram", synced: true },
+  );
+  const after = await run(context, "list_my_posts", { limit: 1 });
+  assert.ok(after.accounts[0].posts_synced_at);
+  await assert.rejects(
+    run(context, "mark_my_posts_synced", { account: "Nobody" }),
+    /No social account matches/,
+  );
 });
 
 test("save_my_post saves one post by its link, updates by id, and delete_my_post marks it deleted", async () => {
