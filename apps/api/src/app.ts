@@ -17,6 +17,7 @@ import { fileRoutes } from "./routes/files.js";
 import { routineRoutes } from "./routes/routines.js";
 import { taskRoutes } from "./routes/tasks.js";
 import { connectorRoutes, connectorCallback } from "./routes/connectors.js";
+import { postRoutes } from "./routes/posts.js";
 import { publicationRoutes } from "./routes/publications.js";
 
 /** agent is null when no model provider is configured; turns then return 503. */
@@ -75,6 +76,7 @@ export function createApp(
     routineRoutes(db, agent),
   );
   app.use("/api/tasks", authenticate(config.jwtSecret), taskRoutes(db, agent));
+  app.use("/api/posts", authenticate(config.jwtSecret), postRoutes(db));
   app.use(
     "/api/publications",
     authenticate(config.jwtSecret),

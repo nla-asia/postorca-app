@@ -17,6 +17,7 @@ import WorkDetail from "./WorkDetail";
 import { useWorkTasks } from "../lib/useWorkTasks";
 import Routines from "../pages/Routines";
 import Calendar from "../pages/Calendar";
+import Posts from "../pages/Posts";
 import BrandProfile from "../pages/BrandProfile";
 
 export default function Workspace({
@@ -223,6 +224,7 @@ export default function Workspace({
             onApprovedSelect={openWork}
           />
         )}
+        {page === "Posts" && <Posts notify={setNotice} />}
         {page === "Brand Profile" && (
           <BrandProfile onNameChange={setProfileName} notify={setNotice} />
         )}
