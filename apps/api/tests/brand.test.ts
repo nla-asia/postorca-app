@@ -82,7 +82,6 @@ test("brand endpoints require authentication and return the account's empty prof
     name: "Founder A",
     company: "",
     audience: "",
-    voice: "",
     topics: "",
     colors: {},
     links: [],
@@ -96,7 +95,6 @@ test("profile saves persist brand context and account name without affecting ano
     name: "Updated Founder",
     company: "Building a product",
     audience: "Builders",
-    voice: "Direct",
     topics: "Product development",
     colors: { background: "#123456", text: "#ABCDEF", highlight: "#ff8800" },
     links: [],
@@ -157,7 +155,7 @@ test("links keep stable IDs, metadata, sort order and multiple accounts per plat
     edited.data.links.find((link) => link.id === website.id)?.url,
     "https://example.com/about",
   );
-  const partial = await request(a.token, { voice: "Practical" });
+  const partial = await request(a.token, { audience: "Practical builders" });
   assert.deepEqual(partial.data.links, edited.data.links);
   const changed = await request(a.token, {
     links: edited.data.links.map((link) =>

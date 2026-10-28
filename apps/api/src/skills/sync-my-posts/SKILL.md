@@ -19,7 +19,8 @@ Do these steps in order. The run has a limit on steps and time, so share it fair
    2. **Replies and comments**: read its replies page the same way and save them (where to read is below).
    3. **Mark it synced**: call `mark_my_posts_synced` with the account's profile URL. Do this for every account you synced, also when nothing was new.
    4. **Update its line** in `posts-sync.md` (see Memory) before you open the next account.
-3. **Finish** (see Finish).
+3. **Learn the voice** (see Voice), once every account is done.
+4. **Finish** (see Finish).
 
 ## How far back
 
@@ -76,6 +77,16 @@ A saved post that should be on the screen you read (it's newer than the oldest p
 ```
 
 Update the file right after each account, before opening the next one, so a run cut short still records what it did. Write the new sync time only when the account's sync reached where it should stop (How far back); otherwise keep the old time and write how far back you got. Write times in UTC, marked as such (e.g. `synced 2026-10-28 00:12 UTC`), as the task's first message gives them.
+
+## Voice
+
+When this run saved new posts or replies with the founder's own words (not plain reposts, never media descriptions), update voice.md (in your instructions; follow its layout) from them with `save_memory` edits:
+
+- Fill in **Variables** with what the real posts show, each with one or two short real quotes, and **Platform differences** per account. Where the posts differ from the onboarding **Picks**, keep both: how they write today and how they want to sound.
+- Add what they never do to **Never does**, and their real quirks to **Habits we don't fix**.
+- Update **Confidence** with the number of posts it now rests on and today's date.
+
+Change only what the new posts show; keep what is already there. If voice.md doesn't exist yet, create it with the full layout.
 
 ## Finish
 

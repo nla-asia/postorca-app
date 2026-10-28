@@ -758,7 +758,7 @@ test("known-zone profile completion is idempotent under concurrent saves and ign
   ]);
   assert.ok(results.every((result) => result.status === 200));
   await timezone(a.token, "UTC");
-  await profile(a.token, { voice: "Direct and clear" });
+  await profile(a.token, { audience: "Builders" });
   assert.equal((await request("", "GET", undefined, a.token)).data.length, 7);
   assert.equal(
     (await request("?once=true", "GET", undefined, a.token)).data.length,

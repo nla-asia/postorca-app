@@ -192,3 +192,13 @@
   font-size: 13px;
   font-weight: 550;
 }
+
+.brand-voice {
+  margin: 0 0 16px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--secondary);
+}

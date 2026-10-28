@@ -10,7 +10,7 @@ export async function getProfile(db: Database, userId: string) {
   const {
     rows: [profile],
   } = await db.query(
-    `SELECT u.name,p.company,p.audience,p.voice,p.topics,p.colors,p.onboarding_status,
+    `SELECT u.name,p.company,p.audience,p.topics,p.colors,p.onboarding_status,
       (SELECT coalesce(jsonb_agg(jsonb_build_object('id',l.id,'name',l.name,'url',l.url,
         'kind',l.kind,'publishing_method',l.publishing_method,
         'publishing_instructions',l.publishing_instructions,'access_status',l.access_status) ORDER BY l.name,l.id),'[]'::jsonb)
@@ -67,12 +67,11 @@ export async function saveProfile(
       data.name,
     ]);
     await client.query(
-      "UPDATE brand_profiles SET company=$2,audience=$3,voice=$4,topics=$5,onboarding_status=$6,colors=$7 WHERE user_id=$1",
+      "UPDATE brand_profiles SET company=$2,audience=$3,topics=$4,onboarding_status=$5,colors=$6 WHERE user_id=$1",
       [
         userId,
         data.company,
         data.audience,
-        data.voice,
         data.topics,
         data.onboarding_status,
         data.colors,

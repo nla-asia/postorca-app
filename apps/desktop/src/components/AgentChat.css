@@ -268,6 +268,32 @@
   accent-color: var(--accent);
 }
 
+.question-options.cards {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.question-option.card {
+  align-items: flex-start;
+}
+
+.question-option.card input {
+  margin-top: 2px;
+}
+
+.question-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.question-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .question-widget fieldset:disabled .question-option {
   cursor: default;
 }

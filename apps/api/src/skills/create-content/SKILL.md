@@ -25,7 +25,7 @@ Turn one idea the founder chose into a post they can review and publish. The tas
   - Other platforms: their usual format and limits, and the format the idea named.
   - Hashtags: none on LinkedIn, at most one on X. Emojis only if the founder's own recent posts use them.
   - Follow the account's publishing instructions in the brand profile.
-- **Sounds like the founder.** Write the way they write in their recent posts on this account: sentence length, tone, how they open, whether they use lists or emojis. Use the voice in the brand profile too if there is one; it is optional, so don't call the draft a fallback when it is missing.
+- **Sounds like the founder.** Follow voice.md (in your instructions): their picks, habits, what they never do, the rules from their edits, and this platform's differences. Their recent posts on this account show how that looks in practice: sentence length, tone, how they open, whether they use lists or emojis.
 - **Grows the profile, not an ad.** The company appears only where it truly fits, late and naturally, or not at all. Nothing should feel written by a marketing team.
 
 Refer to the founder by name, or as "they". Do not guess pronouns.
@@ -34,7 +34,7 @@ Refer to the founder by name, or as "they". Do not guess pronouns.
 
 1. Read the idea and the founder's note in the task. Search your memory for the founder's stories (`stories.md`) and keep any that fit this idea.
 2. Activate the browser plugin, open the founder's account from the brand profile, and read their recent posts to learn how they write and what they already said. If the reference post helps, open it to see its structure. Do not engage with anything. Close the tabs you opened.
-3. Write the post. Then read it once as a stranger scrolling past: if the opening explains too much, a line is generic, the company appears too early, or it breaks the platform limits, fix it before delivering.
+3. Write the post. Then check it against voice.md line by line (length and layout, punctuation and capitalization, emojis and hashtags, words they never use, the rules from edits) and fix what doesn't match. Read it once more as a stranger scrolling past: if the opening explains too much, a line is generic, the company appears too early, or it breaks the platform limits, fix it before delivering.
 
 ## Deliver
 

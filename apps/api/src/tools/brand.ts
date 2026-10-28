@@ -31,7 +31,6 @@ export const brandTools: Tool[] = [
               "What the founder is building: their company, product, or business description. A company name is not required.",
           },
           audience: { type: "string" },
-          voice: { type: "string" },
           topics: {
             type: "string",
             description: "The founder's primary content topics.",

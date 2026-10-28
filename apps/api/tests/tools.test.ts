@@ -137,12 +137,12 @@ test("link tools save or delete one owned link and profile updates leave links a
   await run(context, "update_brand_profile", {
     company: "Product",
     topics: "Research",
-    voice: "Direct",
+    audience: "Builders",
     onboarding_status: "completed",
   });
   profile = await run(context, "read_brand_profile", {});
   assert.equal(profile.links.length, 2);
-  assert.equal(profile.voice, "Direct");
+  assert.equal(profile.audience, "Builders");
   assert.equal(profile.onboarding_status, "completed");
 
   // Links change only through the link tools, and only with valid, owned IDs.
@@ -179,7 +179,7 @@ test("link tools save or delete one owned link and profile updates leave links a
   profile = await run(context, "read_brand_profile", {});
   assert.deepEqual(profile.links, []);
   assert.equal(profile.onboarding_status, "in_progress");
-  assert.equal(profile.voice, "Direct");
+  assert.equal(profile.audience, "Builders");
 });
 
 test("completing a profile seeds default routines, and deleting their link pauses them", async () => {
@@ -482,8 +482,26 @@ test("request_user_input asks one valid question, from the founder's own chat on
     status: "awaiting_user_input",
     ...args,
   });
+  // Style choices carry the full sample post; plain and card options can mix.
+  const styles = {
+    questions: [
+      {
+        question: "Which sounds most like you?",
+        options: [
+          { label: "Blunt and opinionated", preview: "Most launch advice is wrong.\n\nShip it ugly." },
+          "Calm teacher who explains",
+        ],
+      },
+    ],
+  };
+  assert.deepEqual(await run(context, "request_user_input", styles), {
+    status: "awaiting_user_input",
+    ...styles,
+  });
   for (const questions of [
     [],
+    [{ question: "Pick", options: [{ label: "A" }, { label: "B", preview: "x" }] }],
+    [{ question: "Pick", options: [{ label: "A", preview: "x".repeat(1501) }, "B"] }],
     [{ question: "Choose", options: [""] }],
     [{ question: "What are you building?", options: [] }],
     [

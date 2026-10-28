@@ -27,7 +27,7 @@ Refer to the founder by name, or as "they". Do not guess pronouns.
 ## Inputs
 
 - The account named in the task: its platform, URL, and publishing instructions in the brand profile.
-- The founder's company and topics from the brand profile. Audience and voice are used if present; they are optional, so don't call ideas provisional when they are missing.
+- The founder's company and topics from the brand profile. The audience is used if present; it is optional, so don't call ideas provisional when it is missing. The founder's voice is in voice.md.
 
 ## Process
 

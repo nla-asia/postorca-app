@@ -5,7 +5,8 @@ import { Button } from "./ui";
 
 /**
  * Answers Orca's multiple-choice question: pick options or write your own. The
- * answer is sent as an ordinary chat message.
+ * answer is sent as an ordinary chat message. Options with a preview (a full
+ * sample post) show as cards, and only their label is sent.
  */
 export default function QuestionWidget({
   questions,
@@ -77,34 +78,48 @@ export default function QuestionWidget({
         {question.multiple && question.options.length > 0 && (
           <p className="question-hint">Select all that apply.</p>
         )}
-        <div className="question-options">
-          {question.options.map((option) => (
-            <label
-              key={option}
-              className={`question-option ${(selected[index] ?? []).includes(option) ? "selected" : ""}`}
-            >
-              <input
-                type={question.multiple ? "checkbox" : "radio"}
-                name={`question-${index}`}
-                checked={(selected[index] ?? []).includes(option)}
-                onChange={(event) => {
-                  setSelected((current) => ({
-                    ...current,
-                    [index]: question.multiple
-                      ? event.target.checked
-                        ? [...(current[index] ?? []), option]
-                        : (current[index] ?? []).filter(
-                            (value) => value !== option,
-                          )
-                      : [option],
-                  }));
-                  if (!question.multiple)
-                    setCustom((current) => ({ ...current, [index]: "" }));
-                }}
-              />
-              <span>{option}</span>
-            </label>
-          ))}
+        <div
+          className={`question-options ${question.options.some((option) => typeof option !== "string") ? "cards" : ""}`}
+        >
+          {question.options.map((choice) => {
+            const option = typeof choice === "string" ? choice : choice.label;
+            const preview =
+              typeof choice === "string" ? undefined : choice.preview;
+            return (
+              <label
+                key={option}
+                className={`question-option ${preview ? "card" : ""} ${(selected[index] ?? []).includes(option) ? "selected" : ""}`}
+              >
+                <input
+                  type={question.multiple ? "checkbox" : "radio"}
+                  name={`question-${index}`}
+                  checked={(selected[index] ?? []).includes(option)}
+                  onChange={(event) => {
+                    setSelected((current) => ({
+                      ...current,
+                      [index]: question.multiple
+                        ? event.target.checked
+                          ? [...(current[index] ?? []), option]
+                          : (current[index] ?? []).filter(
+                              (value) => value !== option,
+                            )
+                        : [option],
+                    }));
+                    if (!question.multiple)
+                      setCustom((current) => ({ ...current, [index]: "" }));
+                  }}
+                />
+                {preview ? (
+                  <span className="question-card">
+                    <strong>{option}</strong>
+                    <span className="question-preview">{preview}</span>
+                  </span>
+                ) : (
+                  <span>{option}</span>
+                )}
+              </label>
+            );
+          })}
         </div>
         <label className="question-custom">
           {question.options.length ? "Or add your own answer" : "Your answer"}
@@ -126,7 +141,10 @@ export default function QuestionWidget({
       {active && (
         <div className="question-footer">
           {index < questions.length - 1 ? (
-            <Button disabled={!answer(index)} onClick={() => setIndex(index + 1)}>
+            <Button
+              disabled={!answer(index)}
+              onClick={() => setIndex(index + 1)}
+            >
               Next <ChevronRight size={15} />
             </Button>
           ) : (

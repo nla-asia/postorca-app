@@ -164,7 +164,7 @@ test("the first project folder adds one Ideas from my work routine; projects are
     ],
   );
   // Saving the profile leaves projects alone.
-  await request("/brand-profile", "PUT", { voice: "Plain" }, founder.token);
+  await request("/brand-profile", "PUT", { audience: "Plain" }, founder.token);
   assert.equal(
     (await request("/brand-profile", "GET", undefined, founder.token)).data.projects.length,
     2,
