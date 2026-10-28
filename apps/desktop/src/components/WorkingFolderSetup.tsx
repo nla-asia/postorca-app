@@ -55,7 +55,7 @@ export default function WorkingFolderSetup({
             </div>
             <h1>Choose your working folder</h1>
             <div className="form-stack">
-              <p>Set a working folder to continue. Orca can read and use files here, such as images, music and notes for your content. You can change it later in Settings.</p>
+              <p>Set a working folder to continue. Orca can read and use files here, such as images, music and notes for your content.</p>
               {error && <p className="auth-error" role="alert">{error}</p>}
               <Button
                 variant="primary"

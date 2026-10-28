@@ -1,6 +1,6 @@
 // The founder's working folder: the one folder on this computer Orca's file tools may
-// use. Chosen with the system folder picker (required when it isn't set) and
-// changeable in Settings. Saved in the app's settings file in userData.
+// use. Chosen with the system folder picker (required when it isn't set).
+// Saved in the app's settings file in userData.
 const fs = require("node:fs");
 const path = require("node:path");
 
