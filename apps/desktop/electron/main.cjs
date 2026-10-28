@@ -3,6 +3,7 @@ const {
   BrowserWindow,
   dialog,
   ipcMain,
+  Menu,
   Notification,
   safeStorage,
   shell,
@@ -227,6 +228,7 @@ function createWindow() {
     height: 760,
     minWidth: 800,
     minHeight: 600,
+    title: "PostOrca",
     titleBarStyle: "hiddenInset",
     backgroundColor: "#f8f9f7",
     webPreferences: {
@@ -270,6 +272,31 @@ app.on("second-instance", () => {
 // Windows shows notifications only for an app with this ID.
 if (process.platform === "win32") app.setAppUserModelId("com.postorca.desktop");
 app.whenReady().then(() => {
+  // Keep the internal name (and its data/Keychain identity) stable; only brand
+  // the visible native UI. Electron otherwise labels these with the npm name.
+  app.setAboutPanelOptions({ applicationName: "PostOrca" });
+  if (process.platform === "darwin") {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+      {
+        label: "PostOrca",
+        submenu: [
+          { role: "about", label: "About PostOrca" },
+          { type: "separator" },
+          { role: "services" },
+          { type: "separator" },
+          { role: "hide", label: "Hide PostOrca" },
+          { role: "hideOthers" },
+          { role: "unhide" },
+          { type: "separator" },
+          { role: "quit", label: "Quit PostOrca" },
+        ],
+      },
+      { role: "fileMenu" },
+      { role: "editMenu" },
+      { role: "viewMenu" },
+      { role: "windowMenu" },
+    ]));
+  }
   desktop = new DesktopConnection(installId(), refreshSession, notifyFounder);
   session = readSession();
   desktop.setSession(session);
