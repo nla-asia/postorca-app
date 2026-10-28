@@ -4,8 +4,11 @@ Check every person and reply before delivering. Drop one that fails; deliver few
 
 - The post explicitly invites people to connect, follow or introduce themselves, and was posted within the last 48 hours.
 - The author is a real, active person in the founder's space: no bots, brands, follow-trains, giveaways or sellers.
-- The entry states the exact link, the author's name and handle, the posting time and the numbers you saw. No author appears twice, and no one was suggested in the last 60 days.
+- The entry states the exact link, the author's name and handle, the posting time and the numbers you saw. No author appears twice, and every handle was checked against the memory file: no one suggested in the last 60 days.
 - On LinkedIn, no one's profile was opened just to check them.
-- Each reply is short, mentions one specific thing about this person, fits the platform (X at most 280 characters), sounds like the founder, has no pitch, and invents nothing. No two replies read alike. Each placeholder is small and asked about in your final message.
+- The list has twenty people, or at least fifteen, or you ran twenty different searches (phrases, hashtags, and the replies of open "drop what you're building" threads) without finding more.
+- Every reply says the founder followed, in different words, plus one specific thing about this person, and nothing else: no greeting by name, nothing about the founder or their company (except their one-line intro on a "drop what you're building" thread). Each is under 200 characters and invents nothing.
+- Read the replies one after another: no opening, sentence or sentence shape repeats, intros on "drop what you're building" threads included, and those intros also say the founder followed. Rewrite any that sound like a template.
+- The document is the opening line and the list, with no notes about the process.
 - Today's list is saved to memory.
 - Never engage on the account.
