@@ -38,8 +38,6 @@ const savedEnv = Object.fromEntries(
     "OPENAI_IMAGE_API_KEY",
     "ELEVENLABS_API_KEY",
     "META_MODEL_API_KEY",
-    "IMAGE_PROVIDER",
-    "IMAGE_MODEL",
   ].map((key) => [
     key,
     process.env[key],
@@ -61,9 +59,7 @@ before(async () => {
   process.env.STORAGE_DIR = storage;
   process.env.OPENAI_IMAGE_API_KEY = "test-image";
   process.env.ELEVENLABS_API_KEY = "test-audio";
-  process.env.IMAGE_PROVIDER = "openai";
-  process.env.IMAGE_MODEL = "gpt-image-2.5-flare";
-  delete process.env.META_MODEL_API_KEY;
+  process.env.META_MODEL_API_KEY = "test-meta";
   mock.method(globalThis, "fetch", async (url: any, init: RequestInit = {}) => {
     if (
       !String(url).startsWith("https://api.openai.com/") &&
@@ -267,52 +263,43 @@ test("audio tools discover voices and preserve the original tool models, duratio
   assert.equal(requests.length, before);
 });
 
-test("with Muse Image chosen, images go to Meta and masks are refused before any paid call", async () => {
+test("images go to Muse Image and masks are refused before any paid call", async () => {
   const owner = await founder("media");
-  process.env.META_MODEL_API_KEY = "test-meta";
-  process.env.IMAGE_PROVIDER = "meta";
-  process.env.IMAGE_MODEL = "muse-image-1.0";
-  try {
-    const generated = await owner.call("media_generate_image", {
-      title: "Studio",
-      prompt: "A small studio",
-    });
-    assert.equal(
-      requests.at(-1)!.url,
-      "https://api.meta.ai/v1/images/generations",
-    );
-    const before = requests.length;
-    await assert.rejects(
-      owner.call("media_edit_image", {
-        title: "Masked",
-        file: generated.ref,
-        mask_file: generated.ref,
-        prompt: "Blue",
-      }),
-      /edits from the prompt alone/,
-    );
-    assert.equal(requests.length, before);
-    await owner.call("media_edit_image", {
-      title: "Blue",
+  const generated = await owner.call("media_generate_image", {
+    title: "Studio",
+    prompt: "A small studio",
+  });
+  assert.equal(
+    requests.at(-1)!.url,
+    "https://api.meta.ai/v1/images/generations",
+  );
+  const before = requests.length;
+  await assert.rejects(
+    owner.call("media_edit_image", {
+      title: "Masked",
       file: generated.ref,
+      mask_file: generated.ref,
       prompt: "Blue",
-    });
-    assert.equal(requests.at(-1)!.url, "https://api.meta.ai/v1/images/edits");
-  } finally {
-    delete process.env.META_MODEL_API_KEY;
-    process.env.IMAGE_PROVIDER = "openai";
-    process.env.IMAGE_MODEL = "gpt-image-2.5-flare";
-  }
+    }),
+    /edits from the prompt alone/,
+  );
+  assert.equal(requests.length, before);
+  await owner.call("media_edit_image", {
+    title: "Blue",
+    file: generated.ref,
+    prompt: "Blue",
+  });
+  assert.equal(requests.at(-1)!.url, "https://api.meta.ai/v1/images/edits");
 });
 
 test("missing credentials and quota failures are actionable and do not repeat paid calls", async () => {
   const owner = await founder("media");
-  delete process.env.OPENAI_IMAGE_API_KEY;
+  delete process.env.META_MODEL_API_KEY;
   await assert.rejects(
     owner.call("media_generate_image", { title: "Studio", prompt: "Studio" }),
-    /OPENAI_IMAGE_API_KEY/,
+    /META_MODEL_API_KEY/,
   );
-  process.env.OPENAI_IMAGE_API_KEY = "test-image";
+  process.env.META_MODEL_API_KEY = "test-meta";
   const before = requests.length;
   failure = true;
   try {

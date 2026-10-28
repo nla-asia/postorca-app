@@ -114,7 +114,7 @@ async function preflight(context: Context, needsModel: boolean) {
       throw new Error("The agent model is not configured.");
     if (!imagesFromEnv(process.env) || !process.env.ELEVENLABS_API_KEY)
       throw new Error(
-        "Choose an image model (IMAGE_PROVIDER, IMAGE_MODEL) and set ELEVENLABS_API_KEY before running paid cases.",
+        "Set the image model's key and ELEVENLABS_API_KEY before running paid cases.",
       );
     const active = await context.db.query(
       "SELECT 1 FROM turns WHERE status IN ('queued','running') LIMIT 1",

@@ -84,73 +84,48 @@ test("database configuration is required", () => {
   );
 });
 
-test("Orca's provider and model are chosen explicitly; keys alone choose nothing", () => {
-  const base = {
-    DATABASE_URL: databaseUrl,
-    JWT_SECRET: secret,
-    OPENAI_API_KEY: "sk-test",
-    META_MODEL_API_KEY: "meta-test",
-  };
+test("models come from settings; a key only turns its model on", () => {
+  const base = { DATABASE_URL: databaseUrl, JWT_SECRET: secret };
   assert.equal(configFromEnv(base).orca, null);
-  assert.deepEqual(
-    configFromEnv({ ...base, ORCA_PROVIDER: "meta", ORCA_MODEL: "muse-spark-1.3" })
+  assert.equal(configFromEnv(base).images, null);
+  // Keys for other providers change nothing.
+  assert.equal(
+    configFromEnv({ ...base, OPENAI_API_KEY: "sk", OPENAI_IMAGE_API_KEY: "img" })
       .orca,
-    { provider: "meta", model: "muse-spark-1.3", apiKey: "meta-test" },
+    null,
   );
-  assert.deepEqual(
-    configFromEnv({ ...base, ORCA_PROVIDER: "openai", ORCA_MODEL: "gpt-6-luna" })
-      .orca,
-    { provider: "openai", model: "gpt-6-luna", apiKey: "sk-test" },
-  );
-  assert.throws(
-    () => configFromEnv({ ...base, ORCA_PROVIDER: "meta", ORCA_MODEL: "gpt-6-luna" }),
-    /orca\.model: Set ORCA_MODEL to muse-wonder-1\.0 or muse-spark-1\.3 for meta/,
-  );
-  assert.throws(
-    () => configFromEnv({ ...base, ORCA_MODEL: "muse-spark-1.3" }),
-    /Set ORCA_PROVIDER to openai or meta/,
-  );
-  assert.throws(
-    () => configFromEnv({ ...base, ORCA_PROVIDER: "other", ORCA_MODEL: "x" }),
-    /Set ORCA_PROVIDER to openai or meta/,
-  );
-  assert.throws(
-    () =>
-      configFromEnv({
-        DATABASE_URL: databaseUrl,
-        JWT_SECRET: secret,
-        ORCA_PROVIDER: "meta",
-        ORCA_MODEL: "muse-spark-1.3",
-      }),
-    /orca\.apiKey: Set META_MODEL_API_KEY for ORCA_PROVIDER=meta/,
-  );
+  const config = configFromEnv({ ...base, META_MODEL_API_KEY: "meta-test" });
+  assert.deepEqual(config.orca, {
+    provider: "meta",
+    model: "muse-spark-1.3",
+    apiKey: "meta-test",
+  });
+  assert.deepEqual(config.images, {
+    provider: "meta",
+    model: "muse-image-1.0",
+    apiKey: "meta-test",
+  });
 });
 
-test("the image model is chosen explicitly and the OpenAI image key never falls back to the chat key", () => {
-  const base = {
+test("a chosen model must be priced, and the OpenAI image key never falls back to the chat key", () => {
+  const env = {
     DATABASE_URL: databaseUrl,
     JWT_SECRET: secret,
     OPENAI_API_KEY: "sk-chat",
-    META_MODEL_API_KEY: "meta-test",
   };
-  assert.equal(configFromEnv(base).images, null);
   assert.deepEqual(
-    configFromEnv({ ...base, IMAGE_PROVIDER: "meta", IMAGE_MODEL: "muse-image-1.0" })
-      .images,
-    { provider: "meta", model: "muse-image-1.0", apiKey: "meta-test" },
+    configFromEnv(env, { orca: { provider: "openai", model: "gpt-6-luna" } })
+      .orca,
+    { provider: "openai", model: "gpt-6-luna", apiKey: "sk-chat" },
+  );
+  assert.equal(
+    configFromEnv(env, {
+      images: { provider: "openai", model: "gpt-image-2.5-flare" },
+    }).images,
+    null,
   );
   assert.throws(
-    () =>
-      configFromEnv({
-        ...base,
-        IMAGE_PROVIDER: "openai",
-        IMAGE_MODEL: "gpt-image-2.5-flare",
-      }),
-    /images\.apiKey: Set OPENAI_IMAGE_API_KEY for IMAGE_PROVIDER=openai/,
-  );
-  assert.throws(
-    () =>
-      configFromEnv({ ...base, IMAGE_PROVIDER: "meta", IMAGE_MODEL: "muse-spark-1.3" }),
-    /images\.model: Set IMAGE_MODEL to muse-image-1\.0 for meta/,
+    () => configFromEnv(env, { orca: { provider: "meta", model: "gpt-6-luna" } }),
+    /settings\.orca\.model must be muse-wonder-1\.0 or muse-spark-1\.3 for meta/,
   );
 });

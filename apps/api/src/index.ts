@@ -2,7 +2,8 @@ import "./env.js";
 import { createAgent } from "./agent/router.js";
 import { createApp } from "./app.js";
 import { attachDesktopSocket } from "./desktop/connections.js";
-import { configFromEnv } from "./config.js";
+import { configFromEnv, keyFor } from "./config.js";
+import { settings } from "./settings.js";
 import { createDatabase, ping } from "./db.js";
 import { catalogDrift } from "./plugins/catalog.js";
 import { orcaProvider } from "./providers/meta.js";
@@ -29,14 +30,16 @@ const agent = orca ? createAgent(db, orcaProvider(orca)) : null;
 if (orca) console.log(`Orca runs on ${orca.provider} (${orca.model}).`);
 else
   console.warn(
-    "Orca is off: set ORCA_PROVIDER, ORCA_MODEL and that provider's key to run Agent chat, work and routines.",
+    `Orca is off: set ${keyFor("orca")} to run Agent chat, work and routines on ${settings.orca.model}.`,
   );
 if (config.images)
   console.log(
     `Images use ${config.images.provider} (${config.images.model}).`,
   );
 else
-  console.warn("Image generation is off: set IMAGE_PROVIDER and IMAGE_MODEL.");
+  console.warn(
+    `Image generation is off: set ${keyFor("images")} to use ${settings.images.model}.`,
+  );
 // Routines run only when Orca can execute them; otherwise they stay due and run
 // once on the first tick after a model is configured.
 const scheduler = agent ? new Scheduler(db, agent) : null;

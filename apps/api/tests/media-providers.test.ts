@@ -129,26 +129,18 @@ test("Muse Image requests PNGs from Meta, maps low quality to one pass, and take
   assert.equal(calls.length, 2);
 });
 
-test("the image provider is the one IMAGE_PROVIDER and IMAGE_MODEL choose", () => {
-  const env = { META_MODEL_API_KEY: "meta-key", OPENAI_IMAGE_API_KEY: "image-key" };
+test("the image provider is the one chosen in settings, on only while its key is set", () => {
+  const env = { OPENAI_IMAGE_API_KEY: "image-key" };
   assert.equal(createImageProviderFromEnv(env), null);
   assert.ok(
-    createImageProviderFromEnv({
-      ...env,
-      IMAGE_PROVIDER: "meta",
-      IMAGE_MODEL: "muse-image-1.0",
-    }) instanceof MetaImageProvider,
+    createImageProviderFromEnv({ ...env, META_MODEL_API_KEY: "meta-key" }) instanceof
+      MetaImageProvider,
   );
   assert.ok(
-    createImageProviderFromEnv({
-      ...env,
-      IMAGE_PROVIDER: "openai",
-      IMAGE_MODEL: "gpt-image-2.5-flare",
+    createImageProviderFromEnv(env, {
+      provider: "openai",
+      model: "gpt-image-2.5-flare",
     }) instanceof OpenAIImageProvider,
-  );
-  assert.throws(
-    () => createImageProviderFromEnv({ IMAGE_PROVIDER: "meta", IMAGE_MODEL: "muse-image-1.0" }),
-    /Set META_MODEL_API_KEY for IMAGE_PROVIDER=meta/,
   );
 });
 
@@ -390,7 +382,7 @@ test("audio validation and cancellation prevent requests; empty and malformed re
 });
 
 test("media credentials remain optional with no fallback to the conversation key", (t) => {
-  for (const key of ["IMAGE_PROVIDER", "IMAGE_MODEL", "ELEVENLABS_API_KEY"]) {
+  for (const key of ["META_MODEL_API_KEY", "ELEVENLABS_API_KEY"]) {
     const old = process.env[key];
     delete process.env[key];
     t.after(() => {

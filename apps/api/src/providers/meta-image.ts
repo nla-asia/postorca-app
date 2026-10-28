@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { usageFetch } from "../api-usage/ledger.js";
 import { META_BASE_URL } from "./meta.js";
 import { imagesFromEnv } from "../config.js";
+import type { ModelChoice } from "../settings.js";
 import {
   OpenAIImageProvider,
   decodeImageResponse,
@@ -75,10 +76,13 @@ export class MetaImageProvider {
   }
 }
 
-/** The image provider chosen with IMAGE_PROVIDER and IMAGE_MODEL, or null when image
- * generation is off. Read on each call so a changed environment takes effect. */
-export function createImageProviderFromEnv(env: NodeJS.ProcessEnv = process.env) {
-  const images = imagesFromEnv(env);
+/** The image provider chosen in settings, or null while its key is not set. The key
+ * is read on each call so a changed environment takes effect. */
+export function createImageProviderFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+  choice?: ModelChoice,
+) {
+  const images = imagesFromEnv(env, choice);
   if (!images) return null;
   return images.provider === "meta"
     ? new MetaImageProvider(images.apiKey, images.model)

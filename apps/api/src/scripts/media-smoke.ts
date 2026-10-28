@@ -11,7 +11,7 @@ export async function runMediaSmoke() {
   const audio = createElevenLabsProviderFromEnv();
   if (!images || !audio)
     throw new Error(
-      "Set IMAGE_PROVIDER, IMAGE_MODEL, that provider's key and ELEVENLABS_API_KEY in apps/api/.env.",
+      "Set the image model's key and ELEVENLABS_API_KEY in apps/api/.env.",
     );
   const started = new Date().toISOString();
   const directory = fileURLToPath(

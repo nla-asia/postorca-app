@@ -10,6 +10,7 @@ import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import EmbeddedPostgres from "embedded-postgres";
 import { configFromEnv, orcaFromEnv } from "../config.js";
+import { settings } from "../settings.js";
 import { createDatabase, ping } from "../db.js";
 import { migrate } from "../migrate.js";
 import { createApp } from "../app.js";
@@ -82,7 +83,7 @@ export async function runComputerEval<Id extends string>(
       hashes,
       key: executionFingerprint(
         hashes,
-        orcaFromEnv(process.env)?.model ?? "",
+        settings.orca.model,
         process.platform,
       ),
       gradingKey: createHash("sha256")

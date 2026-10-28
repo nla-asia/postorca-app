@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import OpenAI from "openai";
 import { z } from "zod";
 import { HttpError } from "../../handlers/errors.js";
+import { keyFor } from "../../config.js";
 import { createImageProviderFromEnv } from "../../providers/meta-image.js";
 import { imageOptionsSchema } from "../../providers/openai-image.js";
 import {
@@ -39,7 +40,7 @@ function imageProvider() {
   if (!provider)
     throw new HttpError(
       503,
-      "Image generation is off. Set IMAGE_PROVIDER and IMAGE_MODEL on the server.",
+      `Image generation is off. Set ${keyFor("images")} on the server.`,
     );
   return provider;
 }
