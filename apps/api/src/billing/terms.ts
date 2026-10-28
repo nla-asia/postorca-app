@@ -1,3 +1,4 @@
+import { settings } from "../settings.js";
 // Membership and credit terms. Snapshot terms before purchases and usage.
 export const creditTerms = {
   version: "2026-10-27",
@@ -22,8 +23,5 @@ export const membershipPackages = {
 } as const;
 export type PackageId = keyof typeof membershipPackages;
 export function welcomeCredits() {
-  const value = Number(process.env.WELCOME_CREDITS ?? 250);
-  if (!Number.isSafeInteger(value) || value < 0)
-    throw new Error("WELCOME_CREDITS must be a non-negative integer.");
-  return value;
+  return settings.welcomeCredits;
 }

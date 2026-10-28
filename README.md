@@ -42,7 +42,7 @@ npm install
 cp apps/api/.env.example apps/api/.env
 ```
 
-In `apps/api/.env`, set `JWT_SECRET` to a random string of at least 32 characters, and add `META_MODEL_API_KEY` to turn Orca and image generation on. The models themselves (Meta's `muse-spark-1.3` for Orca and `muse-image-1.0` for images) are chosen in `apps/api/src/settings.ts`; keys never choose a model. `ELEVENLABS_API_KEY` adds audio.
+In `apps/api/.env`, set `JWT_SECRET` to a random string of at least 32 characters, and add `META_MODEL_API_KEY` to turn Orca and image generation on. The models themselves (Meta's `muse-spark-1.3` for Orca and `muse-image-1.0` for images) are chosen in `apps/api/src/settings.ts`; keys never choose a model. `ELEVENLABS_API_KEY` adds audio. `.env` holds secrets and values that differ between environments (URLs, client IDs, price IDs); settings that are the same everywhere, like the models and welcome credits, live in `apps/api/src/settings.ts`.
 
 Then start each of these in its own terminal:
 
