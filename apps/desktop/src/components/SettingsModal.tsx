@@ -45,7 +45,7 @@ export default function SettingsModal({
       open={open}
       onOpenChange={onOpenChange}
       title="Settings"
-      description="Make this space your own."
+      description="Your account, plan and app preferences."
       wide
     >
       <div className="settings-layout">
