@@ -2,15 +2,16 @@ import { z } from "zod";
 import { HttpError } from "../handlers/errors.js";
 import { platforms } from "../schemas/platforms.js";
 import {
+  deletePost,
   findAccount,
   listPosts,
-  markAccountSynced,
-  markPostsDeleted,
+  markAccountRead,
   MEDIA_TYPES,
   POST_KINDS,
+  savePost,
   socialAccounts,
   taskAccountId,
-  upsertPosts,
+  updatePost,
   type Account,
   type PostFilter,
 } from "../repositories/social-posts.js";
@@ -22,7 +23,7 @@ const accountParameter = {
     "The account: its profile URL as given in the routine (e.g. https://x.com/handle), its name, or its link id.",
 };
 const NOTE =
-  "text is the founder's own words (their voice); postorca_media_description is PostOrca's description of an image or video, never their voice. posts_synced_at is when each account's posts were last read in full: if it is old or null, the latest posts may be missing, so check the profile in the browser before concluding they haven't posted.";
+  "text is the founder's own words (their voice); postorca_media_description is PostOrca's description of an image or video, never their voice. posts_synced_at is when posts were last saved from each account's profile: if it is old or null, the latest posts may be missing, so check the profile in the browser before concluding they haven't posted.";
 
 const listSchema = z
   .object({
@@ -44,13 +45,17 @@ async function readPosts(
   query?: string,
 ) {
   const accounts = await socialAccounts(db, userId);
-  const account = args.account ? findAccount(accounts, args.account) : undefined;
+  const account = args.account
+    ? findAccount(accounts, args.account)
+    : undefined;
   const filter: PostFilter = {
     link_id: account?.id,
     platform: account?.platform ?? args.platform,
     kinds:
       args.kinds ??
-      (args.include_reposts ? undefined : POST_KINDS.filter((k) => k !== "repost")),
+      (args.include_reposts
+        ? undefined
+        : POST_KINDS.filter((k) => k !== "repost")),
     since: args.since,
     until: args.until,
     include_deleted: args.include_deleted,
@@ -75,23 +80,18 @@ async function readPosts(
   };
 }
 
-const postSchema = z
-  .object({
-    kind: z.enum(POST_KINDS),
-    post_id: z.string().min(1).max(200).optional(),
-    url: z.url({ protocol: /^https?$/ }).max(2048).optional(),
-    text: z.string().max(100_000).optional(),
-    title: z.string().max(500).optional(),
-    media_type: z.enum(MEDIA_TYPES).optional(),
-    media_description: z.string().max(2000).optional(),
-    reply_to_url: z.url({ protocol: /^https?$/ }).max(2048).optional(),
-    posted_at: z.iso.datetime({ offset: true }).optional(),
-    stats: z.record(z.string(), z.number().nonnegative()).optional(),
-  })
-  .strict()
-  .refine((post) => post.post_id || post.url, {
-    message: "Each post needs its url (or post_id).",
-  });
+const postFields = {
+  kind: z.enum(POST_KINDS),
+  post_id: z.string().min(1).max(200),
+  url: z.url({ protocol: /^https?$/ }).max(2048),
+  text: z.string().max(100_000),
+  title: z.string().max(500),
+  media_type: z.enum(MEDIA_TYPES),
+  media_description: z.string().min(1).max(2000),
+  reply_to_url: z.url({ protocol: /^https?$/ }).max(2048),
+  posted_at: z.iso.datetime({ offset: true }),
+  stats: z.record(z.string(), z.number().nonnegative()),
+};
 
 const listProperties = {
   account: accountParameter,
@@ -123,7 +123,9 @@ export const socialPostTools: Tool[] = [
       name: "search_my_posts",
       description:
         "Search the founder's own saved posts for a word or phrase (case-insensitive, in text and article titles), e.g. to avoid repeating an idea they already posted. Same filters and result as list_my_posts. Read-only.",
-      parameters: object({ query: { type: "string" }, ...listProperties }, ["query"]),
+      parameters: object({ query: { type: "string" }, ...listProperties }, [
+        "query",
+      ]),
     },
     run: (context, args) => {
       const { query, ...rest } = z
@@ -135,81 +137,100 @@ export const socialPostTools: Tool[] = [
   },
   {
     definition: {
-      name: "save_my_posts",
+      name: "save_my_post",
       description:
-        "Save posts you read on the founder's own profile (one account per call), so routines can read them without the browser. Pass every post you saw: kind, url (the post's own link; its ID is taken from it), text exactly as the founder wrote it (only their words; an Instagram caption or the article's opening), title for articles, posted_at, reply_to_url for replies and quotes, media_type, stats as numbers (likes, replies, reposts, views…). For a plain repost, only kind and url. media_description is your one- or two-line description of an image or video; give it only for a new post with no caption or alt text, since saved descriptions are kept. Saving again refreshes text and stats. When you read the account's posts back to its last sync, pass synced true; pass deleted_post_ids for saved posts you looked for and are gone.",
+        "Save one post you read on the founder's own profile, so routines can read it without the browser; call it once per post. Give kind, url (the post's own link; its ID is taken from it), text exactly as the founder wrote it (only their words; an Instagram caption or the article's opening), title for articles, posted_at, reply_to_url for replies and quotes, media_type, and stats as numbers (likes, replies, reposts, views…). For a plain repost, only kind and url. media_description is your one- or two-line description of an image or video; give it only for a new post with no caption or alt text, since a saved description is kept. Saving a post already saved (same link) refreshes its text and stats. To change a saved post, pass its id (from list_my_posts) with only the fields that change.",
       parameters: object(
         {
+          id: {
+            type: "string",
+            description:
+              "A saved post's id, to update it instead of saving a new one.",
+          },
           account: {
             ...accountParameter,
-            description: `${accountParameter.description} Defaults to the account this routine runs for.`,
+            description: `${accountParameter.description} Defaults to the account this routine runs for. Not used with id.`,
           },
-          posts: {
-            type: "array",
-            maxItems: 100,
-            items: object(
-              {
-                kind: { type: "string", enum: [...POST_KINDS] },
-                post_id: { type: "string" },
-                url: { type: "string" },
-                text: { type: "string" },
-                title: { type: "string" },
-                media_type: { type: "string", enum: [...MEDIA_TYPES] },
-                media_description: { type: "string" },
-                reply_to_url: { type: "string" },
-                posted_at: { type: "string" },
-                stats: { type: "object", additionalProperties: { type: "number" } },
-              },
-              ["kind"],
-            ),
-          },
-          synced: { type: "boolean" },
-          deleted_post_ids: { type: "array", items: { type: "string" } },
+          kind: { type: "string", enum: [...POST_KINDS] },
+          post_id: { type: "string" },
+          url: { type: "string" },
+          text: { type: "string" },
+          title: { type: "string" },
+          media_type: { type: "string", enum: [...MEDIA_TYPES] },
+          media_description: { type: "string" },
+          reply_to_url: { type: "string" },
+          posted_at: { type: "string" },
+          stats: { type: "object", additionalProperties: { type: "number" } },
         },
-        ["posts"],
+        [],
       ),
     },
     run: async ({ db, userId, taskId }, args) => {
+      const fields = z.object(postFields).partial();
       const request = z
         .object({
+          id: z.uuid().optional(),
           account: z.string().min(1).max(2048).optional(),
-          posts: z.array(postSchema).max(100),
-          synced: z.boolean().default(false),
-          deleted_post_ids: z.array(z.string().min(1).max(200)).max(200).default([]),
+          ...fields.shape,
         })
         .strict()
         .parse(args);
+      const { id, account: reference, ...post } = request;
+      if (id) {
+        if (reference)
+          throw new HttpError(
+            400,
+            "A saved post keeps its account; leave out account.",
+          );
+        const updated = await updatePost(db, userId, id, post);
+        if (!updated) throw new HttpError(404, "No saved post with that id.");
+        return { id, updated: true };
+      }
+      if (!post.kind)
+        throw new HttpError(
+          400,
+          "Give the post's kind, or an id to update a saved post.",
+        );
+      if (!post.url && !post.post_id)
+        throw new HttpError(400, "Give the post's url (or post_id).");
       const accounts = await socialAccounts(db, userId);
       const routineLink = await taskAccountId(db, taskId);
-      const account = request.account
-        ? findAccount(accounts, request.account)
+      const account = reference
+        ? findAccount(accounts, reference)
         : accounts.find((a) => a.id === routineLink);
       if (!account)
         throw new HttpError(
           400,
-          "Pass account: the profile URL of the account these posts are from.",
+          "Pass account: the profile URL of the account this post is from.",
         );
-      const saved = await upsertPosts(
+      const saved = await savePost(
         db,
         userId,
         { platform: account.platform, link_id: account.id },
-        request.posts,
+        { ...post, kind: post.kind },
         "sync",
       );
-      const deleted = await markPostsDeleted(
-        db,
-        userId,
-        account.platform,
-        request.deleted_post_ids,
-      );
-      if (request.synced) await markAccountSynced(db, userId, account.id);
+      await markAccountRead(db, userId, account.id);
       return {
+        id: saved.id,
+        created: saved.created,
         account: account.name,
         platform: account.platform,
-        saved,
-        deleted,
-        ...(request.synced ? { posts_synced_at: new Date().toISOString() } : {}),
       };
+    },
+  },
+  {
+    definition: {
+      name: "delete_my_post",
+      description:
+        "Mark one saved post as deleted, by its id (from list_my_posts), when it is no longer on the founder's profile. Routines then treat it as not posted; saving it again restores it.",
+      parameters: object({ id: { type: "string" } }, ["id"]),
+    },
+    run: async ({ db, userId }, args) => {
+      const { id } = z.object({ id: z.uuid() }).strict().parse(args);
+      const deleted = await deletePost(db, userId, id);
+      if (!deleted) throw new HttpError(404, "No saved post with that id.");
+      return { ...deleted, deleted: true };
     },
   },
 ];

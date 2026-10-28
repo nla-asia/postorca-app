@@ -80,9 +80,14 @@ export function postIdFromUrl(platform: string, url: string) {
     case "Threads":
       return match(/\/post\/([\w-]+)/);
     case "Instagram":
-      return match(/\/(?:p|reels?|tv)\/([\w-]+)/) ?? match(/\/stories\/[^/]+\/(\d+)/);
+      return (
+        match(/\/(?:p|reels?|tv)\/([\w-]+)/) ?? match(/\/stories\/[^/]+\/(\d+)/)
+      );
     case "LinkedIn":
-      return match(/urn:li:(?:activity|share|ugcPost):(\d+)/) ?? match(/-activity-(\d+)/);
+      return (
+        match(/urn:li:(?:activity|share|ugcPost):(\d+)/) ??
+        match(/-activity-(\d+)/)
+      );
     case "Facebook":
       return (
         parsed.searchParams.get("story_fbid") ??
@@ -96,10 +101,14 @@ export function postIdFromUrl(platform: string, url: string) {
 
 /** The text as stored: capped, with whether it was cut and its full length. */
 export function capText(text: string | null | undefined) {
-  if (text == null) return { text: null, text_truncated: false, text_length: null };
+  if (text == null)
+    return { text: null, text_truncated: false, text_length: null };
   const length = [...text].length;
   return {
-    text: length > POST_TEXT_LIMIT ? [...text].slice(0, POST_TEXT_LIMIT).join("") : text,
+    text:
+      length > POST_TEXT_LIMIT
+        ? [...text].slice(0, POST_TEXT_LIMIT).join("")
+        : text,
     text_truncated: length > POST_TEXT_LIMIT,
     text_length: length,
   };
@@ -115,7 +124,9 @@ function checkKind(platform: Platform, kind: PostKind) {
 
 /** The founder's social accounts (links of a social kind), with when each was last synced. */
 export async function socialAccounts(db: Queryable, userId: string) {
-  const { rows } = await db.query<Omit<Account, "platform"> & { kind: LinkKind }>(
+  const { rows } = await db.query<
+    Omit<Account, "platform"> & { kind: LinkKind }
+  >(
     `SELECT id, name, url, kind, ${iso("posts_synced_at")} AS posts_synced_at
      FROM brand_profile_links WHERE user_id = $1 AND kind = ANY($2) ORDER BY name, id`,
     [userId, Object.keys(PLATFORM_BY_KIND)],
@@ -127,7 +138,11 @@ export async function socialAccounts(db: Queryable, userId: string) {
 }
 
 const normalizeUrl = (url: string) =>
-  url.trim().toLowerCase().replace(/^https?:\/\/(www\.)?/, "").replace(/\/+$/, "");
+  url
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\/(www\.)?/, "")
+    .replace(/\/+$/, "");
 
 /**
  * The account a reference names: its link id, profile URL or name (case-insensitive).
@@ -142,7 +157,9 @@ export function findAccount(accounts: Account[], reference: string) {
       account.name.toLowerCase() === wanted,
   );
   if (matches.length === 1) return matches[0];
-  const known = accounts.map((a) => `${a.name} (${a.platform}, ${a.url})`).join("; ");
+  const known = accounts
+    .map((a) => `${a.name} (${a.platform}, ${a.url})`)
+    .join("; ");
   throw new HttpError(
     400,
     matches.length
@@ -164,94 +181,161 @@ export async function taskAccountId(db: Queryable, taskId: string) {
 }
 
 /**
- * Inserts or refreshes the account's posts, keyed by (founder, platform, post ID):
- * a refresh overwrites text, kind and stats, keeps a media description already
- * written (posts are described once), and clears deleted_at. Posts without an ID
- * (their link has none) are inserted as they are. Returns how many were saved.
+ * Inserts or refreshes one of the account's posts, keyed by (founder, platform, post
+ * ID): a refresh overwrites text, kind and stats, keeps a media description already
+ * written (posts are described once), and clears deleted_at. A post without an ID
+ * (its link has none) is inserted as it is. Returns its id and whether it is new.
  */
-export async function upsertPosts(
+export async function savePost(
   db: Queryable,
   userId: string,
   target: { platform: Platform; link_id: string | null },
-  posts: PostInput[],
+  post: PostInput,
   source: "sync" | "founder" | "agent",
 ) {
-  for (const post of posts) checkKind(target.platform, post.kind);
-  let saved = 0;
-  for (const post of posts) {
-    const postId =
-      post.post_id?.trim() ||
-      (post.url ? postIdFromUrl(target.platform, post.url) : null);
-    const text = capText(post.text);
-    const stats = post.stats && Object.keys(post.stats).length ? post.stats : null;
-    await db.query(
-      `INSERT INTO social_posts(user_id, link_id, platform, kind, post_id, url, text,
-         text_truncated, text_length, title, media_type, media_description, reply_to_url,
-         posted_at, stats, stats_checked_at, source, artifact_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-         coalesce($15::jsonb, '{}'::jsonb), CASE WHEN $15::jsonb IS NOT NULL THEN now() END, $16, $17)
-       ON CONFLICT (user_id, platform, post_id) WHERE post_id IS NOT NULL DO UPDATE SET
-         link_id = coalesce(EXCLUDED.link_id, social_posts.link_id),
-         kind = EXCLUDED.kind,
-         url = coalesce(EXCLUDED.url, social_posts.url),
-         text = coalesce(EXCLUDED.text, social_posts.text),
-         text_truncated = CASE WHEN EXCLUDED.text IS NULL THEN social_posts.text_truncated ELSE EXCLUDED.text_truncated END,
-         text_length = coalesce(EXCLUDED.text_length, social_posts.text_length),
-         title = coalesce(EXCLUDED.title, social_posts.title),
-         media_type = CASE WHEN EXCLUDED.media_type = 'none' THEN social_posts.media_type ELSE EXCLUDED.media_type END,
-         media_description = coalesce(social_posts.media_description, EXCLUDED.media_description),
-         reply_to_url = coalesce(EXCLUDED.reply_to_url, social_posts.reply_to_url),
-         posted_at = coalesce(social_posts.posted_at, EXCLUDED.posted_at),
-         stats = CASE WHEN $15::jsonb IS NOT NULL THEN EXCLUDED.stats ELSE social_posts.stats END,
-         stats_checked_at = CASE WHEN $15::jsonb IS NOT NULL THEN now() ELSE social_posts.stats_checked_at END,
-         -- Who published it outranks the sync that later saw it.
-         source = CASE WHEN social_posts.source = 'sync' THEN EXCLUDED.source ELSE social_posts.source END,
-         artifact_id = coalesce(social_posts.artifact_id, EXCLUDED.artifact_id),
-         deleted_at = NULL,
-         updated_at = now()`,
-      [
-        userId,
-        target.link_id,
-        target.platform,
-        post.kind,
-        postId,
-        post.url ?? null,
-        text.text,
-        text.text_truncated,
-        text.text_length,
-        post.title ?? null,
-        post.media_type ?? "none",
-        post.media_description ?? null,
-        post.reply_to_url ?? null,
-        post.posted_at ?? null,
-        stats ? JSON.stringify(stats) : null,
-        source,
-        post.artifact_id ?? null,
-      ],
-    );
-    saved++;
-  }
+  checkKind(target.platform, post.kind);
+  const postId =
+    post.post_id?.trim() ||
+    (post.url ? postIdFromUrl(target.platform, post.url) : null);
+  const text = capText(post.text);
+  const stats =
+    post.stats && Object.keys(post.stats).length ? post.stats : null;
+  const {
+    rows: [saved],
+  } = await db.query<{ id: string; created: boolean }>(
+    `INSERT INTO social_posts(user_id, link_id, platform, kind, post_id, url, text,
+       text_truncated, text_length, title, media_type, media_description, reply_to_url,
+       posted_at, stats, stats_checked_at, source, artifact_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+       coalesce($15::jsonb, '{}'::jsonb), CASE WHEN $15::jsonb IS NOT NULL THEN now() END, $16, $17)
+     ON CONFLICT (user_id, platform, post_id) WHERE post_id IS NOT NULL DO UPDATE SET
+       link_id = coalesce(EXCLUDED.link_id, social_posts.link_id),
+       kind = EXCLUDED.kind,
+       url = coalesce(EXCLUDED.url, social_posts.url),
+       text = coalesce(EXCLUDED.text, social_posts.text),
+       text_truncated = CASE WHEN EXCLUDED.text IS NULL THEN social_posts.text_truncated ELSE EXCLUDED.text_truncated END,
+       text_length = coalesce(EXCLUDED.text_length, social_posts.text_length),
+       title = coalesce(EXCLUDED.title, social_posts.title),
+       media_type = CASE WHEN EXCLUDED.media_type = 'none' THEN social_posts.media_type ELSE EXCLUDED.media_type END,
+       media_description = coalesce(social_posts.media_description, EXCLUDED.media_description),
+       reply_to_url = coalesce(EXCLUDED.reply_to_url, social_posts.reply_to_url),
+       posted_at = coalesce(social_posts.posted_at, EXCLUDED.posted_at),
+       stats = CASE WHEN $15::jsonb IS NOT NULL THEN EXCLUDED.stats ELSE social_posts.stats END,
+       stats_checked_at = CASE WHEN $15::jsonb IS NOT NULL THEN now() ELSE social_posts.stats_checked_at END,
+       -- Who published it outranks the sync that later saw it.
+       source = CASE WHEN social_posts.source = 'sync' THEN EXCLUDED.source ELSE social_posts.source END,
+       artifact_id = coalesce(social_posts.artifact_id, EXCLUDED.artifact_id),
+       deleted_at = NULL,
+       updated_at = now()
+     RETURNING id, (xmax = 0) AS created`,
+    [
+      userId,
+      target.link_id,
+      target.platform,
+      post.kind,
+      postId,
+      post.url ?? null,
+      text.text,
+      text.text_truncated,
+      text.text_length,
+      post.title ?? null,
+      post.media_type ?? "none",
+      post.media_description ?? null,
+      post.reply_to_url ?? null,
+      post.posted_at ?? null,
+      stats ? JSON.stringify(stats) : null,
+      source,
+      post.artifact_id ?? null,
+    ],
+  );
   return saved;
 }
 
-/** Marks posts no longer found on the account as deleted (never a hard delete). */
-export async function markPostsDeleted(
+/**
+ * Updates one saved post by its id: only the fields given change (a new text is
+ * capped again, new stats are stamped). Returns null when the founder has no such post.
+ */
+export async function updatePost(
   db: Queryable,
   userId: string,
-  platform: Platform,
-  postIds: string[],
+  id: string,
+  changes: Partial<PostInput>,
 ) {
-  if (!postIds.length) return 0;
-  const { rowCount } = await db.query(
-    `UPDATE social_posts SET deleted_at = now(), updated_at = now()
-     WHERE user_id = $1 AND platform = $2 AND post_id = ANY($3) AND deleted_at IS NULL`,
-    [userId, platform, postIds],
+  const {
+    rows: [existing],
+  } = await db.query<{ platform: Platform }>(
+    "SELECT platform FROM social_posts WHERE id = $1 AND user_id = $2",
+    [id, userId],
   );
-  return rowCount ?? 0;
+  if (!existing) return null;
+  if (changes.kind) checkKind(existing.platform, changes.kind);
+  const postId =
+    changes.post_id?.trim() ||
+    (changes.url ? postIdFromUrl(existing.platform, changes.url) : null);
+  const text = changes.text === undefined ? null : capText(changes.text);
+  const stats =
+    changes.stats && Object.keys(changes.stats).length ? changes.stats : null;
+  const {
+    rows: [updated],
+  } = await db.query<{ id: string }>(
+    `UPDATE social_posts SET
+       kind = coalesce($3, kind),
+       post_id = coalesce($4, post_id),
+       url = coalesce($5, url),
+       text = CASE WHEN $6::boolean THEN $7 ELSE text END,
+       text_truncated = CASE WHEN $6::boolean THEN $8 ELSE text_truncated END,
+       text_length = CASE WHEN $6::boolean THEN $9 ELSE text_length END,
+       title = coalesce($10, title),
+       media_type = coalesce($11, media_type),
+       media_description = coalesce($12, media_description),
+       reply_to_url = coalesce($13, reply_to_url),
+       posted_at = coalesce($14, posted_at),
+       stats = coalesce($15::jsonb, stats),
+       stats_checked_at = CASE WHEN $15::jsonb IS NOT NULL THEN now() ELSE stats_checked_at END,
+       updated_at = now()
+     WHERE id = $1 AND user_id = $2 RETURNING id`,
+    [
+      id,
+      userId,
+      changes.kind ?? null,
+      postId,
+      changes.url ?? null,
+      text !== null,
+      text?.text ?? null,
+      text?.text_truncated ?? false,
+      text?.text_length ?? null,
+      changes.title ?? null,
+      changes.media_type ?? null,
+      changes.media_description ?? null,
+      changes.reply_to_url ?? null,
+      changes.posted_at ?? null,
+      stats ? JSON.stringify(stats) : null,
+    ],
+  );
+  return updated ?? null;
 }
 
-/** Records that the account's posts were just read in full. */
-export async function markAccountSynced(db: Queryable, userId: string, linkId: string) {
+/**
+ * Marks a post no longer found on the account as deleted (never a hard delete), so
+ * routines treat it as not posted. Returns null when the founder has no such post.
+ */
+export async function deletePost(db: Queryable, userId: string, id: string) {
+  const {
+    rows: [deleted],
+  } = await db.query<{ id: string; url: string | null }>(
+    `UPDATE social_posts SET deleted_at = coalesce(deleted_at, now()), updated_at = now()
+     WHERE id = $1 AND user_id = $2 RETURNING id, url`,
+    [id, userId],
+  );
+  return deleted ?? null;
+}
+
+/** Records that the account's posts were just read from its profile. */
+export async function markAccountRead(
+  db: Queryable,
+  userId: string,
+  linkId: string,
+) {
   await db.query(
     "UPDATE brand_profile_links SET posts_synced_at = now() WHERE id = $1 AND user_id = $2",
     [linkId, userId],
@@ -271,7 +355,11 @@ export type PostFilter = {
 };
 
 /** The founder's posts, newest first; deleted ones only when asked. */
-export async function listPosts(db: Queryable, userId: string, filter: PostFilter) {
+export async function listPosts(
+  db: Queryable,
+  userId: string,
+  filter: PostFilter,
+) {
   const conditions = ["p.user_id = $1"];
   const values: unknown[] = [userId];
   const add = (condition: string, value: unknown) => {
@@ -335,31 +423,37 @@ export async function savePublishedPost(
     accounts.find((account) => account.id === routineLink) ??
     (accounts.length === 1
       ? accounts[0]
-      : accounts.find((account) => postPath.startsWith(`${normalizeUrl(account.url)}/`)));
-  const { rows: media } = await db.query<{ kind: "image" | "video"; title: string }>(
+      : accounts.find((account) =>
+          postPath.startsWith(`${normalizeUrl(account.url)}/`),
+        ));
+  const { rows: media } = await db.query<{
+    kind: "image" | "video";
+    title: string;
+  }>(
     `SELECT kind, title FROM artifacts WHERE task_id = $1 AND kind IN ('image', 'video')
      ORDER BY created_at, id`,
     [publication.source_task_id],
   );
   const mediaType: MediaType =
     media.length > 1 ? "carousel" : (media[0]?.kind ?? "none");
-  await upsertPosts(
+  await savePost(
     db,
     userId,
     { platform, link_id: link?.id ?? null },
-    [
-      {
-        kind: mediaType === "carousel" && platform === "Instagram" ? "carousel" : "post",
-        url: publication.posted_url,
-        text: publication.text,
-        media_type: mediaType,
-        media_description: media.length
-          ? `Made in PostOrca with this post: ${media.map((m) => `${m.kind} "${m.title}"`).join(", ")}.`
-          : null,
-        posted_at: new Date().toISOString(),
-        artifact_id: publication.artifact_id,
-      },
-    ],
+    {
+      kind:
+        mediaType === "carousel" && platform === "Instagram"
+          ? "carousel"
+          : "post",
+      url: publication.posted_url,
+      text: publication.text,
+      media_type: mediaType,
+      media_description: media.length
+        ? `Made in PostOrca with this post: ${media.map((m) => `${m.kind} "${m.title}"`).join(", ")}.`
+        : null,
+      posted_at: new Date().toISOString(),
+      artifact_id: publication.artifact_id,
+    },
     publication.publisher,
   );
 }
