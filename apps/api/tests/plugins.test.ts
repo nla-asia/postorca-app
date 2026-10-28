@@ -253,11 +253,14 @@ test("migrate projects the code-defined plugin catalog and core skills into the 
   assert.deepEqual(skills, [
     { name: "browser-use", dir: "plugins/browser/skills/browser-use", plugin_code: "browser" },
     { name: "computer-use", dir: "plugins/computer/skills/computer-use", plugin_code: "computer" },
+    { name: "connect-post", dir: "skills/connect-post", plugin_code: null },
     { name: "conversations-to-join", dir: "skills/conversations-to-join", plugin_code: null },
     { name: "create-content", dir: "skills/create-content", plugin_code: null },
+    { name: "daily-quote", dir: "skills/daily-quote", plugin_code: null },
     { name: "demo-use", dir: "../tests/fixtures/plugins/demo-use", plugin_code: "demo" },
     { name: "find-content-ideas", dir: "skills/find-content-ideas", plugin_code: null },
     { name: "media-create", dir: "plugins/media/skills/media-create", plugin_code: "media" },
+    { name: "people-to-connect", dir: "skills/people-to-connect", plugin_code: null },
     { name: "product-demo-capture", dir: "skills/product-demo-capture", plugin_code: null },
     { name: "publish-post", dir: "skills/publish-post", plugin_code: null },
     { name: "video-build-log", dir: "plugins/video/skills/video-build-log", plugin_code: "video" },
@@ -357,6 +360,10 @@ test("plugin tools and skills are available only while the task's plugin is acti
     script = [call("activate_plugin", { code: null })];
     assert.equal((await ask(founder.token)).active_plugin, null);
     assert.ok(!offered[1].includes("demo_open"));
+    // The string "null" some models send for the enum's null choice also deactivates.
+    await activate(founder.token);
+    script = [call("activate_plugin", { code: "null" })];
+    assert.equal((await ask(founder.token)).active_plugin, null);
     script = [call("read_skill", { name: "demo-use" })];
     assert.deepEqual(await ask(founder.token), {
       error: "Skill demo-use is not a core skill or part of the active plugin.",

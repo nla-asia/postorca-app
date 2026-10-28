@@ -18,6 +18,9 @@ import { turnActions } from "../lib/toolActions";
 import Markdown, { type ArtifactLink } from "./Markdown";
 import { ArtifactRow, ArtifactViewer, type Viewable } from "./Artifacts";
 import { PostSchedule, PublishPanel } from "./Publishing";
+import ReplyCard, { ReplyRow } from "./ReplyCard";
+import { founderAccount, parseReply } from "../lib/social";
+import type { Brand } from "../lib/brand";
 import { api } from "../lib/api";
 import type { TaskArtifact, TaskDetail } from "../lib/tasks";
 import "./WorkDetail.css";
@@ -42,6 +45,21 @@ const dateLabel = (value: string) =>
     minute: "2-digit",
   });
 
+/** "3 of 16 done": how far the founder is through a list of replies. */
+function ReplyProgress({ artifacts }: { artifacts: TaskArtifact[] }) {
+  const replies = artifacts.filter((item) => item.kind === "reply");
+  if (replies.length < 2) return null;
+  const handled = replies.filter((item) => item.state).length;
+  return (
+    <p className="reply-progress">
+      {handled} of {replies.length} done
+      <span className="reply-progress-bar">
+        <span style={{ width: `${(handled / replies.length) * 100}%` }} />
+      </span>
+    </p>
+  );
+}
+
 export default function WorkDetail({
   taskId,
   founder,
@@ -65,8 +83,16 @@ export default function WorkDetail({
   const [viewing, setViewing] = useState<Viewable | null>(null);
   const [ideaId, setIdeaId] = useState<string | null>(null);
   const [ideaNote, setIdeaNote] = useState("");
+  const [replyId, setReplyId] = useState<string | null>(null);
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
+  // The founder's own accounts, shown on their side of reply cards.
+  const [brand, setBrand] = useState<Brand | null>(null);
+  useEffect(() => {
+    void api<Brand>("/brand-profile")
+      .then(setBrand)
+      .catch(() => {});
+  }, []);
   const requestController = useRef<AbortController | null>(null);
   const load = useCallback(async () => {
     requestController.current?.abort();
@@ -157,11 +183,31 @@ export default function WorkDetail({
   const idea = ideaId
     ? artifacts.find((item) => item.id === ideaId)
     : undefined;
+  const reply = replyId
+    ? artifacts.find((item) => item.id === replyId)
+    : undefined;
+  // After Done or Skip, move on to the next reply still waiting in the same run.
+  const nextReply = () => {
+    if (!reply) return setReplyId(null);
+    const list = artifacts.filter(
+      (item) => item.kind === "reply" && item.turn_id === reply.turn_id,
+    );
+    const after = list.slice(list.indexOf(reply) + 1);
+    const next = [...after, ...list].find(
+      (item) => !item.state && item.id !== reply.id,
+    );
+    setReplyId(next?.id ?? null);
+  };
   const openArtifact = (item: TaskArtifact) => {
     if (item.kind === "idea") {
       setIdeaNote("");
       setIdeaId(item.id);
-    } else setViewing({ type: "artifact", id: item.id });
+    } else if (item.kind === "reply") setReplyId(item.id);
+    else setViewing({ type: "artifact", id: item.id });
+  };
+  const replyAccount = (item: TaskArtifact) => {
+    const reply = parseReply(item);
+    return reply && brand ? founderAccount(brand.links, reply.platform) : null;
   };
   const artifactLink: ArtifactLink = (id) => {
     const item = artifacts.find((value) => value.id === id);
@@ -323,8 +369,15 @@ export default function WorkDetail({
                           <h2>
                             Artifacts <span>{turn.artifacts.length}</span>
                           </h2>
+                          <ReplyProgress artifacts={turn.artifacts} />
                           {turn.artifacts.map((item) =>
-                            item.kind === "idea" ? (
+                            item.kind === "reply" ? (
+                              <ReplyRow
+                                key={item.id}
+                                item={item}
+                                onOpen={() => openArtifact(item)}
+                              />
+                            ) : item.kind === "idea" ? (
                               <button
                                 key={item.id}
                                 className="artifact-row idea-row"
@@ -554,6 +607,26 @@ export default function WorkDetail({
               )
             )}
           </div>
+        )}
+      </Modal>
+      <Modal
+        open={!!reply}
+        onOpenChange={(open) => !open && setReplyId(null)}
+        title={reply?.title ?? "Reply"}
+        wide
+        className="reply-dialog"
+      >
+        {reply && (
+          <ReplyCard
+            key={reply.id}
+            taskId={task.id}
+            item={reply}
+            account={replyAccount(reply)}
+            readOnly={archived}
+            onChanged={() => void load()}
+            onHandled={nextReply}
+            notify={notify}
+          />
         )}
       </Modal>
       <ArtifactViewer

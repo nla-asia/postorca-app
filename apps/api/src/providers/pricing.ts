@@ -31,6 +31,40 @@ export const PROVIDER_PRICING = [
       perMillion("output_tokens", long ? "0.75" : "0.50"),
     ],
   })),
+  // Meta reports cached input but no cache writes; there is no long-context tier.
+  ...(
+    [
+      ["muse-wonder-1.0", "4.00", "0.20", "20.00"],
+      ["muse-spark-1.3", "1.25", "0.15", "4.25"],
+    ] as const
+  ).map(([model, input, cached, output]) => ({
+    enabled: true,
+    id: `meta-${model}-2026-10-28`,
+    source: "https://dev.meta.ai/docs/pricing-rate-limits",
+    provider: "meta",
+    model,
+    operation: "responses",
+    currency: "USD",
+    effectiveFrom: "2026-10-28T00:00:00Z",
+    settings: { cache_retention: "in-memory" },
+    prices: [
+      perMillion("uncached_input_tokens", input),
+      perMillion("cached_input_tokens", cached),
+      perMillion("output_tokens", output),
+    ],
+  })),
+  ...["image.generate", "image.edit"].map((operation) => ({
+    enabled: true,
+    id: `meta-muse-image-1.0-${operation}-2026-10-28`,
+    source: "https://dev.meta.ai/docs/pricing-rate-limits",
+    provider: "meta",
+    model: "muse-image-1.0",
+    operation,
+    currency: "USD",
+    effectiveFrom: "2026-10-28T00:00:00Z",
+    // Failed or safety-filtered images are not billed.
+    prices: [{ meter: "generated_images", amount: "0.01", perUnits: 1 }],
+  })),
   ...["image.generate", "image.edit"].map((operation) => ({
     enabled: true,
     id: `openai-flare-${operation}-2026-10-27`,

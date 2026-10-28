@@ -9,6 +9,7 @@ import {
 import type { TurnTrace } from "./trace.js";
 import { CONTEXT_WINDOW_TOKENS, estimateTokens } from "./tokens.js";
 import { fileRef, isUserFileKey, loadFile } from "../storage.js";
+import { settings } from "../settings.js";
 
 /**
  * What the model sees of a task's history. The founder always sees the full history;
@@ -27,12 +28,9 @@ const KEEP_RECENT_STEPS = 4;
  * Tool images are shown for this many model responses, then only their reference.
  * The model notes what it saw in the response that sees an image, and hiding the image
  * right after changes only the end of the history, so the cached prompt before it is
- * kept. AGENT_IMAGE_STEPS can show images longer (each frame costs about 1–3k tokens).
+ * kept. settings.agentImageSteps can show images longer.
  */
-const IMAGE_RESULT_STEPS = Math.max(
-  1,
-  Number(process.env.AGENT_IMAGE_STEPS) || 1,
-);
+const IMAGE_RESULT_STEPS = Math.max(1, settings.agentImageSteps);
 /** No single tool result may take more than this, even in a recent step. */
 const MAX_RESULT_CHARS = 80_000;
 /** Cap on what the compaction call reads; older transcript beyond it is dropped. */

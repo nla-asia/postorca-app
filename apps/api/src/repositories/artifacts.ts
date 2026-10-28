@@ -5,7 +5,7 @@ export async function createArtifact(
   taskId: string,
   turnId: string,
   artifact: {
-    kind: "document" | "idea" | "url" | "image" | "audio" | "video";
+    kind: "document" | "idea" | "url" | "image" | "audio" | "video" | "reply";
     title: string;
     content: string;
   },
@@ -60,6 +60,28 @@ export async function updateDocumentArtifact(
   } = await db.query(
     "UPDATE artifacts SET content=$3 WHERE id=$1 AND task_id=$2 AND kind='document' RETURNING *",
     [artifactId, taskId, content],
+  );
+  return artifact;
+}
+
+/**
+ * The founder's changes to a reply: new text (content is already validated JSON)
+ * and/or what they did with it. A null state undoes Done or Skip.
+ */
+export async function updateReplyArtifact(
+  db: Queryable,
+  taskId: string,
+  artifactId: string,
+  change: { content?: string; state?: "done" | "skipped" | null },
+) {
+  const {
+    rows: [artifact],
+  } = await db.query(
+    `UPDATE artifacts SET content = coalesce($3, content),
+       state = CASE WHEN $4 THEN $5 ELSE state END,
+       state_at = CASE WHEN $4 THEN CASE WHEN $5::text IS NULL THEN NULL ELSE now() END ELSE state_at END
+     WHERE id = $1 AND task_id = $2 AND kind = 'reply' RETURNING *`,
+    [artifactId, taskId, change.content ?? null, change.state !== undefined, change.state ?? null],
   );
   return artifact;
 }

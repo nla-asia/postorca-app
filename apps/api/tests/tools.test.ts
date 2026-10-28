@@ -75,6 +75,10 @@ test("each task kind gets its tools; chat-only tools stay out of background work
       "create_artifact",
       "edit_document",
       "save_memory",
+      "list_my_posts",
+      "search_my_posts",
+      "save_my_post",
+      "delete_my_post",
     ])
       assert.ok(names(kind).includes(name), `${name} in ${kind}`);
   }
@@ -568,4 +572,40 @@ test("task tools start, read and follow up the founder's own background work", a
     run(context, "follow_up_task", { task_id: started.task_id, message: "Archived" }, noDispatch),
     { status: 409 },
   );
+});
+
+test("create_reply delivers one validated reply card", async () => {
+  const context = await workContext(await account());
+  const target = {
+    url: "https://x.com/maya/status/2115224722745307543",
+    author: "Maya Chen",
+    handle: "@maya",
+    text: "Looking to connect with people building AI agents.",
+    posted_at: "2026-10-28T06:30:00Z",
+    stats: { replies: 22, likes: 10, views: 427, author_followers: 830 },
+  };
+  const card = await run(context, "create_reply", {
+    platform: "X",
+    intent: "connect",
+    target,
+    text: "Followed! Agents for real work is the fun part.",
+    why: "Builds agent tooling for small teams.",
+  });
+  assert.equal(card.kind, "reply");
+  assert.equal(card.title, "Connect with @maya");
+  assert.deepEqual(JSON.parse(card.content), {
+    platform: "X",
+    kind: "reply",
+    intent: "connect",
+    target,
+    text: "Followed! Agents for real work is the fun part.",
+    why: "Builds agent tooling for small teams.",
+  });
+  for (const bad of [
+    { platform: "X", intent: "connect", target: { ...target, url: "javascript:alert(1)" }, text: "Hi" },
+    { platform: "Myspace", intent: "connect", target, text: "Hi" },
+    { platform: "X", intent: "connect", target, text: "  " },
+    { platform: "X", intent: "connect", target, text: "Hi", note: "extra" },
+  ])
+    await assert.rejects(run(context, "create_reply", bad));
 });

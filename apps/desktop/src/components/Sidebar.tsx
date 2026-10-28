@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plug, Settings2, Wallet } from "lucide-react";
+import { Plug, Settings2 } from "lucide-react";
 import logoUrl from "../assets/logo.png";
 import { navigation, type Page } from "../navigation";
 import { api, type AuthUser } from "../lib/api";
@@ -10,7 +10,6 @@ export default function Sidebar({
   onNavigate,
   onOpenConnectApps,
   onOpenSettings,
-  onOpenBilling,
   user,
   reviewCount = 0,
 }: {
@@ -18,7 +17,6 @@ export default function Sidebar({
   onNavigate: (page: Page) => void;
   onOpenConnectApps: () => void;
   onOpenSettings: () => void;
-  onOpenBilling: () => void;
   user: AuthUser;
   reviewCount?: number;
 }) {
@@ -100,14 +98,6 @@ export default function Sidebar({
         ))}
       </nav>
       <div className="sidebar-bottom">
-        <Button
-          className="connect-apps-trigger"
-          onClick={onOpenBilling}
-          aria-haspopup="dialog"
-        >
-          <Wallet size={16} aria-hidden="true" />
-          <span>Billing &amp; Usage</span>
-        </Button>
         <Button
           type="button"
           className="connect-apps-trigger"

@@ -27,6 +27,26 @@ export function requestReservation(
     )
       usd = operation === "image.edit" ? 0.2 : 0.15;
   }
+  if (provider === "meta" && operation === "responses") {
+    // Standard-rate input and output USD per million tokens.
+    const rates: Record<string, [number, number]> = {
+      "muse-wonder-1.0": [4, 20],
+      "muse-spark-1.3": [1.25, 4.25],
+    };
+    const rate = rates[model];
+    if (rate)
+      usd =
+        0.005 +
+        (Buffer.byteLength(JSON.stringify(args), "utf8") * rate[0]) /
+          1_000_000 +
+        (number("max_output_tokens", 128000) * rate[1]) / 1_000_000;
+  }
+  if (
+    provider === "meta" &&
+    model === "muse-image-1.0" &&
+    ["image.generate", "image.edit"].includes(operation)
+  )
+    usd = 0.01 * Math.max(1, number("n", 1));
   if (provider === "elevenlabs") {
     if (
       ["eleven_v3", "eleven_multilingual_v2"].includes(model) &&

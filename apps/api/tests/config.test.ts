@@ -12,7 +12,8 @@ test("configuration has local defaults and accepts trimmed origins", () => {
       jwtSecret: secret,
       port: 3001,
       origins: ["http://127.0.0.1:5173", "http://localhost:5173"],
-      openai: null,
+      orca: null,
+      images: null,
     },
   );
   assert.deepEqual(
@@ -27,7 +28,8 @@ test("configuration has local defaults and accepts trimmed origins", () => {
       jwtSecret: secret,
       port: 4100,
       origins: ["https://app.example.com", "http://localhost:5173"],
-      openai: null,
+      orca: null,
+      images: null,
     },
   );
 });
@@ -82,19 +84,48 @@ test("database configuration is required", () => {
   );
 });
 
-test("the model provider is optional, but its key and model are set together", () => {
+test("models come from settings; a key only turns its model on", () => {
   const base = { DATABASE_URL: databaseUrl, JWT_SECRET: secret };
+  assert.equal(configFromEnv(base).orca, null);
+  assert.equal(configFromEnv(base).images, null);
+  // Keys for other providers change nothing.
+  assert.equal(
+    configFromEnv({ ...base, OPENAI_API_KEY: "sk", OPENAI_IMAGE_API_KEY: "img" })
+      .orca,
+    null,
+  );
+  const config = configFromEnv({ ...base, META_MODEL_API_KEY: "meta-test" });
+  assert.deepEqual(config.orca, {
+    provider: "meta",
+    model: "muse-spark-1.3",
+    apiKey: "meta-test",
+  });
+  assert.deepEqual(config.images, {
+    provider: "meta",
+    model: "muse-image-1.0",
+    apiKey: "meta-test",
+  });
+});
+
+test("a chosen model must be priced, and the OpenAI image key never falls back to the chat key", () => {
+  const env = {
+    DATABASE_URL: databaseUrl,
+    JWT_SECRET: secret,
+    OPENAI_API_KEY: "sk-chat",
+  };
   assert.deepEqual(
-    configFromEnv({ ...base, OPENAI_API_KEY: "sk-test", OPENAI_MODEL: "gpt-test" })
-      .openai,
-    { apiKey: "sk-test", model: "gpt-test" },
+    configFromEnv(env, { orca: { provider: "openai", model: "gpt-6-luna" } })
+      .orca,
+    { provider: "openai", model: "gpt-6-luna", apiKey: "sk-chat" },
+  );
+  assert.equal(
+    configFromEnv(env, {
+      images: { provider: "openai", model: "gpt-image-2.5-flare" },
+    }).images,
+    null,
   );
   assert.throws(
-    () => configFromEnv({ ...base, OPENAI_API_KEY: "sk-test" }),
-    /openai\.model: Set OPENAI_MODEL together with OPENAI_API_KEY/,
-  );
-  assert.throws(
-    () => configFromEnv({ ...base, OPENAI_MODEL: "gpt-test" }),
-    /openai\.apiKey: Set OPENAI_API_KEY together with OPENAI_MODEL/,
+    () => configFromEnv(env, { orca: { provider: "meta", model: "gpt-6-luna" } }),
+    /settings\.orca\.model must be muse-wonder-1\.0 or muse-spark-1\.3 for meta/,
   );
 });

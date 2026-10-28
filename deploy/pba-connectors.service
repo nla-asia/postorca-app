@@ -3,7 +3,7 @@ Description=PostOrca MCP connectors
 After=network.target
 
 [Service]
-User=nika
+User=__SERVICE_USER__
 WorkingDirectory=/opt/postorca/apps/connectors
 Environment=NODE_ENV=production
 ExecStart=/usr/bin/node /opt/postorca/apps/connectors/dist/src/index.js

@@ -14,6 +14,7 @@ import {
   recordPostResult,
 } from "../repositories/publications.js";
 import { platforms } from "../schemas/platforms.js";
+import { MAX_REPLY, replySchema } from "../schemas/social.js";
 import {
   describeFile,
   filePath,
@@ -138,6 +139,75 @@ export const artifactTools: Tool[] = [
         });
       }
       return createArtifact(db, taskId, turnId, artifact);
+    },
+  },
+  {
+    definition: {
+      name: "create_reply",
+      description:
+        "Deliver one draft reply to someone else's post as a card in the founder's Inbox: their post on top, the founder's reply under it, with buttons to open the post, reply, copy, follow (for connect) and mark it done. Create one per post, as soon as it is ready. intent connect means the founder will follow the author; conversation means joining the discussion. Put only the reply itself in text: no notes, alternatives or caveats (say those in your final message).",
+      parameters: object(
+        {
+          platform: { type: "string", enum: [...platforms] },
+          kind: {
+            type: "string",
+            enum: ["reply", "quote"],
+            description: "reply (default) or quote post.",
+          },
+          intent: { type: "string", enum: ["conversation", "connect"] },
+          target: object(
+            {
+              url: {
+                type: "string",
+                description:
+                  "Exact link of the post (or the reply in a thread) being answered.",
+              },
+              author: { type: "string", description: "Display name." },
+              handle: {
+                type: "string",
+                description: "Username without @, if the platform has one.",
+              },
+              text: {
+                type: "string",
+                description:
+                  "The post's text as shown, or its first lines (at most 1000 characters).",
+              },
+              posted_at: {
+                type: "string",
+                description:
+                  "When it was posted: ISO time if known, otherwise as shown (e.g. 2h).",
+              },
+              stats: {
+                type: "object",
+                description:
+                  "Numbers you saw on it, e.g. {replies: 12, likes: 40, views: 900, author_followers: 830}.",
+              },
+            },
+            ["url", "author"],
+          ),
+          text: {
+            type: "string",
+            description: `The reply, ready to paste (at most ${MAX_REPLY} characters; keep to the platform's limit).`,
+          },
+          why: {
+            type: "string",
+            description:
+              "One short line on why this one is worth it, shown in grey under their post.",
+          },
+        },
+        ["platform", "intent", "target", "text"],
+      ),
+    },
+    run: async ({ db, taskId, turnId }, args) => {
+      const reply = replySchema.parse(args);
+      const who = reply.target.handle
+        ? `@${reply.target.handle.replace(/^@/, "")}`
+        : reply.target.author;
+      return createArtifact(db, taskId, turnId, {
+        kind: "reply",
+        title: `${reply.intent === "connect" ? "Connect with" : "Reply to"} ${who}`,
+        content: JSON.stringify(reply),
+      });
     },
   },
   {

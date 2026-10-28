@@ -17,7 +17,9 @@ import {
   loadRates,
 } from "../src/api-usage/pricing.js";
 import { openAIUsage } from "../src/api-usage/openai.js";
+import { MetaProvider } from "../src/providers/meta.js";
 import { OpenAIProvider } from "../src/providers/openai.js";
+import { MetaImageProvider } from "../src/providers/meta-image.js";
 import { OpenAIImageProvider } from "../src/providers/openai-image.js";
 import { ElevenLabsProvider } from "../src/providers/elevenlabs.js";
 import type { Database } from "../src/db.js";
@@ -172,6 +174,43 @@ test("unknown model/missing meters/nondefault tiers remain unknown; long-context
   );
 });
 
+test("Meta Model API turns go to Meta and are priced from its rates", async (t) => {
+  const s = await scope();
+  const urls: string[] = [];
+  t.mock.method(globalThis, "fetch", async (url: unknown) => {
+    urls.push(String(url));
+    return Response.json({
+      ...result(),
+      model: "muse-spark-1.3",
+      usage: {
+        input_tokens: 1000,
+        input_tokens_details: { cached_tokens: 400 },
+        output_tokens: 200,
+        output_tokens_details: { reasoning_tokens: 50 },
+      },
+    });
+  });
+  await withApiUsage(s, () =>
+    new MetaProvider("test-key", "muse-spark-1.3").respond({
+      instructions: "Test",
+      messages: [],
+      tools: [],
+      signal: new AbortController().signal,
+    }),
+  );
+  assert.deepEqual(urls, ["https://api.meta.ai/v1/responses"]);
+  const {
+    rows: [row],
+  } = await s.db.query("SELECT * FROM api_requests WHERE turn_id=$1", [
+    s.turnId,
+  ]);
+  assert.equal(row.provider, "meta");
+  assert.equal(row.model, "muse-spark-1.3");
+  assert.equal(row.credit_state, "settled");
+  // 600 uncached at $1.25, 400 cached at $0.15 and 200 output at $4.25 per million.
+  assert.equal(row.estimated_cost, "0.001660000000");
+});
+
 test("SDK retries have separate rows; incomplete paid results retain usage", async (t) => {
   const s = await scope();
   let calls = 0;
@@ -323,6 +362,34 @@ test("image multipart uploads and ElevenLabs audio are accounted without consumi
   assert.equal(rows[2].estimated_cost, "0.010000000000");
   assert.equal(rows[2].usage_data.meters.billed_characters, 123);
   assert.ok(!JSON.stringify(rows).includes("PRIVATE"));
+});
+
+test("Muse Image is priced per generated image", async (t) => {
+  const s = await scope();
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aB9sAAAAASUVORK5CYII=",
+    "base64",
+  );
+  t.mock.method(globalThis, "fetch", async () =>
+    Response.json({
+      data: [{ b64_json: png.toString("base64") }],
+      usage: { input_tokens: 4000, output_tokens: 800, total_tokens: 4800 },
+    }),
+  );
+  await withApiUsage(s, () =>
+    new MetaImageProvider("test-key").generateImage({ prompt: "Studio" }),
+  );
+  const {
+    rows: [row],
+  } = await s.db.query("SELECT * FROM api_requests WHERE turn_id=$1", [
+    s.turnId,
+  ]);
+  assert.equal(row.provider, "meta");
+  assert.equal(row.model, "muse-image-1.0");
+  assert.equal(row.operation, "image.generate");
+  assert.equal(row.usage_data.meters.generated_images, 1);
+  assert.equal(row.estimated_cost, "0.010000000000");
+  assert.equal(row.credit_state, "settled");
 });
 
 test("database failure before dispatch prevents purchase; completion failure recovers without repeating the paid call", async (t) => {

@@ -14,7 +14,7 @@ import {
 import { dirname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
-import { configFromEnv } from "../config.js";
+import { configFromEnv, imagesFromEnv, orcaFromEnv } from "../config.js";
 import { createDatabase, type Database } from "../db.js";
 import { issueToken } from "../middleware/auth.js";
 import { catalogDrift } from "../plugins/catalog.js";
@@ -109,11 +109,12 @@ async function preflight(context: Context, needsModel: boolean) {
       `Apply the current catalog before evaluating: ${drift.join("; ")}`,
     );
   if (needsModel) {
-    if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_MODEL)
+    const orca = orcaFromEnv(process.env);
+    if (!orca)
       throw new Error("The agent model is not configured.");
-    if (!process.env.OPENAI_IMAGE_API_KEY || !process.env.ELEVENLABS_API_KEY)
+    if (!imagesFromEnv(process.env) || !process.env.ELEVENLABS_API_KEY)
       throw new Error(
-        "Set both media provider credentials before running paid cases.",
+        "Set the image model's key and ELEVENLABS_API_KEY before running paid cases.",
       );
     const active = await context.db.query(
       "SELECT 1 FROM turns WHERE status IN ('queued','running') LIMIT 1",
@@ -651,7 +652,7 @@ export async function main(args = process.argv.slice(2)) {
       caseId: entry!.id,
       name: entry!.name,
       entry,
-      model: process.env.OPENAI_MODEL,
+      model: orcaFromEnv(process.env)?.model,
       platform: process.platform,
       started: new Date().toISOString(),
       taskId: existingTask,

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
-  metadataBase: new URL("https://postorca.app"),
+  metadataBase: new URL("https://orca.atpa.site"),
   title: "PostOrca — Your personal brand, with a partner",
   description:
     "Meet Orca, your personal brand agent. Find ideas, draft in your own voice, and build a consistent presence while you keep building your startup.",
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     description:
       "Meet Orca, your personal brand agent. Find ideas, draft in your own voice, and build a consistent presence while you keep building your startup.",
     type: "website",
-    url: "https://postorca.app",
+    url: "https://orca.atpa.site",
   },
 };
 export default function RootLayout({

@@ -16,6 +16,7 @@ repo="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo"
 
 gh auth status >/dev/null 2>&1 || { echo "Sign in to GitHub first: gh auth login --web" >&2; exit 1; }
+. scripts/deploy-config.sh
 git fetch --quiet --tags origin
 if git rev-parse --quiet --verify "refs/tags/$tag" >/dev/null; then
   echo "$tag already exists." >&2
@@ -38,7 +39,7 @@ npm run check
 npm test
 
 echo "Building the macOS desktop app..."
-npm run desktop:package:gcp
+npm run desktop:package:prod
 dmg="apps/desktop/release/PostOrca-$version-arm64.dmg"
 zip="apps/desktop/release/PostOrca-$version-arm64-mac.zip"
 [[ -f "$dmg" && -f "$zip" ]] || { echo "Desktop build output is missing." >&2; exit 1; }
