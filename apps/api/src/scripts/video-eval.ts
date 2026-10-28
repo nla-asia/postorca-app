@@ -14,7 +14,7 @@ import {
 import { dirname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
-import { configFromEnv, orcaFromEnv } from "../config.js";
+import { configFromEnv, imagesFromEnv, orcaFromEnv } from "../config.js";
 import { createDatabase, type Database } from "../db.js";
 import { issueToken } from "../middleware/auth.js";
 import { catalogDrift } from "../plugins/catalog.js";
@@ -110,14 +110,11 @@ async function preflight(context: Context, needsModel: boolean) {
     );
   if (needsModel) {
     const orca = orcaFromEnv(process.env);
-    if (!orca?.apiKey || !orca.model)
+    if (!orca)
       throw new Error("The agent model is not configured.");
-    if (
-      !(process.env.META_MODEL_API_KEY || process.env.OPENAI_IMAGE_API_KEY) ||
-      !process.env.ELEVENLABS_API_KEY
-    )
+    if (!imagesFromEnv(process.env) || !process.env.ELEVENLABS_API_KEY)
       throw new Error(
-        "Set both media provider credentials before running paid cases.",
+        "Choose an image model (IMAGE_PROVIDER, IMAGE_MODEL) and set ELEVENLABS_API_KEY before running paid cases.",
       );
     const active = await context.db.query(
       "SELECT 1 FROM turns WHERE status IN ('queued','running') LIMIT 1",

@@ -49,7 +49,10 @@ export function decodeImageResponse(
 export class OpenAIImageProvider {
   readonly supportsMask = true;
   #client: OpenAI;
-  constructor(key: string) {
+  constructor(
+    key: string,
+    private model: string = DEFAULT_IMAGE_MODEL,
+  ) {
     if (!key.trim()) throw new Error("OPENAI_IMAGE_API_KEY is required.");
     this.#client = new OpenAI({
       apiKey: key.trim(),
@@ -64,7 +67,7 @@ export class OpenAIImageProvider {
     const response = await this.#client.images.generate(
       {
         ...args,
-        model: DEFAULT_IMAGE_MODEL,
+        model: this.model,
         n: 1,
         size: args.size ?? "1024x1024",
         quality: args.quality ?? "medium",
@@ -89,7 +92,7 @@ export class OpenAIImageProvider {
       await this.#client.images.edit(
         {
           ...args,
-          model: DEFAULT_IMAGE_MODEL,
+          model: this.model,
           n: 1,
           image: imageFile,
           mask: maskFile,
@@ -104,7 +107,3 @@ export class OpenAIImageProvider {
   }
 }
 
-export function createOpenAIImageProviderFromEnv() {
-  const key = process.env.OPENAI_IMAGE_API_KEY?.trim();
-  return key ? new OpenAIImageProvider(key) : null;
-}

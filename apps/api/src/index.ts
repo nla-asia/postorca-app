@@ -29,8 +29,14 @@ const agent = orca ? createAgent(db, orcaProvider(orca)) : null;
 if (orca) console.log(`Orca runs on ${orca.provider} (${orca.model}).`);
 else
   console.warn(
-    "Orca is off: set META_MODEL_API_KEY and META_MODEL (or OPENAI_API_KEY and OPENAI_MODEL) to run Agent chat, work and routines.",
+    "Orca is off: set ORCA_PROVIDER, ORCA_MODEL and that provider's key to run Agent chat, work and routines.",
   );
+if (config.images)
+  console.log(
+    `Images use ${config.images.provider} (${config.images.model}).`,
+  );
+else
+  console.warn("Image generation is off: set IMAGE_PROVIDER and IMAGE_MODEL.");
 // Routines run only when Orca can execute them; otherwise they stay due and run
 // once on the first tick after a model is configured.
 const scheduler = agent ? new Scheduler(db, agent) : null;

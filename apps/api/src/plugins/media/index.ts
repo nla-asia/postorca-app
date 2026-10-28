@@ -27,11 +27,19 @@ import type {
 const text = z.string().trim().min(1);
 const title = text.max(200);
 function imageProvider() {
-  const provider = createImageProviderFromEnv();
+  let provider;
+  try {
+    provider = createImageProviderFromEnv();
+  } catch (error) {
+    throw new HttpError(
+      503,
+      `Image generation is misconfigured on the server. ${(error as Error).message}`,
+    );
+  }
   if (!provider)
     throw new HttpError(
       503,
-      "Image generation is unavailable. Set META_MODEL_API_KEY or OPENAI_IMAGE_API_KEY on the server.",
+      "Image generation is off. Set IMAGE_PROVIDER and IMAGE_MODEL on the server.",
     );
   return provider;
 }

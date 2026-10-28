@@ -1,8 +1,9 @@
 import OpenAI from "openai";
 import { usageFetch } from "../api-usage/ledger.js";
 import { META_BASE_URL } from "./meta.js";
+import { imagesFromEnv } from "../config.js";
 import {
-  createOpenAIImageProviderFromEnv,
+  OpenAIImageProvider,
   decodeImageResponse,
   imageOptionsSchema,
   imageUpload,
@@ -18,7 +19,10 @@ export const META_IMAGE_MODEL = "muse-image-1.0";
 export class MetaImageProvider {
   readonly supportsMask = false;
   #client: OpenAI;
-  constructor(key: string) {
+  constructor(
+    key: string,
+    private model: string = META_IMAGE_MODEL,
+  ) {
     if (!key.trim()) throw new Error("META_MODEL_API_KEY is required.");
     this.#client = new OpenAI({
       apiKey: key.trim(),
@@ -33,7 +37,7 @@ export class MetaImageProvider {
     const { quality, ...args } = imageOptionsSchema.strict().parse(input);
     const request = {
       ...args,
-      model: META_IMAGE_MODEL,
+      model: this.model,
       n: 1,
       size: args.size ?? "1024x1024",
       output_format: "png" as const,
@@ -58,7 +62,7 @@ export class MetaImageProvider {
       .parse(inputOptions);
     const request = {
       ...args,
-      model: META_IMAGE_MODEL,
+      model: this.model,
       n: 1,
       image: await imageUpload(image),
       output_format: "png" as const,
@@ -71,11 +75,12 @@ export class MetaImageProvider {
   }
 }
 
-/** Muse Image when Meta is configured, unless IMAGE_PROVIDER=openai; otherwise the
- * OpenAI image model when its own key is set. */
-export function createImageProviderFromEnv() {
-  const meta = process.env.META_MODEL_API_KEY?.trim();
-  if (meta && process.env.IMAGE_PROVIDER !== "openai")
-    return new MetaImageProvider(meta);
-  return createOpenAIImageProviderFromEnv();
+/** The image provider chosen with IMAGE_PROVIDER and IMAGE_MODEL, or null when image
+ * generation is off. Read on each call so a changed environment takes effect. */
+export function createImageProviderFromEnv(env: NodeJS.ProcessEnv = process.env) {
+  const images = imagesFromEnv(env);
+  if (!images) return null;
+  return images.provider === "meta"
+    ? new MetaImageProvider(images.apiKey, images.model)
+    : new OpenAIImageProvider(images.apiKey, images.model);
 }

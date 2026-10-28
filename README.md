@@ -42,7 +42,7 @@ npm install
 cp apps/api/.env.example apps/api/.env
 ```
 
-In `apps/api/.env`, set `JWT_SECRET` to a random string of at least 32 characters and add `META_MODEL_API_KEY` and `META_MODEL` (for example `muse-spark-1.3`) to turn Orca on with Meta Model API. `OPENAI_API_KEY` and `OPENAI_MODEL` work too; when both are set, `ORCA_PROVIDER=openai` picks OpenAI. Images are made with Meta's Muse Image when `META_MODEL_API_KEY` is set (`IMAGE_PROVIDER=openai` with `OPENAI_IMAGE_API_KEY` uses OpenAI instead), and `ELEVENLABS_API_KEY` adds audio.
+In `apps/api/.env`, set `JWT_SECRET` to a random string of at least 32 characters, then choose Orca's model with `ORCA_PROVIDER` and `ORCA_MODEL` and the image model with `IMAGE_PROVIDER` and `IMAGE_MODEL` (for example `meta` with `muse-spark-1.3` and `muse-image-1.0`), and add that provider's key (`META_MODEL_API_KEY` for Meta). Keys never choose a model; the API refuses to start if a chosen model has no price or its key is missing. `ELEVENLABS_API_KEY` adds audio.
 
 Then start each of these in its own terminal:
 

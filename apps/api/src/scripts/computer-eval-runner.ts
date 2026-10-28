@@ -258,7 +258,7 @@ export async function runComputerEval<Id extends string>(
   const caseId = selected as ComputerCaseId;
   assertGate(state, caseId, runtime.key);
   const orca = orcaFromEnv(process.env);
-  if (!orca?.apiKey || !orca.model)
+  if (!orca)
     throw new Error("Configure the existing internal-agent model/key first.");
   if (process.platform !== suite.platform)
     throw new Error(
