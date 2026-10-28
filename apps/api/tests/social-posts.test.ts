@@ -207,7 +207,8 @@ test("save_my_post saves one post by its link, updates by id, and delete_my_post
     { id: first.id, updated: true },
   );
   saved = await row(first.id);
-  assert.deepEqual(saved.stats, { likes: 12 });
+  // Stats by id merge: the other counts stay.
+  assert.deepEqual(saved.stats, { likes: 12, views: 400 });
   assert.equal(saved.text, "Shipping the boring parts today. (edited)");
   assert.equal(saved.media_description, "A settings page, dark mode.");
   await assert.rejects(

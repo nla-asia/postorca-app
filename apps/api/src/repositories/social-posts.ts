@@ -269,7 +269,7 @@ export async function savePost(
 
 /**
  * Updates one saved post by its id: only the fields given change (a new text is
- * capped again, new stats are stamped). Returns null when the founder has no such post.
+ * capped again; stats given are merged into the saved ones and stamped). Returns null when the founder has no such post.
  */
 export async function updatePost(
   db: Queryable,
@@ -306,7 +306,8 @@ export async function updatePost(
        media_description = coalesce($12, media_description),
        reply_to_url = coalesce($13, reply_to_url),
        posted_at = coalesce($14, posted_at),
-       stats = coalesce($15::jsonb, stats),
+       -- The counts given replace those keys; the others stay.
+       stats = stats || coalesce($15::jsonb, '{}'::jsonb),
        stats_checked_at = CASE WHEN $15::jsonb IS NOT NULL THEN now() ELSE stats_checked_at END,
        updated_at = now()
      WHERE id = $1 AND user_id = $2 RETURNING id`,
