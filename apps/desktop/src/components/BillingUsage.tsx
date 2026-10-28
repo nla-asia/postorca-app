@@ -187,13 +187,16 @@ export default function BillingUsage() {
           !["checkout.stripe.com", "billing.stripe.com"].includes(url.hostname)
         )
           throw new Error("The server returned an invalid payment URL.");
-        setPaymentUrl(url.href);
-        if (data)
+        // The portal is for invoices and payment methods too; its changes
+        // show up through the regular refresh, so only checkouts wait.
+        if (action !== "portal" && data) {
+          setPaymentUrl(url.href);
           setWaiting({
             action,
             baseline: baselineOf(data),
             until: Date.now() + WATCH_FOR_MS,
           });
+        }
         window.open(url.href, "_blank", "noopener,noreferrer");
       } catch (failure) {
         setActionError(
@@ -282,15 +285,10 @@ export default function BillingUsage() {
             className="billing-refreshing"
           />
           <div>
-            <strong>
-              {waiting.action === "portal"
-                ? "Watching for changes in Stripe…"
-                : "Waiting for your payment…"}
-            </strong>
+            <strong>Waiting for your payment…</strong>
             <p>
-              {waiting.action === "portal"
-                ? "Changes you make in your browser show up here on their own."
-                : "Finish checkout in your browser. This updates on its own a few seconds after Stripe confirms."}{" "}
+              Finish checkout in your browser. This updates on its own a few
+              seconds after Stripe confirms.{" "}
               {paymentUrl && (
                 <a href={paymentUrl} target="_blank" rel="noopener noreferrer">
                   Open Stripe again
