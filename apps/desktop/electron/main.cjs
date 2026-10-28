@@ -113,6 +113,7 @@ ipcMain.handle("session:set", (event, value) => {
       apiUrl: value.apiUrl,
     });
     desktop?.setSession(session);
+    BrowserWindow.fromWebContents(event.sender)?.maximize();
     askForWorkingFolder(BrowserWindow.fromWebContents(event.sender));
   }
 });
@@ -235,6 +236,8 @@ function createWindow() {
       preload: path.join(__dirname, "preload.cjs"),
     },
   });
+
+  if (session) window.maximize();
 
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//.test(url)) void shell.openExternal(url);
