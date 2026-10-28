@@ -1,24 +1,35 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowUpRight,
+  CircleCheck,
   Clock3,
+  Megaphone,
   RefreshCw,
   Sparkles,
   Wallet,
 } from "lucide-react";
 import { api } from "../lib/api";
-import { Button } from "./ui";
+import {
+  baselineOf,
+  paymentLanded,
+  type Baseline,
+  type BillingAction,
+} from "../lib/billing";
+import { Button, Modal } from "./ui";
 import "./BillingUsage.css";
 
+type PlanId = "builder" | "influencer";
+type PackageId = PlanId | "extra";
 type Billing = {
-  configured: boolean;
-  extraConfigured: boolean;
+  available: Record<PackageId, boolean>;
   hasCustomer: boolean;
   status: string;
+  plan: PlanId | null;
   packages: Record<
-    "membership" | "extra",
+    PackageId,
     { name: string; amount: number; credits: number }
   >;
+  creditTerms: { usdPerCredit: string };
   welcomeCredits: number;
   credits: {
     balance: number;
@@ -64,6 +75,21 @@ const statusLabels: Record<string, string> = {
   paused: "Subscription paused",
 };
 const paymentNeedsAttention = new Set(["past_due", "unpaid", "incomplete"]);
+const plans: { id: PlanId; icon: typeof Sparkles; pitch: string }[] = [
+  {
+    id: "builder",
+    icon: Sparkles,
+    pitch: "For building your brand with Orca every week.",
+  },
+  {
+    id: "influencer",
+    icon: Megaphone,
+    pitch: "For daily content across every account.",
+  },
+];
+/** While Stripe is open, check often: its webhook lands seconds after payment. */
+const WATCH_MS = 3000;
+const WATCH_FOR_MS = 10 * 60 * 1000;
 
 export default function BillingUsage() {
   const [data, setData] = useState<Billing | null>(null);
@@ -74,6 +100,14 @@ export default function BillingUsage() {
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [reload, setReload] = useState(0);
+  const [switchTo, setSwitchTo] = useState<PlanId | null>(null);
+  const [waiting, setWaiting] = useState<{
+    action: BillingAction;
+    baseline: Baseline;
+    until: number;
+  } | null>(null);
+  const [confirmed, setConfirmed] = useState("");
+  const watching = waiting !== null;
   useEffect(() => {
     let active = true,
       inFlight = false;
@@ -106,57 +140,96 @@ export default function BillingUsage() {
       }
     };
     void load();
+    // The browser covering this window makes it "hidden", so keep checking while
+    // a payment is pending.
     const refresh = () => {
-      if (document.visibilityState === "visible") void load();
+      if (watching || document.visibilityState === "visible") void load();
     };
     window.addEventListener("focus", refresh);
-    const timer = window.setInterval(refresh, 15000);
+    const timer = window.setInterval(refresh, watching ? WATCH_MS : 15000);
     return () => {
       active = false;
       controller.abort();
       window.removeEventListener("focus", refresh);
       window.clearInterval(timer);
     };
-  }, [reload]);
-  const start = useCallback(
-    async (action: "membership" | "extra" | "portal") => {
-      setBusy(action);
-      setActionError("");
+  }, [reload, watching]);
+  useEffect(() => {
+    if (!waiting || !data) return;
+    const landed = paymentLanded(waiting.action, waiting.baseline, data);
+    if (landed) {
+      setConfirmed(landed);
       setPaymentUrl(null);
-      try {
-        const result = await api<{ url: string }>(
-          action === "portal" ? "/billing/portal" : "/billing/checkout",
-          {
-            method: "POST",
-            body: JSON.stringify(
-              action === "portal" ? {} : { packageId: action },
-            ),
-          },
-        );
-        const url = new URL(result.url);
-        if (
-          url.protocol !== "https:" ||
-          url.username ||
-          url.password ||
-          !["checkout.stripe.com", "billing.stripe.com"].includes(url.hostname)
-        )
-          throw new Error("The server returned an invalid payment URL.");
-        setPaymentUrl(url.href);
-        window.open(url.href, "_blank", "noopener,noreferrer");
-      } catch (failure) {
-        setActionError(
-          failure instanceof Error
-            ? failure.message
-            : "Unable to open billing.",
-        );
-      } finally {
-        setBusy(null);
-      }
-    },
-    [],
-  );
+      setWaiting(null);
+    } else if (Date.now() > waiting.until) setWaiting(null);
+  }, [data, waiting]);
+  const start = useCallback(async (action: BillingAction) => {
+    setBusy(action);
+    setActionError("");
+    setConfirmed("");
+    setPaymentUrl(null);
+    try {
+      const result = await api<{ url: string }>(
+        action === "portal" ? "/billing/portal" : "/billing/checkout",
+        {
+          method: "POST",
+          body: JSON.stringify(
+            action === "portal" ? {} : { packageId: action },
+          ),
+        },
+      );
+      const url = new URL(result.url);
+      if (
+        url.protocol !== "https:" ||
+        url.username ||
+        url.password ||
+        !["checkout.stripe.com", "billing.stripe.com"].includes(url.hostname)
+      )
+        throw new Error("The server returned an invalid payment URL.");
+      setPaymentUrl(url.href);
+      if (data)
+        setWaiting({
+          action,
+          baseline: baselineOf(data),
+          until: Date.now() + WATCH_FOR_MS,
+        });
+      window.open(url.href, "_blank", "noopener,noreferrer");
+    } catch (failure) {
+      setActionError(
+        failure instanceof Error ? failure.message : "Unable to open billing.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }, [data]);
+  const changePlan = useCallback(async (plan: PlanId) => {
+    setBusy(plan);
+    setActionError("");
+    try {
+      await api("/billing/plan", {
+        method: "POST",
+        body: JSON.stringify({ plan }),
+      });
+      setSwitchTo(null);
+      setReload((value) => value + 1);
+    } catch (failure) {
+      setSwitchTo(null);
+      setActionError(
+        failure instanceof Error ? failure.message : "Unable to change plans.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }, []);
   const rows = data?.credits.entries ?? [];
   const hasSubscription = data ? managed.has(data.status) : false;
+  const canSwitch =
+    hasSubscription && ["active", "trialing"].includes(data?.status ?? "");
+  const target = switchTo && data ? data.packages[switchTo] : null;
+  const upgrading =
+    data && switchTo && data.plan
+      ? data.packages[switchTo].amount > data.packages[data.plan].amount
+      : false;
   return (
     <section className="billing-panel" aria-labelledby="billing-heading">
       <div className="billing-heading-row">
@@ -191,6 +264,51 @@ export default function BillingUsage() {
         <div role="alert" className="billing-notice">
           {actionError}
         </div>
+      )}
+      {waiting ? (
+        <div className="billing-notice billing-waiting" role="status">
+          <RefreshCw size={14} aria-hidden="true" className="billing-refreshing" />
+          <div>
+            <strong>
+              {waiting.action === "portal"
+                ? "Watching for changes in Stripe…"
+                : "Waiting for your payment…"}
+            </strong>
+            <p>
+              {waiting.action === "portal"
+                ? "Changes you make in your browser show up here on their own."
+                : "Finish checkout in your browser. This updates on its own a few seconds after Stripe confirms."}{" "}
+              {paymentUrl && (
+                <a href={paymentUrl} target="_blank" rel="noopener noreferrer">
+                  Open Stripe again
+                </a>
+              )}
+            </p>
+          </div>
+          <Button variant="ghost" onClick={() => setWaiting(null)}>
+            Stop
+          </Button>
+        </div>
+      ) : confirmed ? (
+        <div className="billing-notice billing-confirmed" role="status">
+          <CircleCheck size={16} aria-hidden="true" />
+          <div>
+            <strong>{confirmed}</strong>
+          </div>
+          <Button variant="ghost" onClick={() => setConfirmed("")}>
+            Dismiss
+          </Button>
+        </div>
+      ) : (
+        paymentUrl && (
+          <div className="billing-notice" role="status">
+            Finished in your browser? Your balance updates here once Stripe
+            confirms; use Refresh to check now.{" "}
+            <a href={paymentUrl} target="_blank" rel="noopener noreferrer">
+              Open Stripe again
+            </a>
+          </div>
+        )
       )}
       {!data && !loadError && (
         <p role="status" className="billing-loading">
@@ -234,40 +352,64 @@ export default function BillingUsage() {
             </p>
           )}
           <div className="billing-plans">
-            <div className="billing-plan billing-plan-membership">
-              <div className="billing-plan-title">
-                <Sparkles size={16} aria-hidden="true" />
-                <h5>{data.packages.membership.name}</h5>
-              </div>
-              <p className="billing-plan-price">
-                {price(data.packages.membership.amount)}
-                <span>USD / month</span>
-              </p>
-              <p className="billing-plan-allowance">
-                {creditCount(data.packages.membership.credits)} credits each
-                paid month
-              </p>
-              <p>For ongoing ideas, content, and work with Orca.</p>
-              {hasSubscription ? (
-                <Button
-                  variant="primary"
-                  disabled={!data.hasCustomer || busy !== null}
-                  onClick={() => void start("portal")}
+            {plans.map(({ id, icon: Icon, pitch }) => {
+              const offer = data.packages[id],
+                current = hasSubscription && data.plan === id;
+              return (
+                <div
+                  key={id}
+                  className={`billing-plan ${current ? "billing-plan-current" : ""}`}
                 >
-                  {busy === "portal" ? "Opening…" : "Manage subscription"}
-                  <ArrowUpRight size={14} aria-hidden="true" />
-                </Button>
-              ) : (
-                <Button
-                  variant="primary"
-                  disabled={!data.configured || busy !== null}
-                  onClick={() => void start("membership")}
-                >
-                  {busy === "membership" ? "Opening…" : "Subscribe"}
-                  <ArrowUpRight size={14} aria-hidden="true" />
-                </Button>
-              )}
-            </div>
+                  <div className="billing-plan-title">
+                    <Icon size={16} aria-hidden="true" />
+                    <h5>{offer.name}</h5>
+                    {current && (
+                      <span className="billing-plan-badge">Your plan</span>
+                    )}
+                  </div>
+                  <p className="billing-plan-price">
+                    {price(offer.amount)}
+                    <span>USD / month</span>
+                  </p>
+                  <p className="billing-plan-allowance">
+                    {creditCount(offer.credits)} credits each paid month
+                  </p>
+                  <p className="billing-plan-pitch">{pitch}</p>
+                  {current ? (
+                    <Button
+                      variant="primary"
+                      disabled={!data.hasCustomer || busy !== null}
+                      onClick={() => void start("portal")}
+                    >
+                      {busy === "portal" ? "Opening…" : "Manage subscription"}
+                      <ArrowUpRight size={14} aria-hidden="true" />
+                    </Button>
+                  ) : hasSubscription ? (
+                    <Button
+                      variant="primary"
+                      disabled={
+                        !canSwitch || !data.available[id] || busy !== null
+                      }
+                      onClick={() => setSwitchTo(id)}
+                    >
+                      {data.plan &&
+                      offer.amount > data.packages[data.plan].amount
+                        ? `Upgrade to ${offer.name}`
+                        : `Switch to ${offer.name}`}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      disabled={!data.available[id] || busy !== null}
+                      onClick={() => void start(id)}
+                    >
+                      {busy === id ? "Opening…" : "Subscribe"}
+                      <ArrowUpRight size={14} aria-hidden="true" />
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
             <div className="billing-plan">
               <div className="billing-plan-title">
                 <Wallet size={16} aria-hidden="true" />
@@ -280,9 +422,11 @@ export default function BillingUsage() {
               <p className="billing-plan-allowance">
                 {creditCount(data.packages.extra.credits)} additional credits
               </p>
-              <p>Top up whenever you need a little more room.</p>
+              <p className="billing-plan-pitch">
+                Top up whenever you need a little more room.
+              </p>
               <Button
-                disabled={!data.extraConfigured || busy !== null}
+                disabled={!data.available.extra || busy !== null}
                 onClick={() => void start("extra")}
               >
                 {busy === "extra" ? "Opening…" : "Add credits"}
@@ -291,9 +435,11 @@ export default function BillingUsage() {
             </div>
           </div>
           <p className="billing-footnote">
-            New accounts receive {creditCount(data.welcomeCredits)} welcome
-            credits once.{" "}
-            {data.configured || data.extraConfigured
+            One credit covers ${data.creditTerms.usdPerCredit} of AI usage. Each
+            Orca reply is charged what it really cost, rounded up to a whole
+            credit. New accounts receive {creditCount(data.welcomeCredits)}{" "}
+            welcome credits once.{" "}
+            {Object.values(data.available).some(Boolean)
               ? "Payments currently use Stripe test mode."
               : "Payments are not available yet."}
           </p>
@@ -307,15 +453,38 @@ export default function BillingUsage() {
               <ArrowUpRight size={14} aria-hidden="true" />
             </Button>
           )}
-          {paymentUrl && (
-            <div className="billing-notice" role="status">
-              Finish in your browser, then return here. Your balance refreshes
-              automatically.{" "}
-              <a href={paymentUrl} target="_blank" rel="noopener noreferrer">
-                Open Stripe again
-              </a>
+          <Modal
+            open={target !== null}
+            onOpenChange={(open) => !open && busy === null && setSwitchTo(null)}
+            title={target ? `Switch to ${target.name}?` : ""}
+            description={
+              target
+                ? upgrading
+                  ? `Your card is charged ${price(target.amount)} now and a new monthly period starts today with ${creditCount(target.credits)} credits. Credits you already have stay.`
+                  : `Your current plan continues until your next renewal. Then you pay ${price(target.amount)} a month for ${creditCount(target.credits)} credits. Credits you already have stay.`
+                : undefined
+            }
+          >
+            <div className="billing-confirm-actions">
+              <Button
+                disabled={busy !== null}
+                onClick={() => setSwitchTo(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                disabled={busy !== null}
+                onClick={() => switchTo && void changePlan(switchTo)}
+              >
+                {busy
+                  ? "Switching…"
+                  : upgrading && target
+                    ? `Pay ${price(target.amount)} and upgrade`
+                    : "Switch at renewal"}
+              </Button>
             </div>
-          )}
+          </Modal>
           <div className="billing-activity-heading">
             <h4>Credit activity</h4>
             <span>Grants, usage, and pending requests</span>

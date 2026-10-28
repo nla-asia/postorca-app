@@ -12,7 +12,10 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Mark } from "../components/brand";
+import { Pricing } from "../components/pricing";
 import { ProductDemo } from "../components/product-demo";
+import { creditTerms } from "../../api/src/billing/terms";
+import { settings } from "../../api/src/settings";
 
 const questions = [
   [
@@ -36,8 +39,12 @@ const questions = [
     "The first API connectors are Gmail and Google Drive. Browser tools also help Orca research relevant sites using your signed-in browser. Each connection requires your authorization; adding a link to your profile does not grant access.",
   ],
   [
+    "How do credits work?",
+    `Every account starts with ${settings.welcomeCredits} free credits. One credit covers $${creditTerms.usdPerCredit} of AI usage, and each reply from Orca is charged what it actually cost, rounded up to a whole credit. Plans add credits every month, and unused credits roll over.`,
+  ],
+  [
     "When can I download it?",
-    "The macOS release is being prepared. A download will be available here when it's ready. Pricing and support for other platforms have not been announced.",
+    "The macOS release is being prepared. A download will be available here when it's ready. Support for other platforms has not been announced.",
   ],
 ];
 export default function Home() {
@@ -58,6 +65,7 @@ export default function Home() {
         <nav aria-label="Main navigation">
           <a href="#product">The app</a>
           <a href="#how-it-works">How it works</a>
+          <a href="#pricing">Pricing</a>
           <a href="#questions">Questions</a>
         </nav>
         <a className="button button-small button-dark" href="#download">
@@ -328,6 +336,7 @@ export default function Home() {
             </p>
           </div>
         </section>
+        <Pricing />
         <section
           className="faq-section section-shell"
           id="questions"
@@ -386,9 +395,10 @@ export default function Home() {
         <span>Personal Brand Agent</span>
         <nav aria-label="Footer">
           <a href="#product">The app</a>
+          <a href="#pricing">Pricing</a>
           <a href="#questions">Questions</a>
-          <a href="/privacy">Privacy</a>
-          <a href="/developers/browser-bridge">For developers</a>
+          <a href="/privacy/">Privacy</a>
+          <a href="/developers/browser-bridge/">For developers</a>
           <a href="/">
             orca.atpa.site
             <ArrowUpRight size={12} />

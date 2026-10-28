@@ -84,7 +84,12 @@ export function postIdFromUrl(platform: string, url: string) {
         match(/\/(?:p|reels?|tv)\/([\w-]+)/) ?? match(/\/stories\/[^/]+\/(\d+)/)
       );
     case "LinkedIn":
+      // A comment's link names its post too; the comment's own ID comes first.
       return (
+        decodeURIComponent(parsed.search).match(
+          /urn:li:comment:\([^,]+,(\d+)\)/,
+        )?.[1] ??
+        match(/urn:li:comment:\([^,]+,(\d+)\)/) ??
         match(/urn:li:(?:activity|share|ugcPost):(\d+)/) ??
         match(/-activity-(\d+)/)
       );
@@ -100,14 +105,16 @@ export function postIdFromUrl(platform: string, url: string) {
 }
 
 /**
- * When a post was published, read from its ID where the platform encodes it: X IDs
- * carry the creation time in milliseconds (bits 22 and up). Null elsewhere.
+ * When a post was published, read from its ID where the platform encodes it: X and
+ * LinkedIn IDs carry the creation time in milliseconds in bits 22 and up (X counts
+ * from its own epoch, LinkedIn from 1970). Null elsewhere.
  */
+const ID_EPOCH: Record<string, bigint> = { X: 1288834974657n, LinkedIn: 0n };
 export function postedAtFromId(platform: string, postId: string | null) {
-  if (platform !== "X" || !postId || !/^\d{15,20}$/.test(postId)) return null;
-  return new Date(
-    Number((BigInt(postId) >> 22n) + 1288834974657n),
-  ).toISOString();
+  const epoch = ID_EPOCH[platform];
+  if (epoch === undefined || !postId || !/^\d{15,20}$/.test(postId))
+    return null;
+  return new Date(Number((BigInt(postId) >> 22n) + epoch)).toISOString();
 }
 
 /** The text as stored: capped, with whether it was cut and its full length. */

@@ -28,7 +28,7 @@ export default function BrowserBridgeGuide() {
       <a className="skip-link" href="#main">Skip to content</a>
       <header className="site-header">
         <a href="/" className="wordmark" aria-label="PostOrca home"><Mark /><span>PostOrca</span></a>
-        <nav aria-label="Main navigation"><a href="/">Home</a><a href="/privacy">Privacy</a></nav>
+        <nav aria-label="Main navigation"><a href="/">Home</a><a href="/privacy/">Privacy</a></nav>
       </header>
       <main id="main" className="privacy-page bridge-guide">
         <p className="privacy-eyebrow">For agent and desktop software developers</p>
@@ -85,13 +85,13 @@ postorca-browser-bridge start --extension-id YOUR_EXTENSION_ID`}</code></pre>
         <section aria-labelledby="responsibilities">
           <h2 id="responsibilities">Data handling and user control</h2>
           <p>Your companion can receive sensitive page content, screenshots, network events, and data from signed-in websites, and can take actions in bridge-created tabs. Explain these capabilities to users before starting tasks. Provide your own authorization controls, privacy policy, retention and deletion process, and any disclosures about remote servers or AI providers.</p>
-          <p>The example itself does not upload browser data. PostOrca&apos;s own desktop integration can send task results to the PostOrca service and its AI provider. See the <a href="/privacy">extension privacy policy</a>. Users can close tabs, cancel Chrome&apos;s debugger attachment, disable the extension, or stop the companion. Do not represent a browser profile as isolated from its existing accounts: bridge tabs use that profile&apos;s signed-in sessions.</p>
+          <p>The example itself does not upload browser data. PostOrca&apos;s own desktop integration can send task results to the PostOrca service and its AI provider. See the <a href="/privacy/">extension privacy policy</a>. Users can close tabs, cancel Chrome&apos;s debugger attachment, disable the extension, or stop the companion. Do not represent a browser profile as isolated from its existing accounts: bridge tabs use that profile&apos;s signed-in sessions.</p>
           <p>Questions or integration feedback: <a href="mailto:nla@autopilotstartup.com">nla@autopilotstartup.com</a>.</p>
         </section>
       </main>
       <footer className="site-footer">
         <a className="wordmark" href="/"><Mark /><span>PostOrca</span></a>
-        <nav aria-label="Footer"><a href="/">Home</a><a href="/privacy">Privacy</a></nav>
+        <nav aria-label="Footer"><a href="/">Home</a><a href="/privacy/">Privacy</a></nav>
         <span className="copyright">© {new Date().getFullYear()} PostOrca</span>
       </footer>
     </>

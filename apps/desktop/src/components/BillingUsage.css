@@ -85,7 +85,7 @@
 }
 .billing-plans {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-top: 16px;
 }
@@ -97,8 +97,20 @@
   flex-direction: column;
   align-items: flex-start;
 }
-.billing-plan-membership {
-  border-color: var(--strong-line);
+.billing-plan-current {
+  border-color: var(--accent);
+}
+.billing-plan-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--accent);
+}
+.billing-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
 }
 .billing-plan-title {
   display: flex;
@@ -136,10 +148,13 @@
   font-weight: 500;
   margin-bottom: 5px;
 }
+.billing-plan .billing-plan-pitch {
+  flex: 1;
+  margin-bottom: 18px;
+}
 .billing-plan .button {
   width: 100%;
   justify-content: center;
-  margin-top: 18px;
   font-size: 11px;
   padding: 9px 7px;
 }
@@ -157,6 +172,30 @@
   font-size: 12px;
   line-height: 1.7;
   margin: 12px 0;
+}
+.billing-panel .billing-waiting,
+.billing-panel .billing-confirmed {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.billing-waiting > svg,
+.billing-confirmed > svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--accent);
+}
+.billing-waiting > div,
+.billing-confirmed > div {
+  flex: 1;
+}
+.billing-waiting p {
+  margin: 2px 0 0;
+}
+.billing-waiting > button,
+.billing-confirmed > button {
+  flex: none;
+  margin: -4px -6px -4px 0;
 }
 .billing-notice a {
   color: var(--accent);

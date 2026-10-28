@@ -263,6 +263,7 @@ test("migrate projects the code-defined plugin catalog and core skills into the 
     { name: "people-to-connect", dir: "skills/people-to-connect", plugin_code: null },
     { name: "product-demo-capture", dir: "skills/product-demo-capture", plugin_code: null },
     { name: "publish-post", dir: "skills/publish-post", plugin_code: null },
+    { name: "sync-my-posts", dir: "skills/sync-my-posts", plugin_code: null },
     { name: "video-build-log", dir: "plugins/video/skills/video-build-log", plugin_code: "video" },
     { name: "video-create", dir: "plugins/video/skills/video-create", plugin_code: "video" },
     { name: "video-event-invite", dir: "plugins/video/skills/video-event-invite", plugin_code: "video" },
@@ -499,6 +500,29 @@ test("a reconnecting device replaces its previous connection, and calls go to th
   assert.equal(await ask(founder.token), "laptop");
   second.ws.close();
   laptop.ws.close();
+});
+
+test("a malformed frame closes only that desktop's socket, not the API", async () => {
+  const founder = await account();
+  await activate(founder.token);
+  const broken = await desktop(founder.token, () => ({ ok: true, result: "broken" }));
+  // The test runner swallows uncaught exceptions; in production one exits the API.
+  const uncaught: Error[] = [];
+  const record = (error: Error) => uncaught.push(error);
+  process.on("uncaughtException", record);
+  try {
+    // An unmasked client frame is a protocol error the server must survive.
+    (broken.ws as any)._socket.write(Buffer.from([0x81, 0x02, 0x68, 0x69]));
+    assert.equal(await broken.closed, 1002);
+    await new Promise((resolve) => setImmediate(resolve));
+  } finally {
+    process.off("uncaughtException", record);
+  }
+  assert.deepEqual(uncaught, []);
+  const install = await desktop(founder.token, () => ({ ok: true, result: "still up" }));
+  script = [call("demo_open", { url: "https://example.com" })];
+  assert.equal(await ask(founder.token), "still up");
+  install.ws.close();
 });
 
 test("a device uploads screenshots to file storage and gets back a file key", async () => {

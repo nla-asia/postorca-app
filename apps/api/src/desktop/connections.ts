@@ -76,6 +76,9 @@ export function attachDesktopSocket(server: Server, secret: string) {
       const alive = () => (lastSeen = Date.now());
       ws.on("ping", alive);
       ws.on("message", alive);
+      // A malformed frame (or a proxy cutting the stream) emits "error"; unhandled, it
+      // would crash the whole API. ws closes the socket itself, so "close" cleans up.
+      ws.on("error", (error) => console.warn(`Desktop socket error: ${error.message}`));
       const idle = setInterval(() => {
         if (Date.now() - lastSeen > IDLE_MS) ws.terminate();
       }, IDLE_MS / 3);

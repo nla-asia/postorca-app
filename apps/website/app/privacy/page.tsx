@@ -205,7 +205,7 @@ export default function Privacy() {
         <a className="wordmark" href="/" aria-label="PostOrca home">
           <Mark /><span>PostOrca</span>
         </a>
-        <nav aria-label="Footer"><a href="/">Home</a><a href="/privacy" aria-current="page">Privacy</a></nav>
+        <nav aria-label="Footer"><a href="/">Home</a><a href="/privacy/" aria-current="page">Privacy</a></nav>
         <span className="copyright">© {new Date().getFullYear()} PostOrca</span>
       </footer>
     </>

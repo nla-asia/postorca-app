@@ -5,15 +5,18 @@ import type Stripe from "stripe";
 import type { Database } from "../db.js";
 import { HttpError } from "../handlers/errors.js";
 import { findUser } from "../repositories/users.js";
+import { settings } from "../settings.js";
 import { getCreditSummary } from "../billing/credits.js";
 import {
   creditTerms,
   membershipPackages,
-  welcomeCredits,
+  planIds,
+  type PackageId,
 } from "../billing/terms.js";
 import {
   applyBillingEvent,
   billingReturnUrl,
+  changePlan,
   getBilling,
   getStripe,
   startCheckout,
@@ -48,16 +51,19 @@ export function billingRoutes(db: Database) {
   });
   router.get("/", async (_req, res) => {
     const account = await getBilling(db, res.locals.userId);
-    const configured = stripeConfigured(),
-      extraConfigured = stripeConfigured("extra");
     res.json({
-      configured,
-      extraConfigured,
+      available: Object.fromEntries(
+        (Object.keys(membershipPackages) as PackageId[]).map((id) => [
+          id,
+          stripeConfigured(id),
+        ]),
+      ),
       status: account?.status ?? "none",
+      plan: account?.plan ?? null,
       hasCustomer: Boolean(account),
       packages: membershipPackages,
       creditTerms,
-      welcomeCredits: welcomeCredits(),
+      welcomeCredits: settings.welcomeCredits,
       credits: await getCreditSummary(db, res.locals.userId),
     });
   });
@@ -71,7 +77,7 @@ export function billingRoutes(db: Database) {
   );
   router.post("/checkout", async (req, res) => {
     const { packageId } = z
-      .object({ packageId: z.enum(["membership", "extra"]) })
+      .object({ packageId: z.enum([...planIds, "extra"]) })
       .strict()
       .parse(req.body);
     if (!stripeConfigured(packageId))
@@ -79,6 +85,15 @@ export function billingRoutes(db: Database) {
     const user = await findUser(db, res.locals.userId);
     if (!user) throw new HttpError(401, "Please log in.");
     res.json(await startCheckout(db, getStripe(), user, packageId));
+  });
+  router.post("/plan", async (req, res) => {
+    const { plan } = z
+      .object({ plan: z.enum(planIds) })
+      .strict()
+      .parse(req.body);
+    if (!stripeConfigured(plan))
+      throw new HttpError(503, "Payments are not available yet.");
+    res.json(await changePlan(db, getStripe(), res.locals.userId, plan));
   });
   router.post("/portal", async (_req, res) => {
     const account = await getBilling(db, res.locals.userId);
