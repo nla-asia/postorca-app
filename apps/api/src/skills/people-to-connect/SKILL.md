@@ -29,10 +29,10 @@ The founder reviews this list once, not every few minutes, so do the slow part f
    - the home feed and the replies under the best posts you find.
    On X, `since:YYYY-MM-DD` and the Latest tab keep results fresh.
 4. Judge each candidate from what the search results already show: the post, the author's name and bio line, the time and the numbers. Don't open each post or profile to check it; open only the busy "drop what you're building" threads you take people from. On LinkedIn, never open someone's profile; they would see that the founder viewed it.
-5. **Deliver as you go.** As soon as you have ten good people, create the document (see Deliver) and save them to memory; then keep searching and add each further batch with edit_document and to memory. A run has a limited number of steps and can stop before you finish, and a list saved early is never lost.
+5. **Deliver as you go.** Create each person's reply card (see Deliver) as soon as its reply is written, and save people to memory in batches. A run has a limited number of steps and can stop before you finish, and a card created early is never lost.
 
 Every page costs three steps (open, read, close), so make several tool calls in one step: open three or four searches at once, read them together, close them together. Close each tab once you've taken its candidates.
-6. Close the tabs you opened, and make sure the document and memory hold everyone you found.
+6. Close the tabs you opened, and make sure there is a card and a memory entry for everyone you found.
 
 ## Each reply
 
@@ -67,13 +67,13 @@ Refer to the founder by name, or as "they". Do not guess pronouns.
 
 ## Deliver
 
-Create one document artifact titled `People to connect — <platform> — <date>`, once you have ten people, and add later finds to it with edit_document. Order the people by how well they fit. For each:
+Deliver each person as one reply card with create_reply, intent `connect`. The founder sees their post with the reply under it and buttons to follow, reply, copy and mark it done, so the card holds only:
 
-- **Post:** the exact link, the author's name and handle, when it was posted, and the numbers you saw (replies, and the author's followers if shown).
-- **Why connect:** one line on how they fit the founder's space.
-- **Reply:** the draft, ready to paste once any placeholder is filled.
+- **platform**, and **target**: the exact link of the post (or of their reply in a thread), the author's name and handle, when it was posted (ISO time if you can read it, otherwise as shown), the post's text as shown (its first lines if long), and the numbers you saw as `stats` (replies, reposts, likes, views, and `author_followers` if shown).
+- **text**: the reply, ready to paste once any placeholder is filled, and nothing else.
+- **why**: one short line on how they fit the founder's space.
 
-Start the document with one line: follow (or send a connection request) first, then reply. Then the list, and nothing else: no notes about how you searched, which account you checked, or caveats about the numbers. If you found fewer than fifteen good ones after twenty searches, include only those. In your final message, link the document and ask one specific question for each placeholder. To fix the list, or fill placeholders after the founder answers, revise it with edit_document. Make sure every tab you opened is closed, then end with a one-line summary.
+No documents, and no notes in the cards: how you searched, which account you checked, or caveats about the numbers stay out. If you found fewer than fifteen good ones after twenty searches, deliver only those. Your final message says how many people you found and asks one specific question for each placeholder. To fix a card, or fill a placeholder after the founder answers, delete it with delete_artifact and create it again. Make sure every tab you opened is closed, then end with a one-line summary.
 
 **Bigger accounts.** This routine helps most below about 1,000 followers. If the account is above that and your memory has no note that you already said so, add one line to your final message: the follower count, and that the founder can pause this routine in Routines if they no longer need it. Save that you said it in the same memory file, and don't repeat it.
 

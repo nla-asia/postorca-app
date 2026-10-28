@@ -12,7 +12,12 @@ import {
   createTurn,
   TASK_KINDS,
 } from "../repositories/tasks.js";
-import { updateDocumentArtifact } from "../repositories/artifacts.js";
+import {
+  taskArtifact,
+  updateDocumentArtifact,
+  updateReplyArtifact,
+} from "../repositories/artifacts.js";
+import { MAX_REPLY, replySchema } from "../schemas/social.js";
 import { queueIdeaContent } from "../repositories/routines.js";
 import { schedulePost } from "../repositories/publications.js";
 import { platforms } from "../schemas/platforms.js";
@@ -75,6 +80,37 @@ export function taskRoutes(db: Database, agent: AgentRouter | null) {
       content,
     );
     if (!artifact) throw new HttpError(404, "Editable artifact not found.");
+    res.json(artifact);
+  });
+  // The founder edits a reply's text, or marks it done or skipped (null undoes it).
+  router.patch("/:id/artifacts/:artifactId/reply", async (req, res) => {
+    const taskId = id.parse(req.params.id);
+    const artifactId = id.parse(req.params.artifactId);
+    await ownedTask(db, res.locals.userId, taskId);
+    const change = z
+      .object({
+        text: z.string().trim().min(1).max(MAX_REPLY).optional(),
+        state: z.enum(["done", "skipped"]).nullable().optional(),
+      })
+      .strict()
+      .refine((value) => value.text !== undefined || value.state !== undefined, {
+        message: "Pass text or state.",
+      })
+      .parse(req.body);
+    const current = await taskArtifact(db, taskId, artifactId);
+    if (!current || current.kind !== "reply")
+      throw new HttpError(404, "Reply not found.");
+    const content =
+      change.text === undefined
+        ? undefined
+        : JSON.stringify(
+            replySchema.parse({ ...JSON.parse(current.content), text: change.text }),
+          );
+    const artifact = await updateReplyArtifact(db, taskId, artifactId, {
+      content,
+      state: change.state,
+    });
+    if (!artifact) throw new HttpError(404, "Reply not found.");
     res.json(artifact);
   });
   // Turn an idea into content work: queued as a one-time schedule the scheduler runs.
