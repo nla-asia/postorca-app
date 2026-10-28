@@ -192,6 +192,12 @@ Verifier output:
 
 `scripts/evals/verify-notebook-quote.mjs` is an example outcome verifier. Its
 observer contract is described in that file. It never submits the fixture form.
+`scripts/evals/notebook-fixture.mjs` supplies the matching deterministic local
+site at `http://127.0.0.1:4107`: use its `prepare`, `observe`, and `cleanup`
+commands as the lifecycle hooks, pin the script's SHA-256, and use the quote
+verifier as the final verifier hook. The fixture calculates totals from submitted
+quantities, rejects invalid input, and records actual form events. Its cleanup
+uses an attempt-specific ownership nonce and refuses to stop a different server.
 Fixture commands are extension points, not automatic imports of every Autopilot
 site; each fixture still needs its actual startup/reset/observation adapter.
 
