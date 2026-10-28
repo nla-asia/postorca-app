@@ -6,8 +6,9 @@ export const creditTerms = {
   currency: "usd",
   usdPerCredit: "0.04",
 } as const;
-/** Credits bought by the part of a price that goes to AI usage; the rest covers
- * servers, payment fees and running PostOrca. */
+/** Credits bought by the part of a price that goes to AI usage. On the plans the
+ * rest covers servers, payment fees and running PostOrca; Extra credits put the
+ * whole price into usage. */
 const creditsFor = (usageCents: number) =>
   Math.round(usageCents / (Number(creditTerms.usdPerCredit) * 100));
 export const membershipPackages = {
@@ -28,8 +29,8 @@ export const membershipPackages = {
   extra: {
     id: "extra",
     name: "Extra credits",
-    amount: 1000,
-    credits: creditsFor(800),
+    amount: 2000,
+    credits: creditsFor(2000),
     interval: null,
   },
 } as const;
