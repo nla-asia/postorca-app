@@ -107,7 +107,7 @@ test("a clean database continues to use the normal migration path", async () => 
     assert.equal(
       (await clean.db.query("SELECT count(*)::int AS n FROM schema_migrations"))
         .rows[0].n,
-      19,
+      20,
     );
   } finally {
     await clean.close();

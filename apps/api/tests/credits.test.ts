@@ -48,11 +48,12 @@ async function request(
   userId: string,
   operation = "responses",
   model = "gpt-6-luna",
+  turnId: string | null = null,
 ) {
   const id = randomUUID();
   await f.db.query(
-    "INSERT INTO api_requests(id,user_id,provider,model,operation,started_at) VALUES ($1,$2,'openai',$3,$4,now())",
-    [id, userId, model, operation],
+    "INSERT INTO api_requests(id,user_id,turn_id,provider,model,operation,started_at) VALUES ($1,$2,$3,'openai',$4,$5,now())",
+    [id, userId, turnId, model, operation],
   );
   return { id, userId, provider: "openai", model, operation, args: {} };
 }
@@ -61,9 +62,40 @@ async function row(id: string) {
     .rows[0];
 }
 
-test("credit terms match the reference; tiny costs round up only at the ninth decimal", () => {
-  assert.equal(creditTerms.usdPerCredit, "0.03");
-  assert.equal(costToCredits("0.01"), "0.333333334");
+async function turn(userId: string, title = "Write a launch post") {
+  const {
+    rows: [task],
+  } = await f.db.query(
+    "INSERT INTO tasks(user_id,kind,title) VALUES ($1,'work',$2) RETURNING id",
+    [userId, title],
+  );
+  const {
+    rows: [t],
+  } = await f.db.query(
+    "INSERT INTO turns(task_id,status) VALUES ($1,'running') RETURNING id",
+    [task.id],
+  );
+  return t.id as string;
+}
+async function spend(r: { id: string }, cost: string) {
+  await f.db.query(
+    "UPDATE api_requests SET status='succeeded',estimated_cost=$2,estimated_currency='USD' WHERE id=$1",
+    [r.id, cost],
+  );
+  await settleApiCredits(f.db, r.id);
+}
+const usage = async (userId: string) =>
+  (
+    await f.db.query(
+      "SELECT amount,description FROM credit_ledger WHERE user_id=$1 AND reference LIKE 'usage:%' ORDER BY created_at",
+      [userId],
+    )
+  ).rows;
+
+test("one credit is $0.04 of AI cost; exact costs keep nine decimals until a turn is charged", () => {
+  assert.equal(creditTerms.usdPerCredit, "0.04");
+  assert.equal(costToCredits("0.01"), "0.250000000");
+  assert.equal(costToCredits("0.013"), "0.325000000");
   assert.equal(costToCredits("0.000000000001"), "0.000000001");
   assert.throws(() => costToCredits("-1"));
 });
@@ -100,7 +132,7 @@ test("parallel reservations cannot overspend the account; a released hold makes 
   const held = (await row(a.id)).credit_state === "reserved" ? a : b;
   const blocked = held === a ? b : a;
   assert.equal((await row(blocked.id)).credit_state, "blocked");
-  assert.ok((await getCreditSummary(f.db, id)).balance < 1);
+  assert.ok((await getCreditSummary(f.db, id)).balance < 2);
   await f.db.query(
     "UPDATE api_requests SET status='failed',http_status=429 WHERE id=$1",
     [held.id],
@@ -110,7 +142,56 @@ test("parallel reservations cannot overspend the account; a released hold makes 
   assert.equal((await row(held.id)).credit_state, "released");
   assert.equal((await row(blocked.id)).credit_state, "reserved");
 });
-test("settlement charges fractional usage once with saved terms; reconciliation adjusts only the difference", async () => {
+test("a turn is charged its total real cost once, rounded up to a whole credit", async () => {
+  const id = await user(),
+    turnId = await turn(id);
+  for (const cost of ["0.004", "0.004", "0.004"]) {
+    const r = await request(id, "responses", "gpt-6-luna", turnId);
+    await reserveApiCredits(f.db, r);
+    await spend(r, cost);
+  }
+  // Three calls costing $0.012 in total are 0.3 credits: one credit, not three.
+  assert.deepEqual(await usage(id), [
+    { amount: "-1.000000000", description: "Orca: Write a launch post" },
+  ]);
+  assert.equal((await getCreditSummary(f.db, id)).balance, 249);
+  const image = await request(
+    id,
+    "image.generate",
+    "gpt-image-2.5-flare",
+    turnId,
+  );
+  await reserveApiCredits(f.db, image);
+  await spend(image, "0.15");
+  // $0.162 is 4.05 credits, so the same entry becomes 5.
+  assert.deepEqual(await usage(id), [
+    { amount: "-5.000000000", description: "Orca: Write a launch post" },
+  ]);
+  const summary = await getCreditSummary(f.db, id);
+  assert.equal(summary.balance, 245);
+  assert.equal(summary.entries.length, 2);
+});
+test("separate turns and requests outside a turn are each rounded on their own", async () => {
+  const id = await user();
+  for (const turnId of [await turn(id, "First"), await turn(id, "Second")]) {
+    const r = await request(id, "responses", "gpt-6-luna", turnId);
+    await reserveApiCredits(f.db, r);
+    await spend(r, "0.001");
+  }
+  const loose = await request(id, "image.generate", "gpt-image-2.5-flare");
+  await reserveApiCredits(f.db, loose);
+  await spend(loose, "0.05");
+  assert.deepEqual(
+    (await usage(id)).map((r: any) => [r.amount, r.description]),
+    [
+      ["-1.000000000", "Orca: First"],
+      ["-1.000000000", "Orca: Second"],
+      ["-2.000000000", "Image generation"],
+    ],
+  );
+  assert.equal((await getCreditSummary(f.db, id)).balance, 246);
+});
+test("settlement charges usage once with saved terms; reconciliation rewrites the turn's whole-credit charge", async () => {
   const id = await user(),
     r = await request(id);
   await reserveApiCredits(f.db, r);
@@ -122,7 +203,8 @@ test("settlement charges fractional usage once with saved terms; reconciliation 
     settleApiCredits(f.db, r.id),
     settleApiCredits(f.db, r.id),
   ]);
-  assert.equal((await row(r.id)).credit_charged, "0.333333334");
+  assert.equal((await row(r.id)).credit_charged, "0.250000000");
+  assert.equal((await getCreditSummary(f.db, id)).balance, 249);
   assert.equal((await getCreditSummary(f.db, id)).reserved, 0);
   await reconcileApiCredits(f.db, {
     id: r.id,
@@ -136,10 +218,25 @@ test("settlement charges fractional usage once with saved terms; reconciliation 
     currency: "USD",
     source: "fixture invoice",
   });
-  assert.equal((await row(r.id)).credit_charged, "0.166666667");
+  assert.equal((await row(r.id)).credit_charged, "0.125000000");
   assert.equal((await row(r.id)).estimated_cost, "0.010000000000");
   assert.equal((await row(r.id)).credit_version, 2);
-  assert.equal((await getCreditSummary(f.db, id)).balance, 249.833333333);
+  assert.equal((await getCreditSummary(f.db, id)).balance, 249);
+  await reconcileApiCredits(f.db, {
+    id: r.id,
+    cost: "0.06",
+    currency: "USD",
+    source: "fixture invoice",
+  });
+  assert.equal((await getCreditSummary(f.db, id)).balance, 248);
+  await reconcileApiCredits(f.db, {
+    id: r.id,
+    cost: "0",
+    currency: "USD",
+    source: "Provider confirmed no charge",
+  });
+  assert.equal((await getCreditSummary(f.db, id)).balance, 250);
+  assert.equal((await usage(id)).length, 0);
 });
 test("accepted unknown costs, network errors, 408s and 5xxs retain holds until verified reconciliation", async () => {
   for (const status of [null, 408, 503, 200]) {
@@ -162,6 +259,17 @@ test("accepted unknown costs, network errors, 408s and 5xxs retain holds until v
     assert.equal((await getCreditSummary(f.db, id)).reserved, 0);
   }
 });
+test("requests reserved before turn charging keep their exact per-request entries", async () => {
+  const id = await user(),
+    r = await request(id);
+  await reserveApiCredits(f.db, r);
+  await f.db.query("UPDATE api_requests SET credit_group=NULL WHERE id=$1", [
+    r.id,
+  ]);
+  await spend(r, "0.01");
+  assert.equal((await usage(id)).length, 0);
+  assert.equal((await getCreditSummary(f.db, id)).balance, 249.75);
+});
 test("historical requests are never backcharged; actual overages block future requests", async () => {
   const id = await user(),
     old = await request(id);
@@ -179,7 +287,7 @@ test("historical requests are never backcharged; actual overages block future re
   const r = await request(id);
   await reserveApiCredits(f.db, r);
   await f.db.query(
-    "UPDATE api_requests SET status='failed',estimated_cost=10,estimated_currency='USD' WHERE id=$1",
+    "UPDATE api_requests SET status='failed',estimated_cost=11,estimated_currency='USD' WHERE id=$1",
     [r.id],
   );
   await settleApiCredits(f.db, r.id);

@@ -6,9 +6,7 @@ import { requestReservation } from "./reservations.js";
 export class CreditError extends HttpError {
   constructor(
     public code:
-      | "insufficient_credits"
-      | "credit_configuration"
-      | "credit_account",
+      "insufficient_credits" | "credit_configuration" | "credit_account",
   ) {
     super(
       402,
@@ -87,6 +85,50 @@ export const creditDescription = (operation: string) =>
     sound_effect: "Sound effects",
     transcription: "Transcription",
   })[operation] ?? "AI usage";
+/** Rounds a positive amount up to the next whole credit. */
+export function wholeCredits(value: bigint) {
+  return value <= 0n ? 0n : ((value + scale - 1n) / scale) * scale;
+}
+/** A turn (or a request outside any turn) has one ledger entry: its settled
+ * requests' exact cost in credits, rounded up once. Later settlements and
+ * reconciliations rewrite that entry, so rounding never compounds per request. */
+async function chargeGroup(
+  db: Queryable,
+  userId: string,
+  group: string,
+  operation: string,
+) {
+  const {
+    rows: [usage],
+  } = await db.query(
+    "SELECT COALESCE(sum(credit_charged),0) AS exact FROM api_requests WHERE user_id=$1 AND credit_group=$2 AND credit_state='settled'",
+    [userId, group],
+  );
+  const charge = wholeCredits(units(usage.exact)),
+    reference = `usage:${group}`;
+  if (charge === 0n) {
+    await db.query("DELETE FROM credit_ledger WHERE reference=$1", [reference]);
+    return;
+  }
+  const {
+    rows: [task],
+  } = group.startsWith("turn:")
+    ? await db.query(
+        "SELECT tasks.title FROM turns JOIN tasks ON tasks.id=turns.task_id WHERE turns.id=$1",
+        [group.slice("turn:".length)],
+      )
+    : { rows: [] };
+  await db.query(
+    `INSERT INTO credit_ledger(user_id,amount,description,reference) VALUES ($1,$2,$3,$4)
+    ON CONFLICT (reference) DO UPDATE SET amount=EXCLUDED.amount`,
+    [
+      userId,
+      amount(-charge),
+      task?.title ? `Orca: ${task.title}` : creditDescription(operation),
+      reference,
+    ],
+  );
+}
 async function settle(db: Queryable, row: Record<string, any>) {
   if (!row.credit_state || ["blocked", "released"].includes(row.credit_state))
     return;
@@ -111,20 +153,24 @@ async function settle(db: Queryable, row: Record<string, any>) {
     let version = row.credit_version as number;
     if (delta !== 0n) {
       version++;
-      await db.query(
-        `INSERT INTO credit_ledger(user_id,amount,description,reference) VALUES ($1,$2,$3,$4)`,
-        [
-          row.user_id,
-          amount(-delta),
-          creditDescription(row.operation) + (delta < 0n ? " adjustment" : ""),
-          `api:${row.id}:${version}`,
-        ],
-      );
+      if (!row.credit_group)
+        await db.query(
+          `INSERT INTO credit_ledger(user_id,amount,description,reference) VALUES ($1,$2,$3,$4)`,
+          [
+            row.user_id,
+            amount(-delta),
+            creditDescription(row.operation) +
+              (delta < 0n ? " adjustment" : ""),
+            `api:${row.id}:${version}`,
+          ],
+        );
     }
     await db.query(
       "UPDATE api_requests SET credit_reserved=0,credit_charged=$2,credit_state='settled',credit_version=$3 WHERE id=$1",
       [row.id, charged, version],
     );
+    if (row.credit_group)
+      await chargeGroup(db, row.user_id, row.credit_group, row.operation);
   } else if (["failed", "interrupted", "succeeded"].includes(row.status)) {
     // Only explicit non-timeout HTTP rejections release their hold; network/5xx/408 are ambiguous.
     const rejected =
@@ -201,7 +247,8 @@ export async function reserveApiCredits(
     const reserved = costToCredits(snapshot.usd);
     const enough = (await available(client, input.userId)) >= units(reserved);
     await client.query(
-      `UPDATE api_requests SET credit_state=$2,credit_reserved=$3,credit_usd_per_credit=$4,credit_reservation_snapshot=$5
+      `UPDATE api_requests SET credit_state=$2,credit_reserved=$3,credit_usd_per_credit=$4,credit_reservation_snapshot=$5,
+      credit_group=COALESCE('turn:' || turn_id::text, 'api:' || id::text)
       WHERE id=$1`,
       [
         input.id,
@@ -265,7 +312,8 @@ export async function addCredits(
   credits: string,
   description = "Credits added by an operator",
 ) {
-  if (units(credits) <= 0n) throw new Error("Add a positive number of credits.");
+  if (units(credits) <= 0n)
+    throw new Error("Add a positive number of credits.");
   const {
     rows: [user],
   } = await db.query("SELECT id FROM users WHERE lower(email)=lower($1)", [
