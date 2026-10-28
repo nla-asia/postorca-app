@@ -105,16 +105,6 @@ export default function SettingsModal({
                   ))}
                 </div>
               </div>
-
-              <span className="field-section-label">About</span>
-              <div className="settings-group">
-                <div className="setting-row">
-                  <div>
-                    <strong>PostOrca</strong>
-                    <p>Version {__APP_VERSION__}</p>
-                  </div>
-                </div>
-              </div>
             </>
           )}
 
@@ -140,34 +130,36 @@ export default function SettingsModal({
           {tab === "Billing & Usage" && <BillingUsage />}
 
           {tab === "Help" && (
-            <div className="settings-group">
-              <div className="setting-row">
-                <div>
-                  <strong>Support</strong>
-                  <p>
-                    Questions or problems? Email{" "}
-                    <a
-                      href="mailto:nla@autopilotstartup.com"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      nla@autopilotstartup.com
-                    </a>
-                    .
-                  </p>
+            <>
+              <div className="settings-group">
+                <div className="setting-row">
+                  <div>
+                    <strong>Support</strong>
+                    <p>
+                      Questions or problems? Email{" "}
+                      <a
+                        href="mailto:nla@autopilotstartup.com"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        nla@autopilotstartup.com
+                      </a>
+                      .
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div className="setting-row">
-                <div>
-                  <strong>About this version</strong>
-                  <p>
-                    PostOrca runs on the server and desktop. Gmail and Google
-                    Drive connectors connect your workspace to your files and
-                    email.
-                  </p>
+
+              <span className="field-section-label">About</span>
+              <div className="settings-group">
+                <div className="setting-row">
+                  <div>
+                    <strong>PostOrca</strong>
+                    <p>Version {__APP_VERSION__}</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       </div>
