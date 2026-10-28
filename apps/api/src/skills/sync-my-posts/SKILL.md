@@ -39,7 +39,7 @@ Per platform (the account's URL is in the brand profile):
 
 If a profile shows a sign-in form, or a different account than the brand profile names, skip that account, note it for the final message, and go on with the others.
 
-**Read posts from the profile's own timeline, not one by one.** Each post on the timeline already shows its link (the time link, e.g. `→ /<handle>/status/…` on X), its text and its stats, so save straight from the snapshot. Opening a post costs three steps (open, snapshot, close), which a run can't afford per post. Text cut off with "Show more" or "…more" (LinkedIn cuts most long posts): click that button on the timeline, which shows the rest in one step, and only for a post that's new or whose saved text is cut. Open a post itself only when the timeline can't show what you need: the post a reply or quote answers when its link isn't shown, or a screenshot for a media description.
+**Read posts from the profile's own timeline, not one by one.** Each post on the timeline already shows its link (the time link, e.g. `→ /<handle>/status/…` on X), its text and its stats, so save straight from the snapshot. Opening a post costs three steps (open, snapshot, close), which a run can't afford per post. Text cut off with "Show more" or "…more" (LinkedIn cuts most long posts): click that button on the timeline, which shows the rest in one step, and only for a post that's new or whose saved text is cut. Open a post itself only for a screenshot for a media description. When the timeline doesn't show the link of the post a reply or quote answers, leave `reply_to_url` out rather than opening the reply to find it.
 
 A long page's snapshot comes in parts, and part 1 is often only the site's menus (LinkedIn's activity pages always). Read the outline it gives and go to the parts with the main content, where the posts are; don't treat an account as done after part 1.
 
@@ -53,7 +53,7 @@ Use `save_my_post`, one post per call. Make all of a screen's calls in the same 
 
 - `kind`: `post`, `reply`, `quote`, `repost` (a plain repost with no comment of their own), `article`, `reel`, `story` or `carousel`.
 - `url`: the post's own link (on X, `/status/<id>`; on LinkedIn, the `/feed/update/urn:li:activity:…` link).
-- `text`: only the founder's own words, exactly as written. For a quote or reply, leave out the post it answers; put that post's link in `reply_to_url`. For a plain repost, give only `kind` and `url`.
+- `text`: only the founder's own words, exactly as written. For a quote or reply, leave out the post it answers; put that post's link in `reply_to_url` when the page shows it. For a plain repost, give only `kind` and `url`.
 - `posted_at`: leave it out on X and LinkedIn (it comes from the post's ID). Elsewhere, convert the time shown to ISO 8601 with the founder's time zone. A relative time ("3h", "2d") counts back from when this task started; give your best estimate.
 - `stats`: the numbers shown (likes, replies, reposts, views…), as numbers ("1.2K" → 1200).
 - `media_type` when the post has an image, video or several images.
@@ -70,11 +70,11 @@ A post saved in the overlap window that you didn't see on the profile may have b
 `posts-sync.md`, with the description "When the founder's posts were last synced per account". One short line per account, in exactly this form, edited in place:
 
 ```
-- X @handle: synced 2026-10-28 07:12
-- LinkedIn Name: synced 2026-10-27 07:20 · reached 2026-10-21, more to read
+- X @handle: synced 2026-10-28 00:12 UTC
+- LinkedIn Name: synced 2026-10-27 00:20 UTC · reached 2026-10-21, more to read
 ```
 
-Update the file right after each account, before opening the next one, so a run cut short still records what it did. Write the new sync time only when the account's sync reached where it should stop (How far back); otherwise keep the old time and write how far back you got. Write times in the founder's own time zone, not UTC (the task's first message gives the time in UTC).
+Update the file right after each account, before opening the next one, so a run cut short still records what it did. Write the new sync time only when the account's sync reached where it should stop (How far back); otherwise keep the old time and write how far back you got. Write times in UTC, marked as such (e.g. `synced 2026-10-28 00:12 UTC`), as the task's first message gives them.
 
 ## Finish
 
