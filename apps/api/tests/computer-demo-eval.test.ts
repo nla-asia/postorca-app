@@ -40,13 +40,13 @@ test("a level 2 demo passes on recorded, on-camera work delivered as clips", () 
     content: JSON.stringify({ file: clip(n).file }),
   }));
   assert.deepEqual(failed(gradeDemoCapture(entry, { status: "completed", calls, artifacts })), []);
-  // Typing outside a recording, or clips that were never delivered, do not count.
+  // Setting the stage off camera is fine (product-demo-capture does that), but the
+  // recording must still show the app in use, and missing text still fails.
   const offCamera = recorded([[], []]);
-  offCamera.push({ name: "computer_type", args: { text: "Grand Palace" }, result: { input_sent: true } });
+  offCamera.splice(2, 0, { name: "computer_type", args: { text: "Siam Paragon" }, result: { input_sent: true } });
   assert.deepEqual(failed(gradeDemoCapture(entry, { status: "completed", calls: offCamera, artifacts })), [
     "Used the app while recording",
-    'Typed "Grand Palace" on camera',
-    'Typed "Siam Paragon" on camera',
+    'Typed "Grand Palace" in the app',
   ]);
   assert.deepEqual(failed(gradeDemoCapture(entry, { status: "completed", calls, artifacts: [] })), [
     "Clips delivered as video artifacts",

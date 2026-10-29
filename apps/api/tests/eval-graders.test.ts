@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { gradeWriting, gradeWritingTools, writingCases } from "../src/evals/writing-cases.js";
+import { gradeWriting, gradeWritingTools, postBody, writingCases } from "../src/evals/writing-cases.js";
 import { gradeBrowserTools } from "../src/evals/browser-tools.js";
 import { gradeIdeas, ideasCases } from "../src/evals/ideas-cases.js";
 import { gradeMediaTools, gradeQuoteCard, gradeVoiceover, mediaSentence } from "../src/evals/media-cases.js";
@@ -154,19 +154,26 @@ test("the browser tools check needs every tool, delivered images and every tab c
   ]);
 });
 
-test("the quote card's portrait version must be edited from the square image", () => {
+test("the quote card needs a square and a portrait image, each delivered, however the portrait is made", () => {
   const square = { name: "media_generate_image", args: {}, result: { ref: "sq1", attachments: [{ file: "users/u/media/sq.png" }] } };
-  const portrait = {
+  const edited = {
     name: "media_edit_image",
     args: { file: "sq1", size: "1024x1536" },
     result: { ref: "pt1", attachments: [{ file: "users/u/media/pt.png" }] },
   };
   const artifacts = ["sq", "pt"].map((n) => ({ kind: "image", content: JSON.stringify({ file: `users/u/media/${n}.png` }) }));
-  assert.deepEqual(failed(gradeQuoteCard({ calls: [square, portrait], artifacts })), []);
-  const fresh = { ...portrait, name: "media_generate_image", args: { size: "1024x1536" } };
-  assert.deepEqual(failed(gradeQuoteCard({ calls: [square, fresh], artifacts })), [
-    "Portrait version edited from the square image",
-    "Both images delivered",
+  assert.deepEqual(failed(gradeQuoteCard({ calls: [square, edited], artifacts })), []);
+  // A fresh portrait generation of the same design is just as valid.
+  const fresh = { ...edited, name: "media_generate_image", args: { size: "1024x1536" } };
+  assert.deepEqual(failed(gradeQuoteCard({ calls: [square, fresh], artifacts })), []);
+  // A second square is not a portrait, and an undelivered portrait fails delivery only.
+  const anotherSquare = { ...fresh, args: { size: "1024x1024" } };
+  assert.deepEqual(failed(gradeQuoteCard({ calls: [square, anotherSquare], artifacts })), [
+    "Portrait version made",
+    "Portrait image delivered",
+  ]);
+  assert.deepEqual(failed(gradeQuoteCard({ calls: [square, fresh], artifacts: artifacts.slice(0, 1) })), [
+    "Portrait image delivered",
   ]);
 });
 
@@ -182,6 +189,13 @@ test("the voiceover must be transcribed after its final recording and keep every
   const artifacts = [{ kind: "audio", content: JSON.stringify({ file: "users/u/media/s2.mp3" }) }];
   const fixed = [voices, speak("s1"), transcribe("s1", "... lou mah ..."), speak("s2"), transcribe("s2", good)];
   assert.deepEqual(failed(gradeVoiceover({ calls: fixed, artifacts })), []);
+  // The transcriber's own formatting still counts: "7:00 PM" and a run-together link.
+  const formatted = "Last month, we went from 120 to 310 weekly founders. Join our live AMA on Friday at 7:00 PM Bangkok time. Sign up at alu.ma/autopilotama";
+  assert.deepEqual(failed(gradeVoiceover({ calls: [voices, speak("s2"), transcribe("s2", formatted)], artifacts })), []);
+  // A skipped fact still fails.
+  assert.deepEqual(failed(gradeVoiceover({ calls: [voices, speak("s2"), transcribe("s2", formatted.replace(" Bangkok", ""))], artifacts })), [
+    "Transcript keeps every fact in the script",
+  ]);
   // Checking only the first take, then delivering an unchecked second one, does not count.
   const unchecked = [voices, speak("s1"), transcribe("s1", good), speak("s2")];
   assert.deepEqual(failed(gradeVoiceover({ calls: unchecked, artifacts })), [
@@ -209,4 +223,20 @@ test("idea routines need their skill, the right number of ideas, and the work re
     failed(gradeIdeas(strategy, { status: "completed", calls: read, artifacts: [{ kind: "document", title: "Strategy — X — 2026-10-29" }] })),
     [],
   );
+});
+
+test("format checks measure the post, not the Other openings and Placeholders notes after it", () => {
+  const notes = "\n\n---\n**Other openings:**\n1. " + "a".repeat(200) + "\n2. b\n\n**Placeholders:**\nNone.";
+  const post = "Removed one step. Onboarding 9 → 4 min, completion 41% → 63%.";
+  assert.equal(postBody(post + notes), post);
+  assert.equal(postBody(post + "\n\n**Other openings:**\n1. x"), post);
+  assert.equal(postBody(post), post);
+  const turns = [{ id: "t1", status: "completed", artifacts: [doc("X", post + notes), doc("LinkedIn", linkedin + notes)] }];
+  assert.deepEqual(failed(gradeWriting(expect("post-in-voice"), { status: "completed", turns, calls: [] })), []);
+  // A placeholder or a long post still fails when it is in the post itself.
+  turns[0].artifacts[0] = doc("X", `${"x".repeat(290)} 9 4 41% 63% [your metric]${notes}`);
+  assert.deepEqual(failed(gradeWriting(expect("post-in-voice"), { status: "completed", turns, calls: [] })), [
+    "X posts within 280 characters",
+    "No placeholders left",
+  ]);
 });

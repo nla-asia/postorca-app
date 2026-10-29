@@ -120,15 +120,16 @@ export const voiceoverCase: MediaProcessCase = {
     "The voice fits the founder's brand; numbers, the time and the link are spoken naturally (\"lu dot ma slash autopilot AMA\"), with nothing skipped or mispronounced.",
   ],
 };
-// Matched on the normalized transcript; a transcriber may write numbers in words.
+// Matched on the normalized transcript; a transcriber may write numbers in words,
+// a time as "7:00 PM" (normalized to "700 pm") and the link run together.
 const voiceoverFacts = [
   /\b(120|one hundred (and )?twenty)\b/,
   /\b(310|three hundred (and )?ten)\b/,
   /\bfriday\b/,
-  /\b(7|seven)\b/,
+  /\b(7|700|seven)\b/,
   /\bbangkok\b/,
-  /\blu ?(dot )?ma\b/,
-  /\bautopilot ?ama\b/,
+  /lu ?(dot )?ma/,
+  /autopilot ?ama\b/,
 ];
 
 const refsOf = (call: any) =>
@@ -158,12 +159,12 @@ export function gradeQuoteCard(evidence: {
       c.name === "media_generate_image" &&
       (c.args.size ?? "1024x1024") === "1024x1024",
   );
-  const squareRefs = new Set(square.flatMap((c) => [...refsOf(c)]));
+  // The portrait may be an edit of the square or a new image of the same design;
+  // whether the design matches is for the reviewer, not the method.
   const portrait = ok.filter(
     (c) =>
-      c.name === "media_edit_image" &&
-      c.args.size === "1024x1536" &&
-      squareRefs.has(c.args.file),
+      ["media_generate_image", "media_edit_image"].includes(c.name) &&
+      c.args.size === "1024x1536",
   );
   const delivered = (calls: any[]) => {
     const files = new Set(
@@ -175,14 +176,9 @@ export function gradeQuoteCard(evidence: {
   };
   return [
     { name: "Square image generated", passed: square.length > 0 },
-    {
-      name: "Portrait version edited from the square image",
-      passed: portrait.length > 0,
-    },
-    {
-      name: "Both images delivered",
-      passed: delivered(square) && delivered(portrait),
-    },
+    { name: "Portrait version made", passed: portrait.length > 0 },
+    { name: "Square image delivered", passed: delivered(square) },
+    { name: "Portrait image delivered", passed: delivered(portrait) },
   ];
 }
 

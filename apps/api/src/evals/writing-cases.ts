@@ -98,6 +98,12 @@ export const writingCases: WritingCase[] = [
 
 const platformTitle = { x: /\b(X|Twitter)\b/, linkedin: /LinkedIn/i };
 const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
+/** The post itself: create-content delivers it first, then "Other openings" and
+ * "Placeholders" notes (often after a --- rule), which are not part of the post. */
+export const postBody = (content: string) =>
+  content
+    .split(/\n\s*(?:-{3,}|\**Other openings:?\**:?)\s*(?:\n|$)/i)[0]
+    .trim();
 const parse = (content: any) => {
   try {
     return typeof content === "string" ? JSON.parse(content) : content;
@@ -119,7 +125,7 @@ export function gradeWriting(
   const delivered: string[] = [];
   for (const platform of expect.docs ?? []) {
     const doc = documents.find((d) => platformTitle[platform].test(d.title));
-    const text = String(doc?.content ?? "");
+    const text = postBody(String(doc?.content ?? ""));
     if (doc) delivered.push(text);
     checks.push({
       name: `${platform === "x" ? "X" : "LinkedIn"} post delivered as its own document`,
