@@ -29,7 +29,6 @@
     "test:computer": "npm run test:computer --workspace @postorca/desktop",
     "computer:live-check": "npm run computer:live-check --workspace @postorca/desktop",
     "browser:eval": "npm run browser:eval --workspace @postorca/api --",
-    "browser:bridge:package": "node scripts/package-browser-companion.mjs",
     "computer:eval": "npm run computer:eval --workspace @postorca/api --",
     "computer:eval:mac": "npm run computer:eval:mac --workspace @postorca/api --",
     "test:computer-eval": "npm run test:computer-eval --workspace @postorca/api",

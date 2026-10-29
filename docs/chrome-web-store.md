@@ -26,13 +26,12 @@ Browser tasks run in tabs opened by the bridge, normally organized in a green Or
 
 For developers:
 
-Build a compatible integration for your own AI agent or desktop software using native messaging and an authenticated local WebSocket connection. Our developer guide documents the protocol and provides a standalone Node.js companion with a working demo. The example runs without a PostOrca account, API server, or AI key. Existing agents require an integration; they do not connect automatically.
+Developers can integrate their own AI agents or desktop software by implementing the extension's native messaging and authenticated local WebSocket protocol. Integration documentation is available in our developer guide. Third-party integrations require development and setup; existing agents do not connect automatically.
 
 Requirements:
 
 - Chrome 125 or newer.
 - PostOrca desktop, or separately installed compatible companion software.
-- Developer setup and Node.js 22 or newer for the standalone example.
 
 The extension itself has no separate login or AI model. It shares browser-task data with the companion you select. PostOrca's desktop integration uses the PostOrca service and AI provider; independent companions determine their own data processing. Review the extension and companion privacy policies before connecting.
 
@@ -58,18 +57,17 @@ There are no host permissions, content scripts, or `tabs` permission. Ordinary t
 ## Reviewer test instructions
 
 1. Install the submitted extension on Chrome 125+ and note its assigned extension ID.
-2. Use Node.js 22+ to install the downloadable companion from the developer guide. No PostOrca account or API server is needed for this test.
-3. Run `postorca-browser-bridge install --extension-id ACTUAL_ID`, then `postorca-browser-bridge start --extension-id ACTUAL_ID` in a terminal.
-4. Open the extension popup → Connection settings. Enter `com.postorca.browser.example` and save. Confirm "Connected to local companion" in the popup.
-5. In another terminal, run `postorca-browser-bridge demo`. It opens a bridge tab, evaluates a local confirmation message, reads the title, closes the tab, and prints `PostOrca bridge demo`. It uses no external website.
-6. Stop the running companion with Ctrl+C, then run `postorca-browser-bridge uninstall`. Switch the extension back with Use PostOrca if desired.
+2. Install and open the PostOrca desktop app using the installer supplied with the submission. Sign in using the reviewer account provided in the dashboard's private test instructions. The PostOrca API must be available for this product test.
+3. In the extension's Connection settings, select Use PostOrca. Confirm "Connected to PostOrca" in the popup.
+4. In PostOrca, ask Orca to open https://example.com and report the page title. Verify that the task opens a tab in the green Orca group and returns the page title.
+5. Close the task's tab or cancel its Chrome debugger attachment to verify user control. Quit PostOrca and check that the extension reports disconnection.
 
-For the separate PostOrca product integration, provide its desktop installer and test-account instructions when preparing the submission. The example demonstrates the independently usable core bridge; do not claim PostOrca's cloud tasks have been tested through that demo.
+Before submission, supply a working desktop installer URL, reviewer credentials, and any account-specific steps in the private dashboard instructions. Verify that the desktop's native host accepts the actual submitted extension ID. Third-party integration is a developer capability described in the listing, not a separate demo reviewers must download.
 
 ## Remaining submission gates
 
-- Deploy the website with the privacy page, public developer guide, and generated companion download. Verify each live URL.
-- Upload the extension ZIP as a draft and verify its store ID. Pass the actual ID to the example; update the desktop's native host and relay expectations if the store ID differs from its development ID.
+- Deploy the website with the privacy page and developer guide. Verify each live URL; no separate companion download is required.
+- Upload the extension ZIP as a draft and verify its store ID. Update the desktop's native host and relay expectations if the store ID differs from its development ID.
 - Capture extension-specific screenshots for the listing: connected popup, connection settings, and a browser task in the green group. Website privacy screenshots are review evidence, not a substitute for store screenshots.
 - Complete the developer account, privacy/data certifications, remote-code declaration, distribution, support information, and test instructions.
-- Confirm the companion download's installation/native launch on each platform advertised as tested. Windows is tested; macOS/Linux paths have unit coverage only.
+- Verify the PostOrca desktop/extension flow on every platform advertised in the submission.

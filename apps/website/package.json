@@ -3,9 +3,7 @@
   "version": "0.3.0",
   "private": true,
   "scripts": {
-    "predev": "node ../../scripts/package-browser-companion.mjs",
     "dev": "next dev --hostname 127.0.0.1 --port 3000",
-    "prebuild": "node ../../scripts/package-browser-companion.mjs",
     "build": "next build",
     "start": "next start --hostname 127.0.0.1 --port 3000",
     "check": "tsc --noEmit"

@@ -3,7 +3,7 @@ import { Mark } from "../../../components/brand";
 
 export const metadata: Metadata = {
   title: "Browser Bridge Developer Guide — PostOrca",
-  description: "Connect your own local agent to Chrome using PostOrca Browser Bridge. Download the Node.js companion example and implement the authenticated relay protocol.",
+  description: "Connect your own local agent to Chrome using PostOrca Browser Bridge. Implement the authenticated local relay protocol in your own software.",
   alternates: { canonical: "/developers/browser-bridge" },
   openGraph: { title: "PostOrca Browser Bridge Developer Guide", description: "A local browser bridge for your agent.", url: "https://orca.atpa.site/developers/browser-bridge" },
 };
@@ -33,32 +33,8 @@ export default function BrowserBridgeGuide() {
       <main id="main" className="privacy-page bridge-guide">
         <p className="privacy-eyebrow">For agent and desktop software developers</p>
         <h1>Connect your agent to Chrome</h1>
-        <p className="privacy-intro">PostOrca Browser Bridge connects a locally installed companion to Chrome. Use PostOrca, run the standalone example, or implement the protocol in your own software.</p>
+        <p className="privacy-intro">PostOrca Browser Bridge connects a locally installed companion to Chrome. Use the PostOrca desktop app, or implement the protocol in your own software.</p>
         <p>The extension has no separate account or AI model. Its companion provides the agent and determines how browser data is processed. Existing agents need an integration; installing the extension alone does not connect them.</p>
-
-        <section aria-labelledby="quickstart">
-          <h2 id="quickstart">Try the standalone companion</h2>
-          <p>Requires Node.js 22 or newer and Chrome 125 or newer. The example registers a separate native host on Windows or macOS; a Linux Chrome registration path is also included. Native launch has been verified on Windows. No PostOrca desktop app, API server, account, or AI key is needed.</p>
-          <ol>
-            <li>Install the extension. For development, load the extension folder unpacked at <code>chrome://extensions</code>. Copy the actual extension ID shown there.</li>
-            <li><a href="/downloads/postorca-browser-companion.tgz" download>Download the Node.js companion example</a>, or install it using the command below.</li>
-            <li>Install its native host and start it with the same extension ID. Keep the process running.</li>
-          </ol>
-          <pre><code>{`npm install --global https://orca.atpa.site/downloads/postorca-browser-companion.tgz
-postorca-browser-bridge install --extension-id YOUR_EXTENSION_ID
-postorca-browser-bridge start --extension-id YOUR_EXTENSION_ID`}</code></pre>
-          <p>In the extension popup, open <strong>Connection settings</strong>, set the host to <code>com.postorca.browser.example</code>, and save. In a second terminal, run:</p>
-          <pre><code>postorca-browser-bridge demo</code></pre>
-          <p>The example opens an empty tab, writes a confirmation message, reads its title, then closes it. Your terminal should print <code>PostOrca bridge demo</code>. It does not contact an external website or AI service. The package includes its source and integration README.</p>
-          <p>Stop the companion with Ctrl+C and run <code>postorca-browser-bridge uninstall</code> to unregister the example. Select <strong>Use PostOrca</strong> in Connection settings to switch back. Finish ongoing tasks before switching: reconnecting closes tabs from the previous bridge session.</p>
-        </section>
-
-        <section aria-labelledby="agent">
-          <h2 id="agent">Attach your own agent</h2>
-          <p>The example writes connected browsers and their CDP endpoints to <code>~/.postorca-browser-companion/connection.json</code>. Read this file from your local software, then use a WebSocket CDP client or Playwright&apos;s <code>chromium.connectOverCDP(endpoint)</code>. The README includes a Playwright example.</p>
-          <p>The endpoint contains a credential. Keep it local and private. The example binds only to <code>127.0.0.1</code>, checks the extension origin, and requires proof of a fresh pairing secret. There is one active automation client per connected browser profile; a new client replaces the old one and closes its tabs.</p>
-          <p>Browser-level CDP support is intentionally limited to <code>Browser.getVersion</code>, <code>Browser.close</code>, <code>Target.createTarget</code>, <code>Target.closeTarget</code>, <code>Target.getTargets</code>, <code>Target.getTargetInfo</code>, and <code>Target.getBrowserContexts</code>. Discovery, auto-attach, and download behavior setup calls are acknowledged for Playwright compatibility. Session commands are forwarded through Chrome&apos;s Debugger API; unsupported CDP domains and browser-wide operations may fail. This is not a full remote-debugging endpoint.</p>
-        </section>
 
         <section aria-labelledby="native-host">
           <h2 id="native-host">Implement your own companion</h2>
@@ -78,14 +54,14 @@ postorca-browser-bridge start --extension-id YOUR_EXTENSION_ID`}</code></pre>
               <div key={type}><h3>{type}</h3><p>{direction}</p><pre><code>{example}</code></pre></div>
             ))}
           </div>
-          <p>A successful command returns <code>{'{"type":"result","seq":NUMBER,"result":{…}}'}</code>. <code>closeTab</code> returns an empty result. Send <code>{'{"type":"ping"}'}</code> every 20 seconds; the extension answers <code>{'{"type":"pong"}'}</code>. Close a connection that misses heartbeats. The example uses a 60-second command timeout.</p>
+          <p>A successful command returns <code>{'{"type":"result","seq":NUMBER,"result":{…}}'}</code>. <code>closeTab</code> returns an empty result. Send <code>{'{"type":"ping"}'}</code> every 20 seconds; the extension answers <code>{'{"type":"pong"}'}</code>. Close a connection that misses heartbeats. Companions should enforce a bounded command timeout.</p>
           <p>The extension checks ownership before controlling a tab or forwarding its events. Tab IDs refer to this Chrome session, not arbitrary CDP target IDs. Most new tabs join the green Orca group; <code>newWindow: true</code> opens an unfocused window for tasks such as recording. Reconnection closes old bridge-owned tabs. Dismissing Chrome&apos;s debugging banner closes the affected bridge tab.</p>
         </section>
 
         <section aria-labelledby="responsibilities">
           <h2 id="responsibilities">Data handling and user control</h2>
           <p>Your companion can receive sensitive page content, screenshots, network events, and data from signed-in websites, and can take actions in bridge-created tabs. Explain these capabilities to users before starting tasks. Provide your own authorization controls, privacy policy, retention and deletion process, and any disclosures about remote servers or AI providers.</p>
-          <p>The example itself does not upload browser data. PostOrca&apos;s own desktop integration can send task results to the PostOrca service and its AI provider. See the <a href="/privacy/">extension privacy policy</a>. Users can close tabs, cancel Chrome&apos;s debugger attachment, disable the extension, or stop the companion. Do not represent a browser profile as isolated from its existing accounts: bridge tabs use that profile&apos;s signed-in sessions.</p>
+          <p>PostOrca&apos;s own desktop integration can send task results to the PostOrca service and its AI provider. See the <a href="/privacy/">extension privacy policy</a>. Users can close tabs, cancel Chrome&apos;s debugger attachment, disable the extension, or stop the companion. Do not represent a browser profile as isolated from its existing accounts: bridge tabs use that profile&apos;s signed-in sessions.</p>
           <p>Questions or integration feedback: <a href="mailto:nla@autopilotstartup.com">nla@autopilotstartup.com</a>.</p>
         </section>
       </main>

@@ -26,7 +26,7 @@ export default function Privacy() {
       <main id="main" className="privacy-page">
         <p className="privacy-eyebrow">PostOrca browser extension</p>
         <h1>Privacy policy</h1>
-        <p className="privacy-updated">Last updated: October 28, 2026</p>
+        <p className="privacy-updated">Last updated: October 29, 2026</p>
         <p className="privacy-intro">
           PostOrca Browser Bridge connects your browser to the PostOrca desktop
           app or a compatible local companion so an agent can carry out browser
@@ -123,12 +123,6 @@ export default function Privacy() {
             policy and access controls before connecting. PostOrca cannot delete
             information held by an independent companion; direct those requests
             to its operator.
-          </p>
-          <p>
-            The downloadable standalone example runs locally without a PostOrca
-            account, API server, or AI provider. It stores local pairing and
-            connection files while running and does not upload browser content.
-            Software built on that example may handle data differently.
           </p>
         </section>
 
