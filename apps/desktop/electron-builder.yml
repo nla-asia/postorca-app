@@ -14,6 +14,7 @@ files:
   - "!electron/**/*.test.cjs"
   - "!electron/plugins/video/{bundle,fixtures,smoke}.cjs"
   - "!electron/plugins/computer/{smoke,live-check,eval-desktop}.cjs"
+  - "!electron/plugins/computer/native/mac-tests/**/*"
   # Production dependencies only the renderer (bundled into dist/) or the server use.
   - "!node_modules/{lucide-react,openai}/**/*"
 asarUnpack:

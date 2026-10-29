@@ -25,18 +25,41 @@ func axValue(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
 func axWindow(_ pid: pid_t, _ target: [String: Any]) throws -> AXUIElement {
     let app = AXUIElementCreateApplication(pid)
     AXUIElementSetMessagingTimeout(app, 2)
-    let windows = axValue(app, kAXWindowsAttribute) as? [AXUIElement] ?? []
+    // A sheet or panel is its own CG window, but Accessibility lists a sheet as an
+    // AXSheet child of its parent window rather than in the app's window list.
+    var candidates: [AXUIElement] = []
+    func add(_ value: CFTypeRef?) {
+        guard let value, CFGetTypeID(value) == AXUIElementGetTypeID() else { return }
+        let element = value as! AXUIElement
+        if !candidates.contains(where: { CFEqual($0, element) }) { candidates.append(element) }
+    }
+    (axValue(app, kAXWindowsAttribute) as? [AXUIElement] ?? []).forEach { add($0) }
+    add(axValue(app, kAXFocusedWindowAttribute)); add(axValue(app, kAXMainWindowAttribute))
+    for window in candidates {
+        for child in axValue(window, kAXChildrenAttribute) as? [AXUIElement] ?? [] where axValue(child, kAXRoleAttribute) as? String == kAXSheetRole { add(child) }
+    }
     let frame = target["bounds"] as! [String: Any]
-    // Match the AX window to the CG window by position and size; never pick an arbitrary window.
-    let matches = windows.filter { window in
-        guard let p = axValue(window, kAXPositionAttribute), CFGetTypeID(p) == AXValueGetTypeID(),
-              let s = axValue(window, kAXSizeAttribute), CFGetTypeID(s) == AXValueGetTypeID() else { return false }
+    let rect = CGRect(x: frame["x"] as! Double, y: frame["y"] as! Double, width: frame["width"] as! Double, height: frame["height"] as! Double)
+    let described = candidates.map { element -> (frame: CGRect?, title: String?) in
+        guard let p = axValue(element, kAXPositionAttribute), CFGetTypeID(p) == AXValueGetTypeID(),
+              let s = axValue(element, kAXSizeAttribute), CFGetTypeID(s) == AXValueGetTypeID() else { return (nil, nil) }
         var point = CGPoint.zero, size = CGSize.zero
         AXValueGetValue(p as! AXValue, .cgPoint, &point); AXValueGetValue(s as! AXValue, .cgSize, &size)
-        return abs(point.x - (frame["x"] as! Double)) < 3 && abs(point.y - (frame["y"] as! Double)) < 3 && abs(size.width - (frame["width"] as! Double)) < 3 && abs(size.height - (frame["height"] as! Double)) < 3
+        return (CGRect(origin: point, size: size), axValue(element, kAXTitleAttribute) as? String)
     }
-    guard matches.count == 1 else { try fail("Cannot uniquely match the selected window. Check Accessibility permission and observe again.") }
-    return matches[0]
+    guard let index = uniqueWindowMatch(described, rect, target["title"] as? String ?? "") else { try fail("Cannot uniquely match the selected window. Check Accessibility permission and observe again.") }
+    return candidates[index]
+}
+// Match the AX window to the CG window by position and size; never pick an arbitrary
+// window. The title only separates candidates that share a frame.
+func uniqueWindowMatch(_ candidates: [(frame: CGRect?, title: String?)], _ target: CGRect, _ title: String) -> Int? {
+    let matches = candidates.indices.filter { index in
+        guard let a = candidates[index].frame else { return false }
+        return abs(a.minX - target.minX) < 3 && abs(a.minY - target.minY) < 3 && abs(a.width - target.width) < 3 && abs(a.height - target.height) < 3
+    }
+    if matches.count == 1 { return matches[0] }
+    let titled = matches.filter { !title.isEmpty && candidates[$0].title == title }
+    return titled.count == 1 ? titled[0] : nil
 }
 // Resolve app menus only; unnamed AXMenu containers do not add a path segment.
 func menuChildren(_ element: AXUIElement) -> [AXUIElement] {
@@ -114,14 +137,20 @@ func run(_ request: [String: Any]) throws -> [String: Any] {
     if action == "focus" {
         guard AXIsProcessTrusted() else { try fail("Grant Accessibility permission to PostOrca in System Settings.") }
         let ax = try axWindow(pid_t(pid), window)
-        AXUIElementPerformAction(ax, kAXRaiseAction as CFString)
+        // A sheet raises with its parent window.
+        let parent = axValue(ax, kAXParentAttribute)
+        let raised = axValue(ax, kAXRoleAttribute) as? String == kAXSheetRole && parent.map({ CFGetTypeID($0) == AXUIElementGetTypeID() }) == true ? parent as! AXUIElement : ax
+        AXUIElementPerformAction(raised, kAXRaiseAction as CFString)
         app?.activate(options: [])
         Thread.sleep(forTimeInterval: 0.12)
         let fresh = windowList()
         // CG windows are ordered front to back; reject a sibling or modal window above the target.
         let front = fresh.first(where: { $0["pid"] as? Int == pid })
-        return ["window": fresh.first(where: { $0["id"] as? String == id }) ?? window,
-                "foreground": app?.isActive == true && front?["id"] as? String == id]
+        var result: [String: Any] = ["window": fresh.first(where: { $0["id"] as? String == id }) ?? window,
+                                     "foreground": app?.isActive == true && front?["id"] as? String == id]
+        // Name the sheet or panel in front so the caller can observe it instead.
+        if let front, front["id"] as? String != id { result["front"] = front }
+        return result
     }
     if action == "window" { return ["window": window, "foreground": app?.isActive == true] }
     if action == "menu" {
@@ -167,6 +196,7 @@ func run(_ request: [String: Any]) throws -> [String: Any] {
     }
     try fail("Unsupported native action.")
 }
+// Entry point. mac-native.test.cjs replaces everything from here with the tests.
 do {
     let request = try JSONSerialization.jsonObject(with: FileHandle.standardInput.readDataToEndOfFile()) as! [String: Any]
     let result = try run(request)
