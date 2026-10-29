@@ -10,8 +10,7 @@ const { installWindowsHost } = require("./windows-pairing.cjs");
  * Both change on every app start, so the pairing file only exists while the app runs.
  */
 
-// Fixed by the "key" in browser-extension/manifest.json.
-const EXTENSION_ID = "bdfijompoabfinpmaepcpcfhdneghegf";
+const { EXTENSION_ID } = require("./extension-id.cjs");
 const HOST_NAME = "com.postorca.browser";
 /** Each supported browser's profile root on macOS. */
 const BROWSER_DIRS = [

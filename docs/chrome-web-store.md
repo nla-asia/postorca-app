@@ -1,5 +1,11 @@
 # Chrome Web Store submission copy
 
+## Package and identity
+
+Run `npm run extension:package` to create `dist/postorca-browser-bridge-VERSION.zip`. The package contains only extension runtime files and strips the development-only `key` field; uploading the source manifest with `key` is rejected by Chrome Web Store.
+
+The assigned Web Store ID is `anhadfefcapmbdipgnmhbkneedjldgld`. The unpacked manifest uses the store public key to retain the same ID locally, and the desktop native host trusts this ID. Existing desktop installers built before this change trust the old development ID and must be updated before the store extension can connect. Re-add the unpacked extension after changing its ID, and restart an updated desktop build to register the matching native host.
+
 ## Listing
 
 **Name:** PostOrca Browser Bridge
