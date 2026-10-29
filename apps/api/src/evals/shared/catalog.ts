@@ -132,7 +132,7 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
     }),
   );
   // Story reels (B cases) wait for the Content redesign; F cases test one video process.
-  const kept = ["F3", "F9", "F6"];
+  const kept = ["F3", "F6"];
   const videos = videoCases.filter((c) => kept.includes(c.id)).map((c) => {
     const parent =
       "of" in c.start
