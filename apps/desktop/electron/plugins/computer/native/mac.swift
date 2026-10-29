@@ -22,6 +22,13 @@ func axValue(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
     var value: CFTypeRef?
     return AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success ? value : nil
 }
+func axFrame(_ element: AXUIElement) -> CGRect? {
+    guard let p = axValue(element, kAXPositionAttribute), CFGetTypeID(p) == AXValueGetTypeID(),
+          let s = axValue(element, kAXSizeAttribute), CFGetTypeID(s) == AXValueGetTypeID() else { return nil }
+    var point = CGPoint.zero, size = CGSize.zero
+    AXValueGetValue(p as! AXValue, .cgPoint, &point); AXValueGetValue(s as! AXValue, .cgSize, &size)
+    return size.width > 0 && size.height > 0 ? CGRect(origin: point, size: size) : nil
+}
 func axWindow(_ pid: pid_t, _ target: [String: Any]) throws -> AXUIElement {
     let app = AXUIElementCreateApplication(pid)
     AXUIElementSetMessagingTimeout(app, 2)
@@ -159,7 +166,12 @@ func run(_ request: [String: Any]) throws -> [String: Any] {
             if subrole != kAXSecureTextFieldSubrole {
                 let text = [kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute].compactMap { axValue(element, $0) as? String }.joined(separator: "\n")
                 let bounded = String(text.prefix(2000)); characters += bounded.count
-                nodes.append(["role": role, "text": bounded, "depth": depth])
+                var node: [String: Any] = ["role": role, "text": bounded, "depth": depth]
+                // Global top-left points, the same space as the CG window bounds.
+                if let rect = axFrame(element) { node["bounds"] = bounds(rect) }
+                var actions: CFArray?
+                if AXUIElementCopyActionNames(element, &actions) == .success, (actions as? [String] ?? []).contains(kAXPressAction) { node["actionable"] = true }
+                nodes.append(node)
             }
             if depth < 12, let children = axValue(element, kAXChildrenAttribute) as? [AXUIElement] { queue.append(contentsOf: children.prefix(max(0, 500 - queue.count)).map { ($0, depth + 1) }) }
         }
