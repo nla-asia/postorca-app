@@ -31,6 +31,10 @@ export async function observeComputer(folder, read) {
   const info = await read("window", { window });
   if (String(info.window?.id) !== window || !Number.isInteger(info.window?.pid))
     throw new Error("Independent native window identity is missing or changed");
+  // The app that owns the window, from the native app list (its id and path).
+  const owner = (await read("list")).apps?.find((app) =>
+    (app.windows ?? []).some((w) => String(w.id) === window),
+  );
   const accessibility = await read("accessibility", {
     window,
     expected_pid: info.window.pid,
@@ -68,6 +72,7 @@ export async function observeComputer(folder, read) {
     computer_evidence: {
       observed: {
         window,
+        ...(owner ? { app: { id: owner.id, path: owner.path, name: owner.name } } : {}),
         title: info.window.title,
         bounds: info.window.bounds,
         accessibility,

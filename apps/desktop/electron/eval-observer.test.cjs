@@ -50,6 +50,13 @@ function reader(overrides = {}) {
               bounds: { x: 0, y: 0, width: 100, height: 100 },
             },
           };
+        case "list":
+          return {
+            apps: [
+              { id: "/x/Calculator.app", path: "/x/Calculator.app", name: "Calculator", windows: [{ id: "123" }] },
+              { id: "/x/Other.app", path: "/x/Other.app", name: "Other", windows: [{ id: "9" }] },
+            ],
+          };
         case "accessibility":
           return { nodes: [{ text: "Display is 907" }], truncated: false };
         case "capture":
@@ -67,8 +74,14 @@ test("native observer reads the real window/result without task input or answer 
   const out = await observeComputer(dir, r.read);
   assert.deepEqual(
     r.calls.map((c) => c.op),
-    ["control", "window", "accessibility", "capture", "control"],
+    ["control", "window", "list", "accessibility", "capture", "control"],
   );
+  // The owning app comes from the native app list, matched by window id.
+  assert.deepEqual(out.computer_evidence.observed.app, {
+    id: "/x/Calculator.app",
+    path: "/x/Calculator.app",
+    name: "Calculator",
+  });
   assert.equal(
     r.calls.find((c) => c.op === "accessibility").args.expected_pid,
     42,

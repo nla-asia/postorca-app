@@ -1,7 +1,8 @@
-import type {
-  ComputerEvalCase,
-  EvalCheck,
-  EvalEvidence,
+import {
+  computerPluginOnly,
+  type ComputerEvalCase,
+  type EvalCheck,
+  type EvalEvidence,
 } from "./computer-eval-types.js";
 
 export const macComputerCaseOrder = ["mac-calculator"] as const;
@@ -190,8 +191,7 @@ export function gradeMacComputer(
         successful.length === calls.length &&
         calls.every(
           (c) =>
-            allowed.has(c.name) &&
-            (c.name !== "activate_plugin" || c.args.code === "computer"),
+            allowed.has(c.name) && computerPluginOnly(c),
         ),
     },
     {
