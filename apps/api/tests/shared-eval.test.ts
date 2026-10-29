@@ -129,10 +129,10 @@ async function reviewed(runner: EvalRunner, id: string) {
   });
 }
 
-test("all 31 cases share the catalog, browser cases have no execution allowlist", () => {
+test("all 29 cases share the catalog, browser cases have no execution allowlist", () => {
   const cases = builtinCases();
-  assert.equal(cases.length, 31);
-  assert.equal(cases.filter((c) => c.plugin === "browser").length, 7);
+  assert.equal(cases.length, 29);
+  assert.equal(cases.filter((c) => c.plugin === "browser").length, 5);
   assert.equal(new Set(cases.map((c) => c.id)).size, cases.length);
   assert.throws(
     () =>
@@ -155,7 +155,7 @@ test("all 31 cases share the catalog, browser cases have no execution allowlist"
       [...new Set(cases.map(key))].map((k) => [k, cases.filter((c) => key(c) === k).length]),
     );
   assert.deepEqual(count((c) => c.plugin), {
-    browser: 7,
+    browser: 5,
     computer: 8,
     content: 3,
     ideas: 3,
@@ -165,7 +165,7 @@ test("all 31 cases share the catalog, browser cases have no execution allowlist"
   assert.ok(cases.every((c) => c.level), "every case has a level");
   assert.deepEqual(count((c) => `${c.plugin}-${c.level}`), {
     "browser-1": 1,
-    "browser-2": 6,
+    "browser-2": 4,
     "computer-1": 4,
     "computer-2": 4,
     "content-3": 3,

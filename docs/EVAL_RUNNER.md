@@ -260,7 +260,7 @@ over merely asserting that a tool was invoked.
 
 ## Existing case migration
 
-All 31 agent cases are registered: Browser 7, Computer 8, Media 6, Writing 4,
+All 29 agent cases are registered: Browser 5, Computer 8, Media 6, Writing 4,
 Ideas 3, Content 3.
 
 ### Categories
@@ -272,7 +272,7 @@ have only level 3.
 
 | Category | Question | Level 1 | Level 2 |
 | --- | --- | --- | --- |
-| Browser | Can Orca browse and research? | `browser-tools`: every browser tool on Wikipedia | 6 research cases |
+| Browser | Can Orca browse and research? | `browser-tools`: every browser tool on Wikipedia | X, LinkedIn, Threads and Instagram post research |
 | Computer | Can Orca control apps and record clips? | Calculator, Notepad, Edge, Mac Calculator | 4 demo-recording cases |
 | Media | Can Orca make and edit images, audio and video? | `media-M1`: every media tool; speech and transcription check each other | Video F3 (music under voiceover), F9 (music by mood), F6 (no brand colours); `media-quote-card` (square, then portrait edited from it); `media-checked-voiceover` (transcribe the final take; every fact kept) |
 | Writing | Does Orca write like the founder? | `writing-tools`: document, in-place edit, reply, saved posts | post, reply, revision |
