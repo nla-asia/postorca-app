@@ -389,12 +389,7 @@ test("list_content_ideas returns the founder's recent ideas, newest first", asyn
 
 test("list_content_feedback returns the founder's messages in content tasks of the last day", async () => {
   const userId = await account();
-  const call = (name: string, args: unknown) => ({
-    callId: randomUUID(),
-    name,
-    arguments: JSON.stringify(args),
-  });
-  // A routine's run: its instructions, a first draft, then the founder's change requests.
+  // A routine's run: its instructions and Orca's draft, then the founder's change requests.
   const contentTask = async (owner: string, workType = "content") => {
     const { task, turn } = await createWorkTask(
       fixture.db,
@@ -404,32 +399,19 @@ test("list_content_feedback returns the founder's messages in content tasks of t
       "X",
     );
     await fixture.db.query("UPDATE tasks SET work_type=$2 WHERE id=$1", [task.id, workType]);
-    await appendMessage(fixture.db, turn.id, "tool_call", call("create_artifact", {
-      kind: "document",
-      title: "Post",
-      content: "Shipping beats planning. What do you think? 🚀",
-    }));
-    await createArtifact(fixture.db, task.id, turn.id, {
-      kind: "document",
-      title: "Post",
-      content: "Shipping beats planning. What do you think? 🚀",
-    });
     await appendMessage(fixture.db, turn.id, "assistant", { text: "Here is today's draft." });
     await completeTurn(fixture.db, turn.id);
     return task.id as string;
   };
   const feedback = async (taskId: string, text: string) => {
     const turn = await createTurn(fixture.db, userId, taskId, text);
-    await appendMessage(fixture.db, turn.id, "tool_call", call("edit_document", {
-      id: randomUUID(),
-      edits: [{ find: " What do you think? 🚀", replace: "" }],
-    }));
-    await appendMessage(fixture.db, turn.id, "assistant", { text: "Done: no question, no emoji." });
+    await appendMessage(fixture.db, turn.id, "assistant", { text: "Done." });
     await completeTurn(fixture.db, turn.id);
     return turn.id as string;
   };
   const edited = await contentTask(userId);
-  await feedback(edited, "don't end on a question, and drop the emoji");
+  await feedback(edited, "don't end on a question");
+  await feedback(edited, "and drop the emoji");
   // Feedback older than the window, a task with no feedback, other work, another founder.
   const old = await contentTask(userId);
   const oldTurn = await feedback(old, "shorter");
@@ -437,19 +419,15 @@ test("list_content_feedback returns the founder's messages in content tasks of t
   await contentTask(userId);
   await feedback(await contentTask(userId, "general"), "make it about pricing");
   const context = { userId, taskId: "unused", turnId: "unused" };
-  const { tasks } = await run(context, "list_content_feedback", {});
-  assert.deepEqual(tasks.map((task: any) => task.task_id), [edited]);
-  const [task] = tasks;
-  assert.equal(task.platform, "X");
-  assert.deepEqual(task.first_drafts, ["Shipping beats planning. What do you think? 🚀"]);
-  assert.equal(task.feedback.length, 1);
-  assert.equal(task.feedback[0].founder, "don't end on a question, and drop the emoji");
-  assert.deepEqual(task.feedback[0].changes, [[{ find: " What do you think? 🚀", replace: "" }]]);
-  assert.equal(task.feedback[0].orca, "Done: no question, no emoji.");
-  assert.equal(task.drafts_now[0].title, "Post");
-  // A wider window reaches the older feedback, only from that day on.
-  const week = (await run(context, "list_content_feedback", { hours: 72 })).tasks;
-  assert.deepEqual(week.map((task: any) => task.task_id), [edited, old]);
+  const texts = (tasks: any[]) =>
+    tasks.map((task) => [task.task_id, task.platform, task.messages.map((m: any) => m.text)]);
+  assert.deepEqual(texts((await run(context, "list_content_feedback", {})).tasks), [
+    [edited, "X", ["don't end on a question", "and drop the emoji"]],
+  ]);
+  assert.deepEqual(texts((await run(context, "list_content_feedback", { hours: 72 })).tasks), [
+    [edited, "X", ["don't end on a question", "and drop the emoji"]],
+    [old, "X", ["shorter"]],
+  ]);
   assert.deepEqual(
     await run({ ...context, userId: await account() }, "list_content_feedback", {}),
     { tasks: [], message: "The founder sent no messages in content tasks in the last 24 hours." },

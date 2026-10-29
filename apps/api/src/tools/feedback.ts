@@ -8,7 +8,7 @@ export const feedbackTools: Tool[] = [
     definition: {
       name: "list_content_feedback",
       description:
-        "Read what the founder said in content tasks (drafts of posts) in the last `hours` (default 24): per task, the platform, the first draft, each message the founder sent with the edits Orca made and Orca's reply in that turn, and the drafts as they are now. The routine's own instructions are not included. Read-only.",
+        "Read the messages the founder sent in content tasks (drafts of posts) in the last `hours` (default 24), grouped by task with its title and platform. The routine's own instructions are not included. Read-only.",
       parameters: object(
         { hours: { type: "integer", minimum: 1, maximum: 168 } },
         [],

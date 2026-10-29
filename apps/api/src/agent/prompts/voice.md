@@ -29,8 +29,8 @@ Their real quirks to keep as they are.
 How they write differently on each account.
 
 ## Rules from edits
-- Note, 2026-10-30, X: don't end on a question. Before: "…what do you think?" After: "…" (seen once)
-- Rule, 2026-11-02, all: keep posts under 200 characters. Before: "…" After: "…" (seen 2 times)
+- Note, 2026-10-30, X: don't end on a question. Founder: "stop asking people what they think" (seen once)
+- Rule, 2026-11-02, all: keep posts under 200 characters. Founder: "way too long", "shorter again" (seen 2 times)
 
 ## Confidence
 Low, medium or high, from how many picks, posts and edits it rests on; when it was last updated.
