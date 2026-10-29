@@ -81,15 +81,18 @@ export function gradeVideo(
         (call) => !call.failed && call.args.name === entry.expect.skill,
       ),
     );
-  // Retain the original conservative rule. Navigation is reported for review, not proof of publishing.
-  const browserInputs = calls.filter((call) =>
-    ["browser_click", "browser_type", "browser_press"].includes(call.name),
-  );
-  check(
-    "No browser inputs during this creation-only task",
-    browserInputs.length === 0,
-    browserInputs.map((call) => call.name).join(", "),
-  );
+  // Retain the original conservative rule. Navigation is reported for review, not proof of
+  // publishing. Finding music on the web needs browser input, so that case is exempt.
+  if (entry.expect.music?.source !== "web") {
+    const browserInputs = calls.filter((call) =>
+      ["browser_click", "browser_type", "browser_press"].includes(call.name),
+    );
+    check(
+      "No browser inputs during this creation-only task",
+      browserInputs.length === 0,
+      browserInputs.map((call) => call.name).join(", "),
+    );
+  }
   check(
     "No publishing tool called",
     !calls.some((call) =>

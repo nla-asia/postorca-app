@@ -260,8 +260,8 @@ over merely asserting that a tool was invoked.
 
 ## Existing case migration
 
-All 27 agent cases are registered: Browser 4, Computer 8, Media 5, Writing 4,
-Ideas 3, Content 3.
+All 29 agent cases are registered: Browser 5, Computer 8, Media 5, Writing 4,
+Ideas 3, Content 4.
 
 ### Categories
 
@@ -272,12 +272,12 @@ have only level 3.
 
 | Category | Question | Level 1 | Level 2 |
 | --- | --- | --- | --- |
-| Browser | Can Orca browse and research? | `browser-tools`: every browser tool on Wikipedia | X, LinkedIn and Instagram post research (Threads waits for an account) |
+| Browser | Can Orca browse and research? | `browser-tools`: every browser tool on Wikipedia | X, LinkedIn and Instagram post research (Threads waits for an account); `browser-find-music`: find and save a free, usable track |
 | Computer | Can Orca control apps and record clips? | Calculator, Notepad, Edge, Mac Calculator | 4 demo-recording cases |
 | Media | Can Orca make and edit images, audio and video? | `media-M1`: every media tool except music (out of scope: the key has no access); speech and transcription check each other | Video F3 (music under voiceover), F6 (no brand colours); `media-quote-card` (square, then portrait edited from it); `media-checked-voiceover` (transcribe the final take; every fact kept) |
 | Writing | Does Orca write like the founder? | `writing-tools`: document, in-place edit, reply, saved posts | post, reply, revision |
 | Ideas | Do the idea routines find things worth posting? | level 3 only: daily content ideas, ideas from your work, weekly strategy research, each run as a real routine | |
-| Content | Can Orca do the founder's whole job, end to end? | level 3 only: product demo videos of a Mac app, an iOS app in the Simulator, and what the founder just shipped (work fixture) | |
+| Content | Can Orca do the founder's whole job, end to end? | level 3 only: product demo videos of a Mac app, an iOS app in the Simulator, and what the founder just shipped (work fixture); `content-reel-with-music`: a reel with music found online | |
 
 Writing level 2 cases need the founder's real brand profile (`brand_profile_ready`):
 programmatic checks cover platform format, supplied facts, placeholders and in-place
@@ -292,6 +292,15 @@ routine, naming its skill). `run` creates an inactive routine on that platform a
 starts it with Run now (`POST /routines/:id/run`), so the product submits the turn
 itself with no one in the chat; the attempt then follows that task like any other.
 The routine stays inactive afterwards. Supply `account` and `account url` parameters.
+
+### Music fixture
+
+When a case tests mixing rather than finding music, the track is a fixture.
+`fixtures/evals/music/` holds the pinned tracks (source and license in its README);
+`scripts/evals/music-fixture.mjs` copies the track into the founder's working folder
+(`eval-fixtures/`, override with `POSTORCA_WORKING_FOLDER`) before `video-F3` and removes
+it afterwards, refusing to overwrite a file it did not create. Finding music online is
+tested on its own in `browser-find-music` and end to end in `content-reel-with-music`.
 
 ### Work fixture
 

@@ -35,7 +35,7 @@ const scenes = [
 const b5 = videoCases.find((entry) => entry.id === "B5")!;
 
 test("video eval retains original scenarios, exact numbers, follow-ups and feature limits", () => {
-  assert.equal(videoCases.length, 20);
+  assert.equal(videoCases.length, 21);
   assert.deepEqual(b5.expect.mustInclude, [
     "\\b120\\b",
     "\\b310\\b",
@@ -204,7 +204,7 @@ test("captions and colour overrides are checked against their specific feature b
 });
 
 test("web music must be downloaded through the browser, not taken from the project folder", () => {
-  const f3 = videoCases.find((item) => item.id === "F3")!;
+  const f3 = videoCases.find((item) => item.id === "C1")!;
   const exported = (file: string) =>
     call(
       "video_export",
@@ -263,4 +263,19 @@ test("missing or malformed tool results do not become successful evidence", () =
   ]);
   assert.equal(evidence[0].failed, true);
   assert.deepEqual(evidence[0].args, {});
+});
+
+test("browsing for web music is not counted against a creation-only video", () => {
+  const f3 = videoCases.find((item) => item.id === "C1")!;
+  const f6 = videoCases.find((item) => item.id === "F6")!;
+  const messages = [
+    ...call("browser_click", { tab: "t1", ref: "e1" }),
+    ...call("video_export", { scenes }, { attachments: [{ file: video, mime_type: "video/mp4" }] }),
+  ];
+  const named = (entry: typeof f3) =>
+    gradeVideo(entry, messages, [artifact], 1).checks.find(
+      (check) => check.name === "No browser inputs during this creation-only task",
+    );
+  assert.equal(named(f3), undefined);
+  assert.equal(named(f6)!.ok, false);
 });
