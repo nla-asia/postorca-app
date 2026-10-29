@@ -203,6 +203,39 @@ test("captions and colour overrides are checked against their specific feature b
   );
 });
 
+test("web music must be downloaded through the browser, not taken from the project folder", () => {
+  const f3 = videoCases.find((item) => item.id === "F3")!;
+  const exported = (file: string) =>
+    call(
+      "video_export",
+      { scenes, voiceover_file: "voice", music: { file, volume: 0.15 } },
+      { attachments: [{ file: video, mime_type: "video/mp4" }] },
+    );
+  const source = (messages: EvalMessage[]) =>
+    gradeVideo(f3, messages, [artifact], 1).checks.find(
+      (check) => check.name === "Music was downloaded from the web",
+    )!;
+  const fetched = source([
+    ...call(
+      "browser_fetch_file",
+      { tab: "t1", url: "https://example.com/calm-lofi.mp3" },
+      { attachments: [{ ref: "aaaa1111", filename: "calm-lofi.mp3", mime_type: "audio/mpeg" }] },
+    ),
+    ...exported("aaaa1111"),
+  ]);
+  assert.equal(fetched.ok, true);
+  assert.equal(fetched.detail, "calm-lofi.mp3");
+  const local = source([
+    ...call(
+      "read_file",
+      { path: "music/lofi.mp3" },
+      { attachments: [{ ref: "bbbb2222", mime_type: "audio/mpeg" }] },
+    ),
+    ...exported("bbbb2222"),
+  ]);
+  assert.equal(local.ok, false);
+});
+
 test("consecutive scenes on one image are one shot for pacing", () => {
   const messages = call(
     "video_export",

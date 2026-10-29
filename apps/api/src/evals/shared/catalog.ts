@@ -31,12 +31,7 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       title: c.name,
       turns: [{ brief: c.brief }],
       criteria: criteria(bullets(c.success_criteria)),
-      prerequisites: [
-        c.id === "offline" ? "desktop_unavailable" : "browser_connected",
-        ...(["feedhub", "session-downloads"].includes(c.id)
-          ? ["fixture_ready"]
-          : []),
-      ],
+      prerequisites: ["browser_connected"],
       source: "apps/api/src/evals/browser-cases.ts",
     }),
   );
@@ -106,18 +101,28 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
           ];
     return caseSchema.parse({
       id: `video-${c.id}`,
+      ...(c.revision ? { revision: c.revision } : {}),
+      ...(c.revision_change ? { revision_change: c.revision_change } : {}),
       plugin: "video",
       title: c.name,
       turns,
       criteria: criteria([
         "The delivered videos fulfill the frozen user requests; exact facts, readable text, image quality, and relevant shots are verified from the actual outputs.",
         `Independently inspect the delivered files, including duration, dimensions, audio streams and these original case expectations: ${JSON.stringify(c.expect)}.`,
+        ...(c.expect.music?.source === "web"
+          ? [
+              "The music was found online and downloaded as an original audio file; it fits the requested mood, is free to use for this reel under its published license, and its source and any required credit are reported and match the page it came from.",
+            ]
+          : []),
       ]),
       prerequisites: [
         "desktop_connected",
         "media_providers_ready",
         ...(c.expect.screens ? ["supplied_screenshots_ready"] : []),
-        ...(c.expect.music ? ["supplied_music_ready"] : []),
+        ...(c.expect.music?.source === "web" ? ["browser_connected"] : []),
+        ...(c.expect.music && c.expect.music.source !== "web"
+          ? ["supplied_music_ready"]
+          : []),
         ...(c.expect.noProfileColors
           ? ["profile_colours_cleared_with_restore_plan"]
           : []),

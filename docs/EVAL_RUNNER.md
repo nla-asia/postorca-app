@@ -260,7 +260,7 @@ over merely asserting that a tool was invoked.
 
 ## Existing case migration
 
-All 37 agent cases are registered: Browser 10, Computer 6, Media 1, Video 20.
+All 33 agent cases are registered: Browser 6, Computer 6, Media 1, Video 20.
 There is no special three-case browser allowlist.
 
 - Browser cases retain their original success contracts for external review.

@@ -20,8 +20,8 @@ import {
 const apiRoot = fileURLToPath(new URL("../", import.meta.url));
 
 test("the browser case catalog has distinct cases with reviewer-only bullet criteria", () => {
-  assert.equal(browserCases.length, 10);
-  assert.equal(new Set(browserCases.map((entry) => entry.id)).size, 10);
+  assert.equal(browserCases.length, 6);
+  assert.equal(new Set(browserCases.map((entry) => entry.id)).size, 6);
   for (const entry of browserCases) {
     assert.ok(entry.name && entry.brief, entry.id);
     const lines = entry.success_criteria.split("\n");
@@ -33,7 +33,7 @@ test("the browser case catalog has distinct cases with reviewer-only bullet crit
       entry.id,
     );
   }
-  assert.equal(browserCase("offline").name, "Browser work while the desktop app is closed");
+  assert.equal(browserCase("conversations").name, "Research conversations worth joining");
   assert.throws(() => browserCase("shopping"), /Unknown browser eval: shopping/);
 });
 

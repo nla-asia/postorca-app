@@ -129,10 +129,10 @@ async function reviewed(runner: EvalRunner, id: string) {
   });
 }
 
-test("all 37 legacy cases share the catalog, browser cases have no execution allowlist", () => {
+test("all 33 legacy cases share the catalog, browser cases have no execution allowlist", () => {
   const cases = builtinCases();
-  assert.equal(cases.length, 37);
-  assert.equal(cases.filter((c) => c.plugin === "browser").length, 10);
+  assert.equal(cases.length, 33);
+  assert.equal(cases.filter((c) => c.plugin === "browser").length, 6);
   assert.equal(new Set(cases.map((c) => c.id)).size, cases.length);
   assert.throws(
     () =>

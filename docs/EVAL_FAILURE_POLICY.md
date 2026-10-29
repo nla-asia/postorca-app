@@ -140,3 +140,21 @@ explicit policy-3 regrade is requested. Its silent fallback remains unaccepted
 because narration hit a provider quota limit; this correction is not a B3 pass.
 Other stored policy versions are never silently rewritten. See the
 [cross-plugin pilot record](eval-cross-plugin-2026-10-29.md).
+
+## Browser catalog focus — 29 October 2026
+
+Paid runs now focus on PostOrca's own work. The Browser catalog keeps six cases:
+`social-accounts`, `conversations` and X, LinkedIn, Instagram and Threads post
+research. The `downloads` and `session-downloads` cases above, and the other
+removed cases, stay in their recorded attempts but no longer run.
+
+Feature checks moved into real tasks rather than standalone cases, each as a
+recorded revision 2 of the case that took it over:
+
+- `offline`: every remaining Browser case requires unreachable sources to be
+  reported, never invented.
+- `session-downloads`: Instagram research saves one post's original media through
+  the signed-in browser. Byte preservation, credentials, error and oversize
+  handling and sign-in pages are covered by the desktop's `fetch-file`,
+  `download-file` and `file-transfer` code tests.
+- `morning-assets-artifacts`: Video F3 finds and downloads its own free music.
