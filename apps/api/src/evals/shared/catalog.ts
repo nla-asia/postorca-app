@@ -285,6 +285,8 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
     ...writingCases.map((c) =>
       caseSchema.parse({
         id: `${c.category}-${c.id}`,
+        ...(c.revision ? { revision: c.revision } : {}),
+        ...(c.revision_change ? { revision_change: c.revision_change } : {}),
         plugin: c.category,
         level: c.level,
         title: c.name,

@@ -240,3 +240,17 @@ test("format checks measure the post, not the Other openings and Placeholders no
     "No placeholders left",
   ]);
 });
+
+test("a LinkedIn post may be as short as the founder's own, but not over 250 words", () => {
+  const short = "Cut onboarding from 9 minutes to 4. Finish rate 41% → 63%. One step gone.";
+  const grade = (linkedinText: string) =>
+    failed(
+      gradeWriting(expect("post-in-voice"), {
+        status: "completed",
+        turns: [{ id: "t1", status: "completed", artifacts: [doc("X", short), doc("LinkedIn", linkedinText)] }],
+        calls: [],
+      }),
+    );
+  assert.deepEqual(grade(short), []);
+  assert.deepEqual(grade(`${short} ${"word ".repeat(250)}`), ["LinkedIn post 1–250 words"]);
+});
