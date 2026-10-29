@@ -2,8 +2,13 @@ const fs = require("node:fs/promises");
 const { mkdirSync, writeFileSync } = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
+const { execFile } = require("node:child_process");
+const { promisify } = require("node:util");
 const { app, nativeImage } = require("electron");
+const { mediaBinary } = require("../../tools/files.cjs");
 const render = require("./render.cjs");
+
+const run = promisify(execFile);
 
 const defaults = {
   background: "#151715",
@@ -15,7 +20,57 @@ const extensions = {
   "image/jpeg": ".jpg",
   "audio/mpeg": ".mp3",
   "audio/mp4": ".m4a",
+  "video/mp4": ".mp4",
+  "video/quicktime": ".mov",
 };
+
+/** Size and length of a clip, with Remotion's ffprobe. */
+async function probeClip(file, signal) {
+  const { filename, directory } = mediaBinary("ffprobe");
+  const { stdout } = await run(
+    filename,
+    [
+      "-v",
+      "error",
+      "-select_streams",
+      "v:0",
+      "-show_entries",
+      "stream=width,height:format=duration",
+      "-of",
+      "json",
+      file,
+    ],
+    { cwd: directory, signal },
+  );
+  const info = JSON.parse(stdout);
+  return {
+    width: info.streams?.[0]?.width,
+    height: info.streams?.[0]?.height,
+    seconds: Number(info.format?.duration) || 0,
+  };
+}
+/** A still of the clip at `seconds`, for the blurred background behind it. */
+async function clipPoster(file, seconds, output, signal) {
+  const { filename, directory } = mediaBinary("ffmpeg");
+  await run(
+    filename,
+    [
+      "-v",
+      "error",
+      "-ss",
+      seconds.toFixed(3),
+      "-i",
+      file,
+      "-frames:v",
+      "1",
+      "-q:v",
+      "4",
+      "-y",
+      output,
+    ],
+    { cwd: directory, signal },
+  );
+}
 if (app.isPackaged) {
   const workingDirectory = path.join(app.getPath("userData"), "video");
   mkdirSync(workingDirectory, { recursive: true });
@@ -64,18 +119,45 @@ function withAssets(args, context, run) {
           throw new Error(`Unsupported file type ${type}.`);
         const filename = name + extensions[type];
         await fs.writeFile(path.join(temporary, filename), data);
-        return filename;
+        return { filename, video: type.startsWith("video/") };
       }
       const scenes = [];
       for (const [index, scene] of args.scenes.entries()) {
-        const src = scene.file
+        const media = scene.file
           ? await download(scene.file, `scene-${index}`)
           : null;
-        const size = src
-          ? nativeImage.createFromPath(path.join(temporary, src)).getSize()
-          : null;
+        const src = media?.filename ?? null;
+        let size = null,
+          clip = null;
+        if (media?.video) {
+          const file = path.join(temporary, src);
+          const info = await probeClip(file, context.signal);
+          const length = Math.round(info.seconds * 100) / 100;
+          const startMs = scene.start_ms ?? 0;
+          const endMs = scene.end_ms ?? Math.round(info.seconds * 1000);
+          if (
+            startMs >= info.seconds * 1000 - 100 ||
+            endMs > info.seconds * 1000 + 50
+          )
+            throw new Error(
+              `Scene ${index + 1} trims ${startMs / 1000}–${endMs / 1000} s, past the end of its clip, which is ${length} s long. Keep start_seconds and end_seconds within 0–${length}.`,
+            );
+          const poster = `scene-${index}-poster.jpg`;
+          await clipPoster(
+            file,
+            startMs / 1000,
+            path.join(temporary, poster),
+            context.signal,
+          );
+          size = info;
+          clip = { startMs, endMs, speed: scene.speed ?? 1, poster };
+        } else if (src)
+          size = nativeImage
+            .createFromPath(path.join(temporary, src))
+            .getSize();
         scenes.push({
           src,
+          clip,
           text: scene.text ?? null,
           durationMs: scene.duration_ms,
           fit: scene.fit ?? "cover",
@@ -86,11 +168,11 @@ function withAssets(args, context, run) {
         });
       }
       const voiceover = args.voiceover_file
-        ? await download(args.voiceover_file, "voiceover")
+        ? (await download(args.voiceover_file, "voiceover")).filename
         : null;
       const music = args.music
         ? {
-            src: await download(args.music.file, "music"),
+            src: (await download(args.music.file, "music")).filename,
             volume: args.music.volume,
             startMs: args.music.start_ms ?? 0,
             fadeInMs: args.music.fade_in_ms ?? 500,

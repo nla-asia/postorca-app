@@ -14,6 +14,7 @@ const mime = {
   ".m4a": "audio/mp4",
   ".wav": "audio/wav",
   ".mp4": "video/mp4",
+  ".mov": "video/quicktime",
 };
 
 /** A render gets a private loopback URL serving only its direct media files. */
