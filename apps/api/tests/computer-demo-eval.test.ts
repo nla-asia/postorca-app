@@ -87,3 +87,23 @@ test("a recording stopped by the founder or never looked at first does not count
     "Clips delivered as video artifacts",
   ]);
 });
+
+test("a demo from the founder's work needs the git history read and the local app opened", () => {
+  const entry = demo("demo-work-video");
+  const calls: any[] = [
+    { name: "git_activity", args: { path: "streaks" }, result: {} },
+    { name: "browser_open", args: { url: "http://127.0.0.1:4110/" }, result: { tab: "t1" } },
+    ...recorded([[], []]).slice(1),
+  ];
+  calls.splice(4, 0, { name: "computer_click", args: {}, result: { input_sent: true } });
+  calls.splice(8, 0, { name: "computer_click", args: {}, result: { input_sent: true } });
+  calls.push({
+    name: "video_export",
+    args: { scenes: [{ video_file: "clip0" }, { video_file: "clip1" }], voiceover_file: "voice" },
+    result: {},
+  });
+  assert.deepEqual(failed(gradeDemoCapture(entry, { status: "completed", calls, artifacts: [] })), []);
+  assert.deepEqual(failed(gradeDemoCapture(entry, { status: "completed", calls: calls.slice(1), artifacts: [] })), [
+    "Read the recent work in the project's git history",
+  ]);
+});

@@ -1,4 +1,8 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { browserCases } from "../browser-cases.js";
+import { ideasCases, routineInstructions } from "../ideas-cases.js";
 import { computerCase, computerCaseOrder } from "../computer-cases.js";
 import {
   macComputerCase,
@@ -15,6 +19,25 @@ import { browserToolsCase } from "../browser-tools.js";
 import { demoCases } from "../computer-demo-cases.js";
 import { caseSchema, type EvalCase } from "./contracts.js";
 
+/** The Streaks repo the "from your work" cases read; its script is pinned by hash. */
+const workScript = fileURLToPath(
+  new URL("../../../../../scripts/evals/work-fixture.mjs", import.meta.url),
+);
+const workHook = (mode: string) => ({
+  executable: process.execPath,
+  args: [workScript, mode],
+});
+const workFixture = () => ({
+  files: [
+    {
+      path: workScript,
+      sha256: createHash("sha256").update(readFileSync(workScript)).digest("hex"),
+    },
+  ],
+  prepare: workHook("prepare"),
+  observe: workHook("observe"),
+  cleanup: workHook("cleanup"),
+});
 const criteria = (texts: string[]) =>
   texts.map((text, i) => ({ id: `outcome-${i + 1}`, text }));
 const bullets = (text: string) =>
@@ -96,10 +119,13 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       ],
       criteria: criteria(c.criteria),
       demo: c,
+      ...(c.read_work ? { fixture: workFixture() } : {}),
       prerequisites: [
         "desktop_connected",
         "screen_recording_permission",
         ...(c.app === "simulator" ? ["simulator_iphone_booted"] : []),
+        ...(c.app === "web" ? ["browser_connected"] : []),
+        ...(c.read_work ? ["work_fixture_project_added", "fixture_ready"] : []),
         ...(c.video ? ["media_providers_ready"] : []),
       ],
       source: "apps/api/src/evals/computer-demo-cases.ts",
@@ -231,6 +257,31 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       prerequisites: ["saved_posts_present"],
       source: "apps/api/src/evals/writing-cases.ts#writingToolsCase",
     }),
+    ...ideasCases.map((c) =>
+      caseSchema.parse({
+        id: `ideas-${c.id}`,
+        plugin: "ideas",
+        level: 3,
+        title: c.name,
+        turns: [{ brief: routineInstructions(c.skill) }],
+        criteria: criteria(c.criteria),
+        routine: { skill: c.skill, platform: "X" },
+        ...(c.work ? { fixture: workFixture() } : {}),
+        prerequisites: [
+          "brand_profile_ready",
+          "desktop_connected",
+          "browser_connected",
+          ...(c.work
+            ? [
+                "work_fixture_project_added",
+                "work_ideas_memory_cleared",
+                "fixture_ready",
+              ]
+            : []),
+        ],
+        source: "apps/api/src/evals/ideas-cases.ts",
+      }),
+    ),
     ...writingCases.map((c) =>
       caseSchema.parse({
         id: `${c.category}-${c.id}`,

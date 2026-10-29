@@ -129,9 +129,9 @@ async function reviewed(runner: EvalRunner, id: string) {
   });
 }
 
-test("all 27 cases share the catalog, browser cases have no execution allowlist", () => {
+test("all 31 cases share the catalog, browser cases have no execution allowlist", () => {
   const cases = builtinCases();
-  assert.equal(cases.length, 27);
+  assert.equal(cases.length, 31);
   assert.equal(cases.filter((c) => c.plugin === "browser").length, 7);
   assert.equal(new Set(cases.map((c) => c.id)).size, cases.length);
   assert.throws(
@@ -157,7 +157,8 @@ test("all 27 cases share the catalog, browser cases have no execution allowlist"
   assert.deepEqual(count((c) => c.plugin), {
     browser: 7,
     computer: 8,
-    content: 2,
+    content: 3,
+    ideas: 3,
     media: 6,
     writing: 4,
   });
@@ -167,7 +168,8 @@ test("all 27 cases share the catalog, browser cases have no execution allowlist"
     "browser-2": 6,
     "computer-1": 4,
     "computer-2": 4,
-    "content-3": 2,
+    "content-3": 3,
+    "ideas-3": 3,
     "media-1": 1,
     "media-2": 5,
     "writing-1": 1,
@@ -761,5 +763,53 @@ test("a frozen procedural criterion still fails after regrading", async (t) => {
   assert.equal(
     await readFile(join(runner.folder(run.id), "case.json"), "utf8"),
     before,
+  );
+});
+
+test("a routine case runs as a real routine: create it inactive, Run now, then follow its task", async (t) => {
+  const root = await sandbox(t);
+  const api = fakeApi();
+  const bodies: Record<string, any> = {};
+  const routineFetch = (async (url: string | URL | Request, init?: RequestInit) => {
+    const path = new URL(String(url)).pathname;
+    if (init?.method === "POST" && path === "/api/routines") {
+      api.mutations.push(path);
+      bodies.routine = JSON.parse(String(init.body));
+      return Response.json({ id: "routine-1" });
+    }
+    if (init?.method === "POST" && path === "/api/routines/routine-1/run") {
+      api.mutations.push(path);
+      // The product submits the routine's instructions as the first turn itself.
+      api.task.turns.push({
+        id: "turn-1",
+        status: "completed",
+        artifacts: [],
+        messages: [
+          { kind: "user", content: { text: bodies.routine.instructions } },
+          { kind: "assistant", content: { text: "Ideas delivered." } },
+        ],
+      });
+      return Response.json({ taskId: "task-1" });
+    }
+    return api.fetch(url, init);
+  }) as typeof fetch;
+  const runner = new EvalRunner(root, { token: "token", fetch: routineFetch });
+  const run = await runner.prepare(
+    entry({
+      plugin: "ideas",
+      turns: [{ brief: "Read the find-content-ideas skill with read_skill, then follow it." }],
+      routine: { skill: "find-content-ideas", platform: "X" },
+    }),
+    runtime,
+  );
+  const done = await runner.run(run.id, runtime.fingerprint);
+  assert.equal(done.execution, "completed");
+  assert.equal(done.routine_id, "routine-1");
+  assert.deepEqual(api.mutations, ["/api/routines", "/api/routines/routine-1/run"]);
+  assert.equal(bodies.routine.active, false);
+  assert.equal(bodies.routine.instructions, "Read the find-content-ideas skill with read_skill, then follow it.");
+  assert.throws(
+    () => entry({ routine: { skill: "x", platform: null }, turns: [{ brief: "a" }, { brief: "b" }] }),
+    /exactly one turn/,
   );
 });

@@ -260,15 +260,15 @@ over merely asserting that a tool was invoked.
 
 ## Existing case migration
 
-All 27 agent cases are registered: Browser 7, Computer 8, Media 6, Writing 4,
-Content 2.
+All 31 agent cases are registered: Browser 7, Computer 8, Media 6, Writing 4,
+Ideas 3, Content 3.
 
 ### Categories
 
 The case's `plugin` field holds its category; `npm run eval -- list writing` lists one.
 Case IDs stay stable when a case changes category. Browser, Computer, Media and
-Writing each have a level 1 tool check and level 2 process cases; Content has only
-level 3.
+Writing each have a level 1 tool check and level 2 process cases; Ideas and Content
+have only level 3.
 
 | Category | Question | Level 1 | Level 2 |
 | --- | --- | --- | --- |
@@ -276,13 +276,38 @@ level 3.
 | Computer | Can Orca control apps and record clips? | Calculator, Notepad, Edge, Mac Calculator | 4 demo-recording cases |
 | Media | Can Orca make and edit images, audio and video? | `media-M1`: every media tool; speech and transcription check each other | Video F3 (music under voiceover), F9 (music by mood), F6 (no brand colours); `media-quote-card` (square, then portrait edited from it); `media-checked-voiceover` (transcribe the final take; every fact kept) |
 | Writing | Does Orca write like the founder? | `writing-tools`: document, in-place edit, reply, saved posts | post, reply, revision |
-| Content | Can Orca do the founder's whole job, end to end? | level 3 only: product demo videos of a Mac app (`content-demo-mac-maps-video`) and an iOS app in the Simulator (`content-demo-sim-reminders-video`) | |
+| Ideas | Do the idea routines find things worth posting? | level 3 only: daily content ideas, ideas from your work, weekly strategy research, each run as a real routine | |
+| Content | Can Orca do the founder's whole job, end to end? | level 3 only: product demo videos of a Mac app, an iOS app in the Simulator, and what the founder just shipped (work fixture) | |
 
 Writing level 2 cases need the founder's real brand profile (`brand_profile_ready`):
 programmatic checks cover platform format, supplied facts, placeholders and in-place
 revision, and the reviewer judges voice. Speech uses ElevenLabs library voices;
 PostOrca does not clone the founder's own voice. The writing grader can also require research
 before writing and a generated image, for Content cases to use.
+
+### Ideas: real routine runs
+
+An Ideas case has a `routine` and one turn, its instructions (the same as the default
+routine, naming its skill). `run` creates an inactive routine on that platform and
+starts it with Run now (`POST /routines/:id/run`), so the product submits the turn
+itself with no one in the chat; the attempt then follows that task like any other.
+The routine stays inactive afterwards. Supply `account` and `account url` parameters.
+
+### Work fixture
+
+`scripts/evals/work-fixture.mjs` rebuilds a small web app, Streaks, as a git
+repository at `~/PostOrca Evals/streaks` for `ideas-work-ideas` and
+`content-demo-work-video`. Its older history is ten days old; the recent work, a few
+hours old, is a timezone bug fix with a surprising cause (UTC dates reset streaks
+for testers in Asia) and a visible feature (a weekly recap card), with beta notes.
+`prepare` refuses a folder it did not create and a busy port, then serves the app at
+`http://127.0.0.1:4110`; `observe` reports whether the agent changed the repo (a
+failed `fixture-unchanged` check); `cleanup` stops only the server it started.
+
+Before the first run, add `~/PostOrca Evals/streaks` to the founder's Brand Profile
+projects (`work_fixture_project_added`). The work-ideas routine remembers moments it
+already used, so clear those from its `work-ideas.md` memory before each attempt
+(`work_ideas_memory_cleared`).
 
 ### Product-demo cases (Computer level 2, Content level 3)
 

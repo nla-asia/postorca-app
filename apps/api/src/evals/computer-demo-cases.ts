@@ -6,12 +6,16 @@
  */
 import type { EvalCheck, EvalEvidence } from "./computer-eval-types.js";
 
-export type DemoApp = "maps" | "clock" | "simulator";
+export type DemoApp = "maps" | "clock" | "simulator" | "web";
 export type DemoCase = {
   id: string;
   level: 2 | 3;
   name: string;
   app: DemoApp;
+  /** web: the local app's address, opened in the founder's browser. */
+  url?: string;
+  /** Finds what to demo in the founder's recent work (the work fixture). */
+  read_work?: boolean;
   brief: string;
   /** Text the demo has to type into the app while recording, as regexes. */
   typed: string[];
@@ -21,7 +25,7 @@ export type DemoCase = {
   criteria: string[];
 };
 
-const appPaths: Record<Exclude<DemoApp, "simulator">, string> = {
+const appPaths: Record<"maps" | "clock", string> = {
   maps: "/System/Applications/Maps.app",
   clock: "/System/Applications/Clock.app",
 };
@@ -93,6 +97,23 @@ export const demoCases: DemoCase[] = [
   },
   // Content (level 3): record the app and edit the clips into a narrated demo video.
   {
+    id: "demo-work-video",
+    level: 3,
+    name: "Product demo video of what I just shipped (work fixture)",
+    app: "web",
+    url: "http://127.0.0.1:4110",
+    read_work: true,
+    brief: `i just shipped something in my Streaks project. make a ~20 sec demo video of it for X, landscape, voiceover + captions. record it yourself from the running app. ${noPublish}`,
+    typed: [],
+    min_clips: 2,
+    video: { seconds: [15, 30] },
+    criteria: [
+      "The video demonstrates the newly shipped weekly recap card (opening it and copying the share text), found from the recent commits rather than guessed.",
+      "It opens on the viewer's problem (wanting to share their week), not the feature's name, and claims nothing the commits and notes don't support.",
+      ...videoReview,
+    ],
+  },
+  {
     id: "demo-mac-maps-video",
     level: 3,
     name: "Product demo video of a Mac app (Maps)",
@@ -135,7 +156,7 @@ const fileOf = (artifact: any) => {
     return undefined;
   }
 };
-const opensApp = (app: DemoApp, opened: any) =>
+const opensApp = (app: "maps" | "clock" | "simulator", opened: any) =>
   app === "simulator"
     ? opened?.name === "Simulator" &&
       /\/Simulator\.app$/.test(opened?.path ?? "")
@@ -174,12 +195,24 @@ export function gradeDemoCapture(
     { name: "Turn completed", passed: evidence.status === "completed" },
     {
       name: "Opened the app being demonstrated",
-      passed: ok.some(
-        (c) =>
-          c.name === "computer_open" &&
-          (c.result.apps ?? []).some((app: any) => opensApp(entry.app, app)),
+      passed: ok.some((c) =>
+        entry.app === "web"
+          ? c.name === "browser_open" &&
+            String(c.args.url ?? "").startsWith(entry.url ?? "-")
+          : c.name === "computer_open" &&
+            (c.result.apps ?? []).some((app: any) =>
+              opensApp(entry.app as "maps" | "clock" | "simulator", app),
+            ),
       ),
     },
+    ...(entry.read_work
+      ? [
+          {
+            name: "Read the recent work in the project's git history",
+            passed: ok.some((c) => c.name === "git_activity"),
+          },
+        ]
+      : []),
     {
       name: "Looked at the screen before recording",
       passed:
