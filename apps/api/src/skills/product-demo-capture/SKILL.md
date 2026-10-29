@@ -55,7 +55,7 @@ Then pick per shot, in this order:
 - **iOS app:** with the computer plugin, open the Simulator, launch the app and navigate to the screen. Once it is ready, capture with the `simulator` target of `screen_capture` and `screen_record_start`: that uses the Simulator's own screenshot and recording, which gives the device screen at full resolution without the window around it. Never record the Simulator as a window or the whole screen.
 - **The founder:** anything you can't reach or do reliably: the computer plugin isn't available or lacks permission, a sign-in you have no test account for or a two-factor prompt, a real phone, a state that needs their data, or something you tried and couldn't get right. Sometimes the founder only needs to get the screen ready (sign in, open the right project) and you capture the rest; say so in the guide.
 
-The capture tools need the desktop app, and on macOS its Screen Recording permission (except the Simulator target). If a tool says the permission is missing, put granting it in the guide as the first step.
+The capture tools (`list_capture_targets`, `screen_capture`, `screen_record_start`, `screen_record_stop`) work whichever plugin is active: keep the computer plugin active while recording and don't switch plugins to start or stop a clip, since every switch costs a step and the turn has a step limit. They need the desktop app, and on macOS its Screen Recording permission (except the Simulator target). If a tool says the permission is missing, put granting it in the guide as the first step.
 
 ## 4. The guide for the founder
 

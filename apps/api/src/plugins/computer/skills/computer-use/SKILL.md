@@ -11,6 +11,10 @@ List apps, select an app ID from that result, and open it. Select exactly one re
 
 Observe the selected window before input. The screenshot is the visible portion of that window on one display, after bringing it forward. Other windows or dialogs may still cover it. Use the screenshot's pixel coordinates, never desktop coordinates or dimensions guessed from another image. Every input needs the latest observation ID and returns a new screenshot/ID. A moved/resized window or expired observation requires another observation. Check the image before deciding whether the action succeeded; injected input alone is not success.
 
+Keep track of where you are. After each action, compare the new screenshot with the previous one: did the change you expected happen? If the same action twice leaves the screen unchanged, you are stuck: name what is in the way (a prompt, a missed target, a disabled control, the wrong window) and choose a different next step: aim differently, reach the same result another way, dismiss or skip what blocks you, or leave that step to the founder with clear instructions. Never try the same thing a third time. A turn has a limited number of actions; when one obstacle starts costing many of them, stop, deliver what is done, and explain what is left rather than running out with nothing delivered.
+
+When a tap or click should select an item (a list row, a reminder, a cell), observe again and check the right item is selected before editing it. If the wrong one is selected, aim at the intended item's own bounds from accessibility=true rather than repeating the same coordinates, and if two attempts miss, stop and say what blocks it. Use plain clicks: a long press can open an edit or paste menu instead of selecting.
+
 Copy the short observation ID exactly from the latest result (for example `o12_abc123`). Do not reconstruct it from an earlier screenshot or predict the next ID.
 
 computer_type pastes literal text into the already focused control; it does not submit. Use computer_press for shortcuts or Enter. It shares the real mouse and keyboard with the founder. If focus is stolen or a permission check fails, stop and explain the blocker rather than repeating uncertain input.
@@ -29,7 +33,7 @@ Desktop input and screenshots can finish before an upload or connection failure.
 
 On macOS, observe with accessibility=true to read app menu paths and enabled states.
 Use computer_click with menu_path copied from that observation (for example
-["File", "Record Screen"]) instead of x/y to press a real app menu item. Never
+["File", "New Window"]) instead of x/y to press a real app menu item. Never
 invent a path or combine it with coordinate/button/click-count arguments. Menu
 commands can open dialogs or quit an app; their result contains fresh app/window
 discovery rather than a screenshot. Select the resulting window and observe with
