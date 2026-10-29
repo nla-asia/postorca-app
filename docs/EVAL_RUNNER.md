@@ -260,7 +260,34 @@ over merely asserting that a tool was invoked.
 
 ## Existing case migration
 
-All 33 agent cases are registered: Browser 6, Computer 6, Media 1, Video 20.
+All 38 agent cases are registered: Browser 6, Computer 11, Media 1, Video 20.
+
+### Levels
+
+Cases carry a `level`; `npm run eval -- list level-2` lists one level.
+
+1. **Tool health:** a quick check that a tool works end to end (Calculator, Notepad,
+   Edge search).
+2. **One process:** a single real step of the work, such as recording demo clips
+   while using an app.
+3. **Real-world work:** the whole job a founder asks for, such as recording an app
+   and editing the clips into a narrated demo video.
+
+### Product-demo cases (Computer, levels 2 and 3)
+
+`apps/api/src/evals/computer-demo-cases.ts` uses built-in apps as the founder's
+product: Mac Maps and Clock, and Reminders and Maps on an iPhone in the iOS
+Simulator. Anything that writes data runs in the Simulator, because Mac Notes,
+Reminders and Calendar sync to iCloud. Boot an iPhone in the Simulator before a
+Simulator case, and grant the desktop app Screen Recording permission for the Mac
+apps.
+
+Programmatic checks come from the product task: the app was opened, the screen was
+checked before recording, enough clips were recorded with the app in use and the
+requested text typed on camera. Level 2 requires the clips as video artifacts; level
+3 requires a narrated `video_export` built from those clips, plus the standard video
+checks. Clip quality and the app's final state are reviewed by the observer; these
+cases need no native observer hook.
 There is no special three-case browser allowlist.
 
 - Browser cases retain their original success contracts for external review.

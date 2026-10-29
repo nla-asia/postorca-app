@@ -43,7 +43,7 @@ test("eval list/status work without credentials from outside the API workspace",
     for (const mode of ["list", "status"]) {
       const result = await f.run([mode]);
       const rows = result.stdout.trim().split(/\r?\n/).map((line) => JSON.parse(line));
-      assert.deepEqual(rows.map((row) => row.id), ["calculator", "notepad", "chatgpt", "edge-google"]);
+      assert.deepEqual(rows.map((row) => row.id), ["calculator", "notepad", "edge-google"]);
       assert.ok(rows.every((row) => row.consecutive_passes === 0 && row.required === 3));
     }
     assert.deepEqual(await readdir(f.folder), []);

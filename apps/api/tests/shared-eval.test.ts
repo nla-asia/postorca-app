@@ -129,9 +129,9 @@ async function reviewed(runner: EvalRunner, id: string) {
   });
 }
 
-test("all 33 legacy cases share the catalog, browser cases have no execution allowlist", () => {
+test("all 38 cases share the catalog, browser cases have no execution allowlist", () => {
   const cases = builtinCases();
-  assert.equal(cases.length, 33);
+  assert.equal(cases.length, 38);
   assert.equal(cases.filter((c) => c.plugin === "browser").length, 6);
   assert.equal(new Set(cases.map((c) => c.id)).size, cases.length);
   assert.throws(
@@ -150,6 +150,25 @@ test("all 33 legacy cases share the catalog, browser cases have no execution all
     /Claude Code/,
   );
   assert.equal(cases.find((c) => c.id === "video-B7")!.turns.length, 3);
+  const computer = cases.filter((c) => c.plugin === "computer");
+  assert.deepEqual(
+    computer.map((c) => [c.id, c.level]),
+    [
+      ["computer-calculator", 1],
+      ["computer-notepad", 1],
+      ["computer-edge-google", 1],
+      ["computer-mac-calculator", 1],
+      ["computer-demo-mac-maps-route", 2],
+      ["computer-demo-mac-clock-focus", 2],
+      ["computer-demo-sim-reminders-launch", 2],
+      ["computer-demo-sim-maps-place", 2],
+      ["computer-demo-mac-maps-video", 3],
+      ["computer-demo-sim-reminders-video", 3],
+      ["computer-demo-mac-clock-video", 3],
+    ],
+  );
+  for (const c of computer.filter((c) => c.level === 3))
+    assert.ok(c.turns[0].video_case && c.prerequisites.includes("media_providers_ready"), c.id);
 });
 test("assertions distinguish attempts, successes, dotted results and missing results", () => {
   const calls = normalizeCalls({

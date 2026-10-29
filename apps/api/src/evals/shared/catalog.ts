@@ -5,6 +5,7 @@ import {
   macComputerCaseOrder,
 } from "../computer-mac-cases.js";
 import { mediaAgentCase, videoCases } from "../video-cases.js";
+import { demoCases } from "../computer-demo-cases.js";
 import { caseSchema, type EvalCase } from "./contracts.js";
 
 const criteria = (texts: string[]) =>
@@ -50,6 +51,7 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       plugin: "computer",
       title: c.name,
       platform,
+      level: 1,
       turns: [{ brief: c.brief }],
       criteria: criteria(
         c.manualReview
@@ -64,6 +66,34 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       computer: { id: c.id, attempt, nonce, contract: c },
       prerequisites: ["desktop_connected", "independent_observer_ready"],
       source: `apps/api/src/evals/computer-${platform === "darwin" ? "mac-" : ""}cases.ts`,
+    }),
+  );
+  const demos = demoCases.map((c) =>
+    caseSchema.parse({
+      id: `computer-${c.id}`,
+      plugin: "computer",
+      title: c.name,
+      platform: "darwin",
+      level: c.level,
+      turns: [
+        c.video
+          ? {
+              brief: c.brief,
+              video_case: c.id,
+              video_expect: { exports: 1, seconds: c.video.seconds },
+              exports: 1,
+            }
+          : { brief: c.brief },
+      ],
+      criteria: criteria(c.criteria),
+      demo: c,
+      prerequisites: [
+        "desktop_connected",
+        "screen_recording_permission",
+        ...(c.app === "simulator" ? ["simulator_iphone_booted"] : []),
+        ...(c.video ? ["media_providers_ready"] : []),
+      ],
+      source: "apps/api/src/evals/computer-demo-cases.ts",
     }),
   );
   const videos = videoCases.map((c) => {
@@ -133,6 +163,7 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
   return [
     ...browser,
     ...computers,
+    ...demos,
     caseSchema.parse({
       id: "media-M1",
       plugin: "media",

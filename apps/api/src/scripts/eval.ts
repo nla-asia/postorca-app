@@ -100,7 +100,12 @@ if (mode === "list") {
   console.log(
     JSON.stringify(
       builtinCases()
-        .filter((c) => !selected || c.plugin === selected)
+        .filter(
+          (c) =>
+            !selected ||
+            c.plugin === selected ||
+            selected === `level-${c.level}`,
+        )
         .map((c) => ({
           id: c.id,
           plugin: c.plugin,
@@ -108,6 +113,7 @@ if (mode === "list") {
           turns: c.turns.length,
           prerequisites: c.prerequisites,
           platform: c.platform,
+          level: c.level,
         })),
       null,
       2,

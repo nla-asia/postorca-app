@@ -11,6 +11,7 @@ import {
   type MacComputerCaseId,
 } from "../computer-mac-cases.js";
 import type { ComputerEvalCase } from "../computer-eval-types.js";
+import { gradeDemoCapture } from "../computer-demo-cases.js";
 import {
   caseSchema,
   checkSchema,
@@ -579,6 +580,21 @@ export class EvalRunner {
             })),
           );
         }
+      }
+      if (entry.demo) {
+        const last = evidence.task.turns.at(-1);
+        checks.push(
+          ...gradeDemoCapture(entry.demo, {
+            status: last.status,
+            calls: evidence.calls,
+            artifacts: evidence.task.turns.flatMap((t: any) => t.artifacts),
+          }).map((c, i): Check => ({
+            id: `demo-${i}`,
+            verdict: c.passed ? "passed" : "failed",
+            reason: `${c.name}: ${JSON.stringify(c.details ?? "")}`,
+            evidence: ["evidence.json#/calls", "evidence.json#/task/turns"],
+          })),
+        );
       }
       if (entry.id === "media-M1") {
         const initial = evidence.calls.filter(

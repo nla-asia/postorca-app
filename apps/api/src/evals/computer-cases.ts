@@ -11,7 +11,6 @@ export type {
 export const computerCaseOrder = [
   "calculator",
   "notepad",
-  "chatgpt",
   "edge-google",
 ] as const;
 export type ComputerCaseId = (typeof computerCaseOrder)[number];
@@ -104,28 +103,7 @@ export function computerCase(
       ],
     };
   }
-  return {
-    id,
-    name: "ChatGPT/Codex use",
-    manualReview: true,
-    brief: `In the ChatGPT/Codex desktop app, find the existing conversation titled "Review production quality checklist". Read the recent discussion and summarize the latest decisions about: (1) which browser-eval use cases should take priority, (2) the platform-specific post-research evals that were added and their requirements, and (3) the first concrete research topic and how far its run actually got. Account for later corrections to earlier suggestions. Save a concise document with the decisions and evidence screenshots, and clearly state any reading limits. Do not send messages, change settings, modify conversations, use browser/file tools as a substitute, or save cross-task memory from this temporary check.`,
-    expected: {
-      app: "ChatGPT",
-      title: "Review production quality checklist",
-      topics: [
-        "Social-content research and asset discovery take priority over generic flight/hotel regressions",
-        "Five platform-specific research evals: X, YouTube, Instagram, LinkedIn, Threads; five examples from different people in past seven days, original links, summaries, recurring themes/content angles; 20 evals total",
-        "First concrete topic: X posts about Claude Code; no engagement; readiness checks saw X feed errors and retry, interrupted by usage limit; no completed research results verified",
-      ],
-    },
-    criteria: [
-      ...shared,
-      "The agent finds the named conversation and reads its real content rather than relying on memory.",
-      "The summary captures current decisions and later corrections, with no invented verification claims.",
-      "A saved document and evidence screenshots are delivered; bounded/partial reading is disclosed.",
-      "Independent observer reviews the summary and screenshots before the run can pass.",
-    ],
-  };
+  throw new Error(`Unknown computer case: ${id}`);
 }
 
 export function gradeComputer(
@@ -406,25 +384,6 @@ export function gradeComputer(
           .includes(entry.expected.query.toLowerCase()),
       },
     );
-  } else {
-    checks.push({
-      name: "Correct conversation observed",
-      passed:
-        /ChatGPT|Codex/.test(observed?.title ?? "") &&
-        text.includes(entry.expected.title),
-    });
-    checks.push({
-      name: "Summary document delivered",
-      passed: evidence.artifacts.some((a) => a.kind === "document"),
-    });
-    checks.push({
-      name: "Conversation reading and navigation evidenced",
-      passed:
-        !!successful("computer_scroll").length &&
-        successful("computer_observe").some((c) =>
-          c.result?.attachments?.some((a: any) => a.kind === "screenshot"),
-        ),
-    });
   }
   return checks;
 }

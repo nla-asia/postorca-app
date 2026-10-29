@@ -95,33 +95,6 @@ test("Edge eval requires desktop-only homepage-to-search navigation and independ
   assert.equal(check("Computer use only"), false);
 });
 
-test("conversation reading accepts screenshot navigation without a Document accessibility node and still requires review", () => {
-  const entry = computerCase("chatgpt", 1, "static");
-  assert.equal(entry.manualReview, true);
-  const evidence = {
-    status: "completed",
-    calls: [
-      {
-        name: "computer_observe",
-        args: {},
-        result: { attachments: [{ kind: "screenshot", file: "view.png" }] },
-      },
-      { name: "computer_scroll", args: {}, result: { input_sent: true } },
-    ],
-    final: "done",
-    artifacts: [],
-    observed: {},
-    controlReleased: true,
-  };
-  const readingCheck = () =>
-    gradeComputer(entry, evidence).find(
-      (c) => c.name === "Conversation reading and navigation evidenced",
-    )?.passed;
-  assert.equal(readingCheck(), true);
-  evidence.calls.pop();
-  assert.equal(readingCheck(), false);
-});
-
 test("execution gates survive grader-only changes but reset for native or model changes", () => {
   const hashes = {
     "apps/api/src/evals/computer-cases.ts": "grade1",
@@ -196,7 +169,7 @@ test("app gate requires three consecutive passes on the same runtime", () => {
     folder: "6",
   });
   assert.doesNotThrow(() => assertGate(runs, "notepad", "v1"));
-  assert.throws(() => assertGate(runs, "chatgpt", "v1"), /notepad/);
+  assert.throws(() => assertGate(runs, "edge-google", "v1"), /notepad/);
   assert.throws(() => assertGate(runs, "notepad", "v2"), /calculator/);
 });
 test("a correct claimed number cannot pass without independent Calculator state", () => {
