@@ -129,9 +129,9 @@ async function reviewed(runner: EvalRunner, id: string) {
   });
 }
 
-test("all 25 cases share the catalog, browser cases have no execution allowlist", () => {
+test("all 27 cases share the catalog, browser cases have no execution allowlist", () => {
   const cases = builtinCases();
-  assert.equal(cases.length, 25);
+  assert.equal(cases.length, 27);
   assert.equal(cases.filter((c) => c.plugin === "browser").length, 7);
   assert.equal(new Set(cases.map((c) => c.id)).size, cases.length);
   assert.throws(
@@ -157,6 +157,7 @@ test("all 25 cases share the catalog, browser cases have no execution allowlist"
   assert.deepEqual(count((c) => c.plugin), {
     browser: 7,
     computer: 8,
+    content: 2,
     media: 6,
     writing: 4,
   });
@@ -166,12 +167,15 @@ test("all 25 cases share the catalog, browser cases have no execution allowlist"
     "browser-2": 6,
     "computer-1": 4,
     "computer-2": 4,
+    "content-3": 2,
     "media-1": 1,
     "media-2": 5,
     "writing-1": 1,
     "writing-2": 3,
   });
   assert.equal(cases.find((c) => c.id === "video-F3")!.plugin, "media");
+  for (const c of cases.filter((c) => c.plugin === "content"))
+    assert.ok(c.turns[0].video_case && c.prerequisites.includes("media_providers_ready"), c.id);
 });
 test("assertions distinguish attempts, successes, dotted results and missing results", () => {
   const calls = normalizeCalls({
