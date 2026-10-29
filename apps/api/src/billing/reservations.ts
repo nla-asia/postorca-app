@@ -1,3 +1,21 @@
+// A temporary image-token allowance, not a provider usage meter or a hard cap.
+// Actual provider-reported token usage still determines settlement.
+const IMAGE_INPUT_ENVELOPE_TOKENS = 16_384;
+
+function responseInputEnvelopeTokens(args: Record<string, unknown>) {
+  let images = 0;
+  const text = JSON.stringify(args, (_key, value) => {
+    if (value && typeof value === "object" && value.type === "input_image") {
+      images++;
+      // Encoded pixels and image URLs are transport, not ordinary model text.
+      return { ...value, image_url: undefined };
+    }
+    return value;
+  });
+  // Preserve the existing conservative one-byte/one-token text allowance.
+  return Buffer.byteLength(text, "utf8") + images * IMAGE_INPUT_ENVELOPE_TOKENS;
+}
+
 /** Temporary spending envelopes, not final charges. Unknown costs retain their hold.
  * Explicit models prevent a model change silently bypassing allowance enforcement.
  * Actual costs can exceed an envelope and leave a negative balance.
@@ -19,7 +37,7 @@ export function requestReservation(
     if (model === "gpt-6-luna" && operation === "responses")
       usd =
         0.005 +
-        (Buffer.byteLength(JSON.stringify(args), "utf8") * 0.25) / 1_000_000 +
+        (responseInputEnvelopeTokens(args) * 0.25) / 1_000_000 +
         (number("max_output_tokens", 128000) * 0.75) / 1_000_000;
     if (
       model === "gpt-image-2.5-flare" &&
@@ -37,8 +55,7 @@ export function requestReservation(
     if (rate)
       usd =
         0.005 +
-        (Buffer.byteLength(JSON.stringify(args), "utf8") * rate[0]) /
-          1_000_000 +
+        (responseInputEnvelopeTokens(args) * rate[0]) / 1_000_000 +
         (number("max_output_tokens", 128000) * rate[1]) / 1_000_000;
   }
   if (
@@ -71,7 +88,7 @@ export function requestReservation(
   if (usd === undefined || !Number.isFinite(usd) || usd <= 0)
     throw new Error("No configured credit reservation for this model.");
   return {
-    version: "2026-10-27",
+    version: "2026-10-29-multimodal",
     usd: usd.toFixed(12),
     basis: "temporary-spending-envelope",
   };
