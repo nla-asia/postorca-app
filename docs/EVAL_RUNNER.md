@@ -260,7 +260,44 @@ over merely asserting that a tool was invoked.
 
 ## Existing case migration
 
-All 33 agent cases are registered: Browser 6, Computer 6, Media 1, Video 20.
+All 25 agent cases are registered: Browser 7, Computer 8, Media 6, Writing 4.
+Content is being redesigned and has no cases yet.
+
+### Categories
+
+The case's `plugin` field holds its category; `npm run eval -- list writing` lists one.
+Case IDs stay stable when a case changes category. Every category has a level 1
+tool check and level 2 process cases; level 3 belongs to Content.
+
+| Category | Question | Level 1 | Level 2 |
+| --- | --- | --- | --- |
+| Browser | Can Orca browse and research? | `browser-tools`: every browser tool on Wikipedia | 6 research cases |
+| Computer | Can Orca control apps and record clips? | Calculator, Notepad, Edge, Mac Calculator | 4 demo-recording cases |
+| Media | Can Orca make and edit images, audio and video? | `media-M1`: every media tool; speech and transcription check each other | Video F3 (music under voiceover), F9 (music by mood), F6 (no brand colours); `media-quote-card` (square, then portrait edited from it); `media-checked-voiceover` (transcribe the final take; every fact kept) |
+| Writing | Does Orca write like the founder? | `writing-tools`: document, in-place edit, reply, saved posts | post, reply, revision |
+| Content | Can Orca do the founder's whole job, end to end? | (being redesigned) | |
+
+Writing level 2 cases need the founder's real brand profile (`brand_profile_ready`):
+programmatic checks cover platform format, supplied facts, placeholders and in-place
+revision, and the reviewer judges voice. Speech uses ElevenLabs library voices;
+PostOrca does not clone the founder's own voice. The writing grader can also require research
+before writing and a generated image, for Content cases to use.
+
+### Product-demo cases (Computer level 2)
+
+`apps/api/src/evals/computer-demo-cases.ts` uses built-in apps as the founder's
+product: Mac Maps and Clock, and Reminders and Maps on an iPhone in the iOS
+Simulator. Anything that writes data runs in the Simulator, because Mac Notes,
+Reminders and Calendar sync to iCloud. Boot an iPhone in the Simulator before a
+Simulator case, and grant the desktop app Screen Recording permission for the Mac
+apps.
+
+Programmatic checks come from the product task: the app was opened, the screen was
+checked before recording, enough clips were recorded with the app in use and the
+requested text typed on camera, and the clips delivered as video artifacts. The
+grader also supports a level 3 demo video (a narrated `video_export` built from the
+recorded clips) for Content to use. Clip quality and the app's final state are reviewed by the observer; these
+cases need no native observer hook.
 There is no special three-case browser allowlist.
 
 - Browser cases retain their original success contracts for external review.

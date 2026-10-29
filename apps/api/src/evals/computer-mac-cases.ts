@@ -1,14 +1,10 @@
-import { simulatorCase, gradeSimulator } from "./computer-mac-simulator.js";
 import type {
   ComputerEvalCase,
   EvalCheck,
   EvalEvidence,
 } from "./computer-eval-types.js";
 
-export const macComputerCaseOrder = [
-  "mac-calculator",
-  "mac-simulator-maps",
-] as const;
+export const macComputerCaseOrder = ["mac-calculator"] as const;
 export type MacComputerCaseId = (typeof macComputerCaseOrder)[number];
 export const macCalculatorPath = "/System/Applications/Calculator.app";
 
@@ -17,7 +13,6 @@ export function macComputerCase(
   attempt: number,
   _nonce: string,
 ): ComputerEvalCase<MacComputerCaseId> {
-  if (id === "mac-simulator-maps") return simulatorCase(id, _nonce);
   if (id !== "mac-calculator") throw new Error(`Unknown Mac case: ${id}`);
   const [a, b, adjustment] = [
     [41, 23, 17],
@@ -44,7 +39,6 @@ export function gradeMacComputer(
   entry: ComputerEvalCase<MacComputerCaseId>,
   evidence: EvalEvidence,
 ): EvalCheck[] {
-  if (entry.id === "mac-simulator-maps") return gradeSimulator(entry, evidence);
   const { calls, observed } = evidence;
   const successful = calls.filter((c) => c.result && !c.result.error);
   const allowed = new Set([

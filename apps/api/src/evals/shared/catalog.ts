@@ -4,7 +4,15 @@ import {
   macComputerCase,
   macComputerCaseOrder,
 } from "../computer-mac-cases.js";
-import { mediaAgentCase, videoCases } from "../video-cases.js";
+import { videoCases } from "../video-cases.js";
+import {
+  mediaToolsCase,
+  quoteCardCase,
+  voiceoverCase,
+} from "../media-cases.js";
+import { writingCases, writingToolsCase } from "../writing-cases.js";
+import { browserToolsCase } from "../browser-tools.js";
+import { demoCases } from "../computer-demo-cases.js";
 import { caseSchema, type EvalCase } from "./contracts.js";
 
 const criteria = (texts: string[]) =>
@@ -14,10 +22,11 @@ const bullets = (text: string) =>
     .split(/\r?\n/)
     .map((s) => s.replace(/^-\s*/, "").trim())
     .filter(Boolean);
-const mediaRevision =
-  "Revise the image you just made: change only the terracotta pot to blue. Preserve the green sprout, square framing and cream background. Deliver the revised image as a new artifact, keeping the original. Keep the existing speech; do not generate it again.";
-
-/** All existing case IDs enter one lifecycle. No three-case browser allowlist.
+/** `plugin` is the case's category: browser, computer and media (levels 1–2)
+ * test tools and processes, writing (level 2) the founder's voice, and content
+ * (level 3) end-to-end work. Case IDs stay stable when a case changes category.
+ *
+ * All existing case IDs enter one lifecycle. No three-case browser allowlist.
  * Legacy contracts are retained as review criteria until independently verified;
  * listing a case never implies that its environment or fixtures are ready.
  */
@@ -28,6 +37,7 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       ...(c.revision ? { revision: c.revision } : {}),
       ...(c.revision_change ? { revision_change: c.revision_change } : {}),
       plugin: "browser",
+      level: 2,
       title: c.name,
       turns: [{ brief: c.brief }],
       criteria: criteria(bullets(c.success_criteria)),
@@ -50,6 +60,7 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       plugin: "computer",
       title: c.name,
       platform,
+      level: 1,
       turns: [{ brief: c.brief }],
       criteria: criteria(
         c.manualReview
@@ -66,7 +77,37 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       source: `apps/api/src/evals/computer-${platform === "darwin" ? "mac-" : ""}cases.ts`,
     }),
   );
-  const videos = videoCases.map((c) => {
+  const demos = demoCases.map((c) =>
+    caseSchema.parse({
+      id: `${c.level === 3 ? "content" : "computer"}-${c.id}`,
+      plugin: c.level === 3 ? "content" : "computer",
+      title: c.name,
+      platform: "darwin",
+      level: c.level,
+      turns: [
+        c.video
+          ? {
+              brief: c.brief,
+              video_case: c.id,
+              video_expect: { exports: 1, seconds: c.video.seconds },
+              exports: 1,
+            }
+          : { brief: c.brief },
+      ],
+      criteria: criteria(c.criteria),
+      demo: c,
+      prerequisites: [
+        "desktop_connected",
+        "screen_recording_permission",
+        ...(c.app === "simulator" ? ["simulator_iphone_booted"] : []),
+        ...(c.video ? ["media_providers_ready"] : []),
+      ],
+      source: "apps/api/src/evals/computer-demo-cases.ts",
+    }),
+  );
+  // Story reels (B cases) wait for the Content redesign; F cases test one video process.
+  const kept = ["F3", "F9", "F6"];
+  const videos = videoCases.filter((c) => kept.includes(c.id)).map((c) => {
     const parent =
       "of" in c.start
         ? videoCases.find((v) => v.id === (c.start as { of: string }).of)!
@@ -101,9 +142,10 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
           ];
     return caseSchema.parse({
       id: `video-${c.id}`,
+      plugin: "media",
+      level: 2,
       ...(c.revision ? { revision: c.revision } : {}),
       ...(c.revision_change ? { revision_change: c.revision_change } : {}),
-      plugin: "video",
       title: c.name,
       turns,
       criteria: criteria([
@@ -131,25 +173,81 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
     });
   });
   return [
+    caseSchema.parse({
+      id: `browser-${browserToolsCase.id}`,
+      plugin: "browser",
+      level: 1,
+      title: browserToolsCase.name,
+      turns: [{ brief: browserToolsCase.brief }],
+      criteria: criteria(browserToolsCase.criteria),
+      prerequisites: ["browser_connected"],
+      source: "apps/api/src/evals/browser-tools.ts",
+    }),
     ...browser,
     ...computers,
+    ...demos,
     caseSchema.parse({
       id: "media-M1",
+      revision: 2,
+      revision_change: {
+        from: 1,
+        reason:
+          "M1 becomes the media tool health check: every media tool in one task, with speech and transcription checking each other.",
+        preserved_coverage: [
+          "media-M1 image generation, image edit and exact speech",
+        ],
+      },
       plugin: "media",
-      title: mediaAgentCase.name,
-      turns: [
-        { brief: (mediaAgentCase.start as { brief: string }).brief },
-        { brief: mediaRevision },
-      ],
+      level: 1,
+      title: mediaToolsCase.name,
+      turns: mediaToolsCase.turns.map((brief) => ({ brief })),
       prerequisites: ["media_providers_ready"],
-      criteria: criteria([
-        "The original square image contains the green sprout, terracotta pot, cream background and no text; the speech says exactly the requested sentence and sounds correct on complete listening.",
-        "The revision changes only the pot to blue, preserving composition and original image availability. Speech remains available and is not regenerated.",
-        "Reopening the task preserves both images and playable speech; original-source checksums match authenticated downloads.",
-      ]),
-      source: "apps/api/src/evals/video-cases.ts#mediaAgentCase",
+      criteria: criteria(mediaToolsCase.criteria),
+      source: "apps/api/src/evals/media-cases.ts",
     }),
     ...videos,
+    ...[quoteCardCase, voiceoverCase].map((c) =>
+      caseSchema.parse({
+        id: `media-${c.id}`,
+        plugin: "media",
+        level: 2,
+        title: c.name,
+        turns: [{ brief: c.brief }],
+        criteria: criteria(c.criteria),
+        prerequisites: [
+          "media_providers_ready",
+          "brand_profile_ready",
+        ],
+        source: "apps/api/src/evals/media-cases.ts",
+      }),
+    ),
+    caseSchema.parse({
+      id: `writing-${writingToolsCase.id}`,
+      plugin: "writing",
+      level: 1,
+      title: writingToolsCase.name,
+      turns: [{ brief: writingToolsCase.brief }],
+      criteria: criteria(writingToolsCase.criteria),
+      prerequisites: ["saved_posts_present"],
+      source: "apps/api/src/evals/writing-cases.ts#writingToolsCase",
+    }),
+    ...writingCases.map((c) =>
+      caseSchema.parse({
+        id: `${c.category}-${c.id}`,
+        plugin: c.category,
+        level: c.level,
+        title: c.name,
+        turns: c.turns.map((brief) => ({ brief })),
+        criteria: criteria(c.criteria),
+        writing: c.expect,
+        prerequisites: [
+          "brand_profile_ready",
+          ...(c.expect.research ? ["browser_connected"] : []),
+          ...(c.expect.image ? ["media_providers_ready"] : []),
+        ],
+        source: "apps/api/src/evals/writing-cases.ts",
+      }),
+    ),
   ];
 }
 

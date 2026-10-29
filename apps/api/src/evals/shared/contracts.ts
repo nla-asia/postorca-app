@@ -108,6 +108,38 @@ export const caseSchema = z
     ),
     trajectory: trajectorySchema.default(() => trajectorySchema.parse({})),
     platform: z.enum(["win32", "darwin"]).optional(),
+    /** 1: tool health check. 2: one process. 3: real-world end-to-end work. */
+    level: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+    writing: z
+      .object({
+        docs: z.array(z.enum(["x", "linkedin"])).optional(),
+        reply: z.boolean().optional(),
+        must_include: z.array(z.string()).optional(),
+        no_placeholders: z.boolean().optional(),
+        max_words: z.number().int().positive().optional(),
+        edited_in_place: z.boolean().optional(),
+        image: z.boolean().optional(),
+        research: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+    demo: z
+      .object({
+        id: z.string(),
+        level: z.union([z.literal(2), z.literal(3)]),
+        name: z.string(),
+        app: z.enum(["maps", "clock", "simulator"]),
+        brief: z.string(),
+        typed: z.array(z.string()),
+        min_clips: z.number().int().positive(),
+        video: z
+          .object({ seconds: z.tuple([z.number(), z.number()]) })
+          .strict()
+          .optional(),
+        criteria: z.array(z.string()),
+      })
+      .strict()
+      .optional(),
     prerequisites: z.array(z.string()).default([]),
     timeout_ms: z
       .number()

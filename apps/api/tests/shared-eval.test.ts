@@ -129,10 +129,10 @@ async function reviewed(runner: EvalRunner, id: string) {
   });
 }
 
-test("all 33 legacy cases share the catalog, browser cases have no execution allowlist", () => {
+test("all 25 cases share the catalog, browser cases have no execution allowlist", () => {
   const cases = builtinCases();
-  assert.equal(cases.length, 33);
-  assert.equal(cases.filter((c) => c.plugin === "browser").length, 6);
+  assert.equal(cases.length, 25);
+  assert.equal(cases.filter((c) => c.plugin === "browser").length, 7);
   assert.equal(new Set(cases.map((c) => c.id)).size, cases.length);
   assert.throws(
     () =>
@@ -149,7 +149,29 @@ test("all 33 legacy cases share the catalog, browser cases have no execution all
     ).turns[0].brief,
     /Claude Code/,
   );
-  assert.equal(cases.find((c) => c.id === "video-B7")!.turns.length, 3);
+  assert.ok(!cases.some((c) => c.id === "video-B7"), "story reels wait for the Content redesign");
+  const count = (key: (c: any) => unknown) =>
+    Object.fromEntries(
+      [...new Set(cases.map(key))].map((k) => [k, cases.filter((c) => key(c) === k).length]),
+    );
+  assert.deepEqual(count((c) => c.plugin), {
+    browser: 7,
+    computer: 8,
+    media: 6,
+    writing: 4,
+  });
+  assert.ok(cases.every((c) => c.level), "every case has a level");
+  assert.deepEqual(count((c) => `${c.plugin}-${c.level}`), {
+    "browser-1": 1,
+    "browser-2": 6,
+    "computer-1": 4,
+    "computer-2": 4,
+    "media-1": 1,
+    "media-2": 5,
+    "writing-1": 1,
+    "writing-2": 3,
+  });
+  assert.equal(cases.find((c) => c.id === "video-F3")!.plugin, "media");
 });
 test("assertions distinguish attempts, successes, dotted results and missing results", () => {
   const calls = normalizeCalls({

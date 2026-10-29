@@ -10,7 +10,15 @@ import {
   gradeMacComputer,
   type MacComputerCaseId,
 } from "../computer-mac-cases.js";
-import type { ComputerEvalCase } from "../computer-eval-types.js";
+import type { ComputerEvalCase, EvalCheck } from "../computer-eval-types.js";
+import { gradeDemoCapture } from "../computer-demo-cases.js";
+import {
+  gradeMediaTools,
+  gradeQuoteCard,
+  gradeVoiceover,
+} from "../media-cases.js";
+import { gradeWriting, gradeWritingTools } from "../writing-cases.js";
+import { gradeBrowserTools } from "../browser-tools.js";
 import {
   caseSchema,
   checkSchema,
@@ -580,40 +588,78 @@ export class EvalRunner {
           );
         }
       }
-      if (entry.id === "media-M1") {
-        const initial = evidence.calls.filter(
-          (c) => c.turn_id === evidence.task.turns[0]?.id,
+      if (entry.demo) {
+        const last = evidence.task.turns.at(-1);
+        checks.push(
+          ...gradeDemoCapture(entry.demo, {
+            status: last.status,
+            calls: evidence.calls,
+            artifacts: evidence.task.turns.flatMap((t: any) => t.artifacts),
+          }).map((c, i): Check => ({
+            id: `demo-${i}`,
+            verdict: c.passed ? "passed" : "failed",
+            reason: `${c.name}: ${JSON.stringify(c.details ?? "")}`,
+            evidence: ["evidence.json#/calls", "evidence.json#/task/turns"],
+          })),
         );
-        const revision = evidence.calls.filter(
-          (c) => c.turn_id === evidence.task.turns[1]?.id,
-        );
-        for (const [name, pass] of [
-          [
-            "image-created",
-            initial.some((c) => c.name === "media_generate_image" && !c.failed),
-          ],
-          [
-            "speech-created",
-            initial.some(
-              (c) => c.name === "media_generate_speech" && !c.failed,
-            ),
-          ],
-          [
-            "image-edited",
-            revision.some((c) => c.name === "media_edit_image" && !c.failed),
-          ],
-          [
-            "speech-reused",
-            !revision.some((c) => c.name === "media_generate_speech"),
-          ],
-        ] as const)
-          checks.push({
-            id: name,
-            verdict: pass ? "passed" : "failed",
-            reason: name,
-            evidence: ["evidence.json#/calls"],
-          });
       }
+      const graded = (checks: EvalCheck[], prefix: string) =>
+        checks.map((c, i): Check => ({
+          id: `${prefix}-${i}`,
+          verdict: c.passed ? "passed" : "failed",
+          reason: `${c.name}: ${JSON.stringify(c.details ?? "")}`,
+          evidence: ["evidence.json#/calls", "evidence.json#/task/turns"],
+        }));
+      if (entry.id === "media-M1")
+        checks.push(
+          ...graded(
+            gradeMediaTools({ turns: evidence.task.turns, calls: evidence.calls }),
+            "media",
+          ),
+        );
+      const last = evidence.task.turns.at(-1);
+      const artifacts = evidence.task.turns.flatMap((t: any) => t.artifacts);
+      if (entry.id === "media-quote-card")
+        checks.push(
+          ...graded(gradeQuoteCard({ calls: evidence.calls, artifacts }), "media"),
+        );
+      if (entry.id === "media-checked-voiceover")
+        checks.push(
+          ...graded(gradeVoiceover({ calls: evidence.calls, artifacts }), "media"),
+        );
+      if (entry.id === "browser-tools")
+        checks.push(
+          ...graded(
+            gradeBrowserTools({
+              status: last?.status,
+              calls: evidence.calls,
+              artifacts,
+              final: (last?.messages ?? [])
+                .filter((m: any) => m.kind === "assistant")
+                .map((m: any) => m.content.text ?? "")
+                .join("\n"),
+            }),
+            "browser",
+          ),
+        );
+      if (entry.id === "writing-tools")
+        checks.push(
+          ...graded(
+            gradeWritingTools({ status: last?.status, calls: evidence.calls, artifacts }),
+            "writing-tools",
+          ),
+        );
+      if (entry.writing)
+        checks.push(
+          ...graded(
+            gradeWriting(entry.writing, {
+              status: evidence.task.turns.at(-1)?.status,
+              turns: evidence.task.turns,
+              calls: evidence.calls,
+            }),
+            "writing",
+          ),
+        );
       if (entry.verifier) {
         try {
           const output = await maybeJson(
