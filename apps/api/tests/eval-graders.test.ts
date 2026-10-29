@@ -154,19 +154,26 @@ test("the browser tools check needs every tool, delivered images and every tab c
   ]);
 });
 
-test("the quote card's portrait version must be edited from the square image", () => {
+test("the quote card needs a square and a portrait image, each delivered, however the portrait is made", () => {
   const square = { name: "media_generate_image", args: {}, result: { ref: "sq1", attachments: [{ file: "users/u/media/sq.png" }] } };
-  const portrait = {
+  const edited = {
     name: "media_edit_image",
     args: { file: "sq1", size: "1024x1536" },
     result: { ref: "pt1", attachments: [{ file: "users/u/media/pt.png" }] },
   };
   const artifacts = ["sq", "pt"].map((n) => ({ kind: "image", content: JSON.stringify({ file: `users/u/media/${n}.png` }) }));
-  assert.deepEqual(failed(gradeQuoteCard({ calls: [square, portrait], artifacts })), []);
-  const fresh = { ...portrait, name: "media_generate_image", args: { size: "1024x1536" } };
-  assert.deepEqual(failed(gradeQuoteCard({ calls: [square, fresh], artifacts })), [
-    "Portrait version edited from the square image",
-    "Both images delivered",
+  assert.deepEqual(failed(gradeQuoteCard({ calls: [square, edited], artifacts })), []);
+  // A fresh portrait generation of the same design is just as valid.
+  const fresh = { ...edited, name: "media_generate_image", args: { size: "1024x1536" } };
+  assert.deepEqual(failed(gradeQuoteCard({ calls: [square, fresh], artifacts })), []);
+  // A second square is not a portrait, and an undelivered portrait fails delivery only.
+  const anotherSquare = { ...fresh, args: { size: "1024x1024" } };
+  assert.deepEqual(failed(gradeQuoteCard({ calls: [square, anotherSquare], artifacts })), [
+    "Portrait version made",
+    "Portrait image delivered",
+  ]);
+  assert.deepEqual(failed(gradeQuoteCard({ calls: [square, fresh], artifacts: artifacts.slice(0, 1) })), [
+    "Portrait image delivered",
   ]);
 });
 
