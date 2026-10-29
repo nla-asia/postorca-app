@@ -14,7 +14,8 @@ export type WritingExpect = {
   must_include?: string[];
   /** The facts are supplied, so no [placeholder] may remain. */
   no_placeholders?: boolean;
-  /** Final LinkedIn word limit after a revision request. */
+  /** LinkedIn word limit: a revision request's, else the platform ceiling of 250.
+   * create-content sizes LinkedIn posts to the founder's own, so there is no minimum. */
   max_words?: number;
   /** The last turn revises the existing document instead of creating another. */
   edited_in_place?: boolean;
@@ -25,6 +26,8 @@ export type WritingExpect = {
 };
 export type WritingCase = {
   id: string;
+  revision?: number;
+  revision_change?: { from: number; reason: string; preserved_coverage: string[] };
   category: "writing" | "content";
   level: 2 | 3;
   name: string;
@@ -43,6 +46,13 @@ const voice = [
 export const writingCases: WritingCase[] = [
   {
     id: "post-in-voice",
+    revision: 2,
+    revision_change: {
+      from: 1,
+      reason:
+        "create-content now sizes LinkedIn posts to the founder's own (no 100-word minimum, 250 ceiling), so the LinkedIn check drops its minimum.",
+      preserved_coverage: ["writing-post-in-voice X and LinkedIn format, supplied facts and placeholders"],
+    },
     category: "writing",
     level: 2,
     name: "Post in my voice for X and LinkedIn",
@@ -75,6 +85,13 @@ export const writingCases: WritingCase[] = [
   },
   {
     id: "revise-from-feedback",
+    revision: 2,
+    revision_change: {
+      from: 1,
+      reason:
+        "\"Make it more personal\" asks for a detail the founder never gave, so a placeholder asked about in the final message is the right answer; the no-placeholders check no longer applies to this case.",
+      preserved_coverage: ["writing-revise-from-feedback length, supplied facts and in-place revision"],
+    },
     category: "writing",
     level: 2,
     name: "Revise a post from feedback",
@@ -85,13 +102,12 @@ export const writingCases: WritingCase[] = [
     expect: {
       docs: ["linkedin"],
       must_include: ["\\b(9|nine)\\b", "\\b(4|four)\\b", "41\\s?%", "63\\s?%"],
-      no_placeholders: true,
       max_words: 120,
       edited_in_place: true,
     },
     criteria: [
       ...voice,
-      "The revision answers the feedback (more personal, less marketing) and keeps what already worked; the supplied facts are unchanged.",
+      "The revision answers the feedback (more personal, less marketing) and keeps what already worked; the supplied facts are unchanged. A personal detail that isn't on record is a placeholder with one specific question in the final message.",
     ],
   },
 ];
@@ -148,7 +164,7 @@ export function gradeWriting(
       );
     } else {
       const count = words(text);
-      const [min, max] = expect.max_words ? [1, expect.max_words] : [100, 250];
+      const [min, max] = [1, expect.max_words ?? 250];
       checks.push(
         {
           name: `LinkedIn post ${min}–${max} words`,

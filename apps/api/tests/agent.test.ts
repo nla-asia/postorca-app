@@ -427,7 +427,7 @@ test("with no plugins enabled, routine work can still read core skills", async (
   assert.ok(!tools.includes("activate_plugin"));
   assert.match(
     requests[0].instructions,
-    /\nSkills: when a task names a skill, or its work matches one, read it with read_skill first and follow it\.\n- connect-post: [^\n]+\n- conversations-to-join: [^\n]+\n- create-content: [^\n]+\n- daily-quote: [^\n]+\n- find-content-ideas: Find up to five content ideas/,
+    /\nSkills: when a task names a skill, or its work matches one, read it with read_skill first and follow it\. A follow-up that revises earlier work counts: read that work's skill again before revising, since the earlier read may no longer be in view\.\n- connect-post: [^\n]+\n- conversations-to-join: [^\n]+\n- create-content: [^\n]+\n- daily-quote: [^\n]+\n- find-content-ideas: Find up to five content ideas/,
   );
   assert.doesNotMatch(requests[0].instructions, /Plugins:/);
 });

@@ -187,7 +187,7 @@ export const artifactTools: Tool[] = [
           ),
           text: {
             type: "string",
-            description: `The reply, ready to paste (at most ${MAX_REPLY} characters; keep to the platform's limit).`,
+            description: `The reply, ready to paste once any [placeholder] for a detail only the founder knows is filled (at most ${MAX_REPLY} characters; keep to the platform's limit).`,
           },
           why: {
             type: "string",

@@ -59,7 +59,7 @@ export async function loadPluginState(
 /** System-prompt section listing core skills and the active and available plugins. */
 export function pluginPrompt(state: PluginState) {
   const core = state.coreSkills.length
-    ? `\nSkills: when a task names a skill, or its work matches one, read it with read_skill first and follow it.
+    ? `\nSkills: when a task names a skill, or its work matches one, read it with read_skill first and follow it. A follow-up that revises earlier work counts: read that work's skill again before revising, since the earlier read may no longer be in view.
 ${state.coreSkills.map((skill) => `- ${skill.name}: ${skill.description}`).join("\n")}`
     : "";
   if (!state.available.length) return core;
