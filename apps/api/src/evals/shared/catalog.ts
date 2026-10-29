@@ -214,13 +214,13 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
     ...demos,
     caseSchema.parse({
       id: "media-M1",
-      revision: 2,
+      revision: 3,
       revision_change: {
-        from: 1,
+        from: 2,
         reason:
-          "M1 becomes the media tool health check: every media tool in one task, with speech and transcription checking each other.",
+          "Music generation is out of scope: the provider key has no access to it (HTTP 402 limited_access on the first live run). Every other media tool stays.",
         preserved_coverage: [
-          "media-M1 image generation, image edit and exact speech",
+          "media-M1 image generation, image edit, voices, exact speech, sound effect and transcription",
         ],
       },
       plugin: "media",
