@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { gradeWriting, gradeWritingTools, writingCases } from "../src/evals/writing-cases.js";
+import { gradeWriting, gradeWritingTools, postBody, writingCases } from "../src/evals/writing-cases.js";
 import { gradeBrowserTools } from "../src/evals/browser-tools.js";
 import { gradeIdeas, ideasCases } from "../src/evals/ideas-cases.js";
 import { gradeMediaTools, gradeQuoteCard, gradeVoiceover, mediaSentence } from "../src/evals/media-cases.js";
@@ -209,4 +209,20 @@ test("idea routines need their skill, the right number of ideas, and the work re
     failed(gradeIdeas(strategy, { status: "completed", calls: read, artifacts: [{ kind: "document", title: "Strategy — X — 2026-10-29" }] })),
     [],
   );
+});
+
+test("format checks measure the post, not the Other openings and Placeholders notes after it", () => {
+  const notes = "\n\n---\n**Other openings:**\n1. " + "a".repeat(200) + "\n2. b\n\n**Placeholders:**\nNone.";
+  const post = "Removed one step. Onboarding 9 → 4 min, completion 41% → 63%.";
+  assert.equal(postBody(post + notes), post);
+  assert.equal(postBody(post + "\n\n**Other openings:**\n1. x"), post);
+  assert.equal(postBody(post), post);
+  const turns = [{ id: "t1", status: "completed", artifacts: [doc("X", post + notes), doc("LinkedIn", linkedin + notes)] }];
+  assert.deepEqual(failed(gradeWriting(expect("post-in-voice"), { status: "completed", turns, calls: [] })), []);
+  // A placeholder or a long post still fails when it is in the post itself.
+  turns[0].artifacts[0] = doc("X", `${"x".repeat(290)} 9 4 41% 63% [your metric]${notes}`);
+  assert.deepEqual(failed(gradeWriting(expect("post-in-voice"), { status: "completed", turns, calls: [] })), [
+    "X posts within 280 characters",
+    "No placeholders left",
+  ]);
 });
