@@ -80,7 +80,7 @@ async function attachment(
 export async function ownedFile(
   context: PluginContext,
   ref: string,
-  kind: "image" | "audio",
+  kind: "image" | "audio" | "video",
 ) {
   const key = await resolveUserFile(context.userId, ref);
   if (!key)
@@ -98,7 +98,7 @@ export async function ownedFile(
 export async function ownedBlob(
   context: PluginContext,
   ref: string,
-  kind: "image" | "audio",
+  kind: "image" | "audio" | "video",
 ) {
   const key = await ownedFile(context, ref, kind);
   const { mime_type } = await describeFile(key);

@@ -20,10 +20,9 @@ function pngChunk(name, data) {
   checksum.writeUInt32BE(crc32(Buffer.concat([type, data])));
   return Buffer.concat([size, type, data, checksum]);
 }
-function screenPng() {
-  const width = 640,
-    height = 400;
-  const raw = Buffer.alloc((width * 3 + 1) * height);
+/** RGB pixels of the synthetic screen; `progress` (0–1) grows a bar along the top, as a clip's motion. */
+function screenPixels(width, height, progress, row) {
+  const raw = Buffer.alloc(row(height - 1) + width * 3);
   for (let y = 0; y < height; y++)
     for (let x = 0; x < width; x++) {
       let color = [239, 242, 246];
@@ -34,11 +33,24 @@ function screenPng() {
       if (x > 175 && x < 570 && y > 155 && y < 180) color = [112, 152, 183];
       if (x > 175 && x < 570 && y > 200 && y < 225) color = [170, 190, 210];
       if (x > 480 && x < 570 && y > 265 && y < 300) color = [29, 143, 126];
-      const offset = y * (width * 3 + 1) + 1 + x * 3;
+      if (progress !== null && y > 50 && y < 70 && x < width * progress)
+        color = [242, 165, 65];
+      const offset = row(y) + x * 3;
       color.forEach((channel, index) => {
         raw[offset + index] = channel;
       });
     }
+  return raw;
+}
+function screenPng(progress = null) {
+  const width = 640,
+    height = 400;
+  const raw = screenPixels(
+    width,
+    height,
+    progress,
+    (y) => y * (width * 3 + 1) + 1,
+  );
   const header = Buffer.alloc(13);
   header.writeUInt32BE(width);
   header.writeUInt32BE(height, 4);
@@ -79,5 +91,12 @@ async function makeFixtures(directory) {
   await fs.mkdir(directory, { recursive: true });
   await fs.writeFile(path.join(directory, "screen.png"), screenPng());
   await fs.writeFile(path.join(directory, "tone.wav"), toneWav());
+  // Frames of a 3 s, 30 fps screen recording whose bar fills over the clip.
+  await fs.mkdir(path.join(directory, "clip"), { recursive: true });
+  for (let frame = 0; frame < 90; frame++)
+    await fs.writeFile(
+      path.join(directory, "clip", `${String(frame).padStart(3, "0")}.png`),
+      screenPng((frame + 1) / 90),
+    );
 }
 module.exports = { screenPng, toneWav, makeFixtures };

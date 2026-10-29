@@ -33,6 +33,24 @@ app
       ],
       { cwd: binaries },
     );
+    await run(
+      binary("ffmpeg"),
+      [
+        "-v",
+        "error",
+        "-framerate",
+        "30",
+        "-i",
+        path.join(directory, "clip", "%03d.png"),
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-y",
+        path.join(directory, "clip.mp4"),
+      ],
+      { cwd: binaries },
+    );
     const plugin = require("./index.cjs");
     const controller = new AbortController();
     let prefix = "",
@@ -41,7 +59,11 @@ app
       signal: controller.signal,
       download: async (key) => ({
         data: await fs.readFile(path.join(directory, key)),
-        type: key.endsWith("png") ? "image/png" : "audio/mpeg",
+        type: key.endsWith("png")
+          ? "image/png"
+          : key.endsWith("mp4")
+            ? "video/mp4"
+            : "audio/mpeg",
       }),
       upload: async (data, type) => {
         const filename = `${prefix}-${++uploaded}.${type === "video/mp4" ? "mp4" : "jpg"}`;
@@ -79,6 +101,17 @@ app
             highlight: { x: 0.75, y: 0.65, width: 0.14, height: 0.1 },
           },
           { text: "Ready to review", duration_ms: 1000 },
+          // A clip trimmed to 0.5–2.5 s at 2× (1 s), then its last frame held for 1 s.
+          {
+            file: "clip.mp4",
+            start_ms: 500,
+            end_ms: 2500,
+            speed: 2,
+            duration_ms: 2000,
+            fit: "contain",
+            device: "browser",
+            highlight: { x: 0, y: 0.12, width: 1, height: 0.07 },
+          },
         ],
         voiceover_file: "tone.mp3",
         music: {
@@ -105,8 +138,19 @@ app
         },
       };
       await plugin.tools.video_preview_frames.run(
-        { ...args, times_ms: [500, 3000, 4500] },
+        { ...args, times_ms: [500, 3000, 4500, 5100, 5900, 6800] },
         context,
+      );
+      await assert.rejects(
+        plugin.tools.video_preview_frames.run(
+          {
+            ...args,
+            scenes: [{ ...args.scenes[3], end_ms: 9000 }],
+            times_ms: [0],
+          },
+          context,
+        ),
+        /past the end of its clip, which is 3 s long/,
       );
       const result = await plugin.tools.video_export.run(args, context);
       const filename = path.join(
@@ -135,7 +179,7 @@ app
       assert.equal(video.height, height);
       assert.equal(video.r_frame_rate, "30/1");
       assert.ok(probe.streams.some((stream) => stream.codec_name === "aac"));
-      assert.ok(Math.abs(Number(probe.format.duration) - 5) < 0.1);
+      assert.ok(Math.abs(Number(probe.format.duration) - 7) < 0.1);
       reports.push({
         format,
         width,

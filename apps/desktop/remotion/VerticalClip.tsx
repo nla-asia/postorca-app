@@ -2,7 +2,9 @@ import { useMemo } from "react";
 import {
   AbsoluteFill,
   Audio,
+  Freeze,
   Img,
+  OffthreadVideo,
   Sequence,
   interpolate,
   useCurrentFrame,
@@ -20,6 +22,13 @@ export type VerticalClipProps = {
   format?: Format;
   scenes: {
     src: string | null;
+    // A recorded clip (src is a video): its trim, speed and a still for the backdrop.
+    clip?: {
+      startMs: number;
+      endMs: number;
+      speed: number;
+      poster: string;
+    } | null;
     text: string | null;
     durationMs: number;
     fit?: "cover" | "contain";
@@ -41,6 +50,12 @@ export type VerticalClipProps = {
   brand: { background: string; text: string; highlight: string };
 };
 type SceneData = VerticalClipProps["scenes"][number];
+/** Whether a scene continues the previous one's shot: the same image, or a clip picking up where it stopped. */
+const continues = (previous: SceneData | undefined, scene: SceneData) =>
+  !!previous &&
+  !!scene.src &&
+  scene.src === previous.src &&
+  (!scene.clip || scene.clip.startMs === previous.clip?.endMs);
 type Shot = {
   offset: number;
   frames: number;
@@ -297,6 +312,36 @@ function camera(frame: number, fps: number, shot: Shot, amount: number) {
   return `translate(${x}px, ${y}px) rotate(${amount * 0.3 * Math.sin(0.9 * seconds + phase)}deg) scale(${scale})`;
 }
 
+/** Plays the trimmed part of a clip muted at its speed, then holds its last frame. */
+function ClipVideo({
+  src,
+  clip,
+  style,
+}: {
+  src: string;
+  clip: NonNullable<SceneData["clip"]>;
+  style: React.CSSProperties;
+}) {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const playing = Math.max(
+    1,
+    Math.floor((((clip.endMs - clip.startMs) / clip.speed) * fps) / 1000),
+  );
+  return (
+    <Freeze frame={playing - 1} active={frame >= playing}>
+      <OffthreadVideo
+        src={src}
+        muted
+        trimBefore={Math.round((clip.startMs * fps) / 1000)}
+        trimAfter={Math.round((clip.endMs * fps) / 1000)}
+        playbackRate={clip.speed}
+        style={style}
+      />
+    </Freeze>
+  );
+}
+
 function Headline({
   text,
   image,
@@ -413,18 +458,32 @@ function Scene({
   const rect = placed ? { ...placed, top: placed.top + top } : null;
   const shownWhole = !!rect && framed;
   const focus = scene.focus ?? null;
-  const amount = shownWhole || focus || previousFocus ? 0.4 : 1;
+  // A clip has its own motion: only image shots get the handheld drift.
+  const amount = scene.clip
+    ? 0
+    : shownWhole || focus || previousFocus
+      ? 0.4
+      : 1;
   const glow = interpolate(frame, [4, 22], [0, 1], clamp);
   const src = scene.src ? asset(base, scene.src) : null;
+  const backdrop = scene.clip ? asset(base, scene.clip.poster) : src;
   const highlight = scene.highlight;
   const radius = rect
     ? (device === "phone" ? 0.1 : device ? 0.004 : 0) * rect.width
     : 0;
+  const media: React.CSSProperties = rect
+    ? { position: "absolute", ...rect, borderRadius: radius }
+    : {
+        position: "absolute",
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+      };
   return (
     <AbsoluteFill style={{ backgroundColor: brand.background }}>
-      {src && shownWhole && (
+      {backdrop && shownWhole && (
         <Img
-          src={src}
+          src={backdrop}
           style={{
             position: "absolute",
             width: "100%",
@@ -446,19 +505,11 @@ function Scene({
             }}
           >
             {device && rect && <DeviceFrame device={device} rect={rect} />}
-            <Img
-              src={src}
-              style={
-                rect
-                  ? { position: "absolute", ...rect, borderRadius: radius }
-                  : {
-                      position: "absolute",
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }
-              }
-            />
+            {scene.clip ? (
+              <ClipVideo src={src} clip={scene.clip} style={media} />
+            ) : (
+              <Img src={src} style={media} />
+            )}
             {highlight && rect && (
               <div
                 style={{
@@ -604,12 +655,13 @@ export function VerticalClip({
       index = 0;
     return ranges.map((range, position) => {
       const scene = scenes[position];
-      if (position && (!scene.src || scene.src !== scenes[position - 1].src)) {
+      if (position && !continues(scenes[position - 1], scene)) {
         first = position;
         index++;
       }
       let last = position;
-      while (scene.src && scenes[last + 1]?.src === scene.src) last++;
+      while (scenes[last + 1] && continues(scenes[last], scenes[last + 1]))
+        last++;
       const shot: Shot = {
         offset: range.from - ranges[first].from,
         frames: ranges[last].to - ranges[first].from,
@@ -637,7 +689,7 @@ export function VerticalClip({
               captioned={pages.length > 0}
               brand={brand}
               previousFocus={
-                index > 0 && scenes[index - 1].src === scene.src
+                continues(scenes[index - 1], scene)
                   ? (scenes[index - 1].focus ?? null)
                   : null
               }

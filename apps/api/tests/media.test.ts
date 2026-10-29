@@ -31,6 +31,22 @@ const png = Buffer.from(
 );
 const mp3 = Buffer.from("ID3fixture");
 const mp4 = Buffer.from("\0\0\0\x18ftypmp42fixture");
+/** An MP4 with just a movie header saying it lasts `seconds`, after a media box. */
+function clipMp4(seconds: number) {
+  const box = (type: string, body: Buffer) => {
+    const size = Buffer.alloc(4);
+    size.writeUInt32BE(body.length + 8);
+    return Buffer.concat([size, Buffer.from(type, "latin1"), body]);
+  };
+  const mvhd = Buffer.alloc(100);
+  mvhd.writeUInt32BE(600, 12);
+  mvhd.writeUInt32BE(seconds * 600, 16);
+  return Buffer.concat([
+    box("ftyp", Buffer.from("isom\0\0\0\0")),
+    box("mdat", Buffer.alloc(64)),
+    box("moov", box("mvhd", mvhd)),
+  ]);
+}
 const realFetch = globalThis.fetch;
 const savedEnv = Object.fromEntries(
   [
@@ -38,10 +54,7 @@ const savedEnv = Object.fromEntries(
     "OPENAI_IMAGE_API_KEY",
     "ELEVENLABS_API_KEY",
     "META_MODEL_API_KEY",
-  ].map((key) => [
-    key,
-    process.env[key],
-  ]),
+  ].map((key) => [key, process.env[key]]),
 );
 const requests: { url: string; init: RequestInit }[] = [];
 let failure = false;
@@ -440,6 +453,98 @@ test("video previews and exports use the real desktop transport, cached speech t
     }),
   );
   assert.equal(calls.length, beforeCalls);
+});
+
+test("clip scenes trim, speed up and hold recorded videos, deriving their durations", async (t) => {
+  const owner = await founder("video");
+  const deviceToken = issueDeviceToken(owner.userId, randomUUID(), secret);
+  const calls: any[] = [];
+  const ws = new WebSocket(
+    `${base.replace(/^http/, "ws")}/desktop/socket?token=${deviceToken}`,
+  );
+  ws.on("message", (raw) => {
+    const call = JSON.parse(raw.toString()).data;
+    calls.push(call);
+    void fetch(`${base}/desktop/tool-result`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${deviceToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        executionId: call.executionId,
+        ok: true,
+        result: { attachments: [] },
+      }),
+    });
+  });
+  await once(ws, "open");
+  t.after(() => ws.terminate());
+  const clip = fileRef(
+    await saveFile(owner.userId, "media", clipMp4(6), "video/mp4"),
+  );
+  const image = fileRef(
+    await saveFile(owner.userId, "media", png, "image/png"),
+  );
+  const preview = (scenes: object[]) =>
+    owner.call("video_preview_frames", { scenes, times_seconds: [0] });
+
+  const result = await preview([
+    {
+      video_file: clip,
+      start_seconds: 1,
+      end_seconds: 5,
+      speed: 2,
+      hold_seconds: 2.5,
+      fit: "contain",
+      device: "browser",
+      focus: { x: 0.5, y: 0.5, width: 0.4, height: 0.4 },
+    },
+    { video_file: clip, start_seconds: 4.5 },
+    { video_file: clip, end_seconds: 2, duration_seconds: 3 },
+  ]);
+  const scenes = calls.at(-1).arguments.scenes;
+  assert.deepEqual(
+    scenes.map((scene: any) => [
+      scene.duration_ms,
+      scene.start_ms,
+      scene.end_ms,
+      scene.speed,
+    ]),
+    [
+      [4500, 1000, 5000, 2],
+      [1500, 4500, 6000, 1],
+      [3000, 0, 2000, 1],
+    ],
+  );
+  assert.match(scenes[0].file, /\.mp4$/);
+  assert.equal(scenes[0].device, "browser");
+  assert.equal(result.duration_seconds, 9);
+  // Each clip scene is its own shot: three shots in 9 s.
+  assert.equal(result.pacing, undefined);
+
+  const before = calls.length;
+  for (const [scene, error] of [
+    [{ video_file: clip, end_seconds: 7 }, /past the end.*6 s long/],
+    [{ video_file: clip, start_seconds: 6 }, /past the end/],
+    [
+      { video_file: clip, start_seconds: 1, end_seconds: 1.4, speed: 4 },
+      /at least 0\.5 s/,
+    ],
+    [{ video_file: image }, /Choose a saved video file/],
+    [{ image_file: clip, duration_seconds: 1 }, /Choose a saved image file/],
+  ] as const)
+    await assert.rejects(preview([scene]), error);
+  for (const scene of [
+    { image_file: image, video_file: clip, duration_seconds: 1 },
+    { image_file: image, duration_seconds: 1, speed: 2 },
+    { text: "Trimmed", duration_seconds: 1, end_seconds: 2 },
+    { image_file: image },
+    { video_file: clip, start_seconds: 3, end_seconds: 2 },
+    { video_file: clip, speed: 8 },
+  ])
+    await assert.rejects(preview([scene]), "invalid: " + JSON.stringify(scene));
+  assert.equal(calls.length, before);
 });
 
 test("video rejects foreign files before rendering, and reports an offline desktop", async () => {

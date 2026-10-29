@@ -1,3 +1,4 @@
+import { open } from "node:fs/promises";
 import { z } from "zod";
 import { callDesktop } from "../../desktop/calls.js";
 import { HttpError } from "../../handlers/errors.js";
@@ -8,6 +9,7 @@ import {
 } from "../../providers/elevenlabs.js";
 import { brandColors } from "../../repositories/brand.js";
 import { brandColorsSchema } from "../../schemas/brand.js";
+import { filePath } from "../../storage.js";
 import { loadSkill } from "../../skills/load.js";
 import { mediaPlugin, ownedBlob, ownedFile } from "../media/index.js";
 import type {
@@ -37,21 +39,55 @@ const clipArgs = z
           .object({
             image_file: file
               .optional()
-              .describe("Saved image ref; omit for a text card."),
+              .describe("Saved image ref; omit for a text card or a clip."),
+            video_file: file
+              .optional()
+              .describe(
+                "Saved video ref (a recorded clip), played muted instead of an image.",
+              ),
+            start_seconds: z
+              .number()
+              .min(0)
+              .optional()
+              .describe("Clip only: where to start in the clip (default 0)."),
+            end_seconds: z
+              .number()
+              .min(0)
+              .optional()
+              .describe("Clip only: where to stop (default the clip's end)."),
+            speed: z
+              .number()
+              .min(0.5)
+              .max(4)
+              .optional()
+              .describe("Clip only: playback speed; 2 plays twice as fast."),
+            hold_seconds: z
+              .number()
+              .min(0)
+              .max(10)
+              .optional()
+              .describe("Clip only: freeze the last frame this long."),
             text: z
               .string()
               .trim()
               .max(120)
               .optional()
               .describe(
-                "Headline sticker over an image, or a text card without an image.",
+                "Headline sticker over an image or clip, or a text card without either.",
               ),
-            duration_seconds: z.number().min(0.5).max(60),
+            duration_seconds: z
+              .number()
+              .min(0.5)
+              .max(60)
+              .optional()
+              .describe(
+                "Required without video_file. For a clip, omit it to play the trimmed part at its speed, plus hold_seconds.",
+              ),
             fit: z
               .enum(["cover", "contain"])
               .optional()
               .describe(
-                "cover fills/crops; contain shows the whole image over a blurred background.",
+                "cover fills/crops; contain shows the whole image or clip over a blurred background.",
               ),
             device: z
               .enum(["browser", "laptop", "phone"])
@@ -62,18 +98,43 @@ const clipArgs = z
             focus: region
               .optional()
               .describe(
-                "Zoom into this image region; coordinates are fractions of the original image.",
+                "Zoom into this region; coordinates are fractions of the original image or video frame.",
               ),
             highlight: region
               .optional()
-              .describe(
-                "Outline this image region and dim the surrounding content.",
-              ),
+              .describe("Outline this region and dim the surrounding content."),
           })
           .strict()
-          .refine((scene) => !!(scene.image_file || scene.text), {
-            message: "A scene needs an image_file, text, or both.",
-          }),
+          .refine(
+            (scene) => !!(scene.image_file || scene.video_file || scene.text),
+            { message: "A scene needs an image_file, video_file or text." },
+          )
+          .refine((scene) => !(scene.image_file && scene.video_file), {
+            message: "Use image_file or video_file in a scene, not both.",
+          })
+          .refine(
+            (scene) =>
+              !!scene.video_file ||
+              (scene.start_seconds ??
+                scene.end_seconds ??
+                scene.speed ??
+                scene.hold_seconds) === undefined,
+            {
+              message:
+                "start_seconds, end_seconds, speed and hold_seconds apply only to a video_file scene.",
+            },
+          )
+          .refine(
+            (scene) =>
+              !!scene.video_file || scene.duration_seconds !== undefined,
+            { message: "An image or text scene needs duration_seconds." },
+          )
+          .refine(
+            (scene) =>
+              scene.end_seconds === undefined ||
+              scene.end_seconds > (scene.start_seconds ?? 0),
+            { message: "end_seconds must be after start_seconds." },
+          ),
       )
       .min(1)
       .max(40),
@@ -104,6 +165,93 @@ const clipArgs = z
   })
   .strict();
 type Clip = z.infer<typeof clipArgs>;
+type SceneArgs = Clip["scenes"][number];
+
+/** Length in seconds of an MP4/QuickTime file, from its movie header; null when absent. */
+export async function mp4Seconds(path: string) {
+  const handle = await open(path, "r");
+  try {
+    const { size } = await handle.stat();
+    const header = Buffer.alloc(16);
+    async function find(type: string, start: number, end: number) {
+      for (let offset = start; offset + 8 <= end;) {
+        await handle.read(header, 0, 16, offset);
+        let length = header.readUInt32BE(0),
+          body = 8;
+        if (length === 1) {
+          length = Number(header.readBigUInt64BE(8));
+          body = 16;
+        } else if (length === 0) length = end - offset;
+        if (length < body) return null;
+        if (header.toString("latin1", 4, 8) === type)
+          return { start: offset + body, end: offset + length };
+        offset += length;
+      }
+      return null;
+    }
+    const moov = await find("moov", 0, size);
+    const mvhd = moov && (await find("mvhd", moov.start, moov.end));
+    if (!mvhd) return null;
+    const box = Buffer.alloc(32);
+    await handle.read(box, 0, 32, mvhd.start);
+    const [scale, duration] =
+      box[0] === 1
+        ? [box.readUInt32BE(20), Number(box.readBigUInt64BE(24))]
+        : [box.readUInt32BE(12), box.readUInt32BE(16)];
+    return scale ? duration / scale : null;
+  } finally {
+    await handle.close();
+  }
+}
+
+/**
+ * Trim, speed and hold of a clip scene, and its length: duration_seconds when given,
+ * otherwise the trimmed part at its speed plus the hold.
+ */
+export function clipTiming(scene: SceneArgs, clipSeconds: number | null) {
+  const start = scene.start_seconds ?? 0;
+  const speed = scene.speed ?? 1;
+  const length =
+    clipSeconds === null ? null : Math.round(clipSeconds * 100) / 100;
+  if (length !== null && start >= length - 0.1)
+    throw new HttpError(
+      400,
+      `start_seconds ${start} is at or past the end of clip ${scene.video_file}, which is ${length} s long.`,
+    );
+  if (
+    length !== null &&
+    scene.end_seconds !== undefined &&
+    scene.end_seconds > length + 0.05
+  )
+    throw new HttpError(
+      400,
+      `end_seconds ${scene.end_seconds} is past the end of clip ${scene.video_file}, which is ${length} s long. Use at most ${length}, or omit end_seconds.`,
+    );
+  const end = scene.end_seconds ?? length;
+  if (end === null)
+    throw new HttpError(
+      400,
+      `The length of clip ${scene.video_file} is unknown; pass end_seconds.`,
+    );
+  const hold = scene.hold_seconds ?? 0;
+  const seconds = scene.duration_seconds ?? (end - start) / speed + hold;
+  if (seconds < 0.5)
+    throw new HttpError(
+      400,
+      `The clip scene on ${scene.video_file} would last ${seconds.toFixed(2)} s; a scene needs at least 0.5 s. Widen the trim, lower the speed or add hold_seconds.`,
+    );
+  if (seconds > 60)
+    throw new HttpError(
+      400,
+      `The clip scene on ${scene.video_file} would last ${seconds.toFixed(1)} s; a scene is at most 60 s. Trim it, raise the speed or split it into scenes.`,
+    );
+  return {
+    start_ms: Math.round(start * 1000),
+    end_ms: Math.round(end * 1000),
+    speed,
+    duration_ms: Math.round(seconds * 1000),
+  };
+}
 
 // Immutable saved files share a transcript between previews and exports in this process.
 const transcripts = new Map<string, Promise<Transcript>>();
@@ -171,20 +319,35 @@ function voiceoverLines(transcript: Transcript) {
 
 async function prepare(context: PluginContext, clip: Clip) {
   const images = new Map<string, string>();
-  for (const scene of clip.scenes)
+  const videos = new Map<string, { key: string; seconds: number | null }>();
+  for (const scene of clip.scenes) {
     if (scene.image_file && !images.has(scene.image_file))
       images.set(
         scene.image_file,
         await ownedFile(context, scene.image_file, "image"),
       );
+    if (scene.video_file && !videos.has(scene.video_file)) {
+      const key = await ownedFile(context, scene.video_file, "video");
+      videos.set(scene.video_file, {
+        key,
+        seconds: await mp4Seconds(filePath(key)).catch(() => null),
+      });
+    }
+  }
   const voice = clip.voiceover_file
     ? await ownedFile(context, clip.voiceover_file, "audio")
     : undefined;
   const music = clip.music
     ? await ownedFile(context, clip.music.file, "audio")
     : undefined;
-  const durations = clip.scenes.map((scene) =>
-    Math.round(scene.duration_seconds * 1000),
+  const clips = clip.scenes.map((scene) =>
+    scene.video_file
+      ? clipTiming(scene, videos.get(scene.video_file)!.seconds)
+      : undefined,
+  );
+  const durations = clip.scenes.map(
+    (scene, index) =>
+      clips[index]?.duration_ms ?? Math.round(scene.duration_seconds! * 1000),
   );
   const transcript = voice ? await transcriptFor(context, voice) : undefined;
   const originalMs = durations.reduce((sum, value) => sum + value, 0);
@@ -216,9 +379,18 @@ async function prepare(context: PluginContext, clip: Clip) {
     render: {
       format: clip.format,
       scenes: clip.scenes.map((scene, index) => ({
-        file: scene.image_file ? images.get(scene.image_file) : undefined,
+        file: scene.video_file
+          ? videos.get(scene.video_file)!.key
+          : scene.image_file
+            ? images.get(scene.image_file)
+            : undefined,
         text: scene.text || undefined,
         duration_ms: durations[index],
+        ...(clips[index] && {
+          start_ms: clips[index].start_ms,
+          end_ms: clips[index].end_ms,
+          speed: clips[index].speed,
+        }),
         fit: scene.fit,
         device: scene.device,
         focus: scene.focus,
@@ -249,7 +421,7 @@ async function prepare(context: PluginContext, clip: Clip) {
         note: `The last scene was extended by ${(extension / 1000).toFixed(1)} s to cover the voiceover.`,
       }),
       ...(totalMs / shots > 3000 && {
-        pacing: `Shots average ${(totalMs / shots / 1000).toFixed(1)} s; consecutive scenes on the same image are one shot. UGC usually changes shot every 2–3 s. Alternate images for faster cuts.`,
+        pacing: `Shots average ${(totalMs / shots / 1000).toFixed(1)} s; consecutive scenes on the same image are one shot; each clip scene is a shot. UGC usually changes shot every 2–3 s. Alternate images, or trim and speed up clips, for faster cuts.`,
       }),
     },
   };
@@ -320,7 +492,7 @@ export const videoPlugin: PluginDefinition = {
   code: "video",
   name: "Video",
   description:
-    "Compose UGC and product-demo videos from images, text, voiceover, captions and optional music. Preview frames and export an MP4 on the founder's desktop; includes the media generation tools it needs.",
+    "Compose UGC and product-demo videos from images, recorded clips, text, voiceover, captions and optional music. Preview frames and export an MP4 on the founder's desktop; includes the media generation tools it needs.",
   skills: [
     "video-create",
     "video-product-demo",
