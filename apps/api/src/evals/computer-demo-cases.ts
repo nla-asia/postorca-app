@@ -17,7 +17,8 @@ export type DemoCase = {
   /** Finds what to demo in the founder's recent work (the work fixture). */
   read_work?: boolean;
   brief: string;
-  /** Text the demo has to type into the app while recording, as regexes. */
+  /** Text the demo has to type into the app, as regexes. product-demo-capture sets
+   * the stage before recording, so this may happen on or off camera. */
   typed: string[];
   min_clips: number;
   /** Level 3 only: the finished video the runner grades with the video checks. */
@@ -188,7 +189,7 @@ export function gradeDemoCapture(
   const clipFiles = new Set(clipAttachments.map((a: any) => a.file));
   const clipRefs = new Set(clipAttachments.map(refOf));
   const typed = ok
-    .filter((c) => c.name === "computer_type" && recording(c))
+    .filter((c) => c.name === "computer_type")
     .map((c) => String(c.args.text ?? ""));
   const firstStart = starts.length ? index(starts[0]) : -1;
   const checks: EvalCheck[] = [
@@ -229,7 +230,7 @@ export function gradeDemoCapture(
       passed: ok.some((c) => inputNames.has(c.name) && recording(c)),
     },
     ...entry.typed.map((pattern) => ({
-      name: `Typed "${pattern}" on camera`,
+      name: `Typed "${pattern}" in the app`,
       passed: typed.some((text) => new RegExp(pattern, "i").test(text)),
     })),
   ];
