@@ -189,6 +189,13 @@ test("the voiceover must be transcribed after its final recording and keep every
   const artifacts = [{ kind: "audio", content: JSON.stringify({ file: "users/u/media/s2.mp3" }) }];
   const fixed = [voices, speak("s1"), transcribe("s1", "... lou mah ..."), speak("s2"), transcribe("s2", good)];
   assert.deepEqual(failed(gradeVoiceover({ calls: fixed, artifacts })), []);
+  // The transcriber's own formatting still counts: "7:00 PM" and a run-together link.
+  const formatted = "Last month, we went from 120 to 310 weekly founders. Join our live AMA on Friday at 7:00 PM Bangkok time. Sign up at alu.ma/autopilotama";
+  assert.deepEqual(failed(gradeVoiceover({ calls: [voices, speak("s2"), transcribe("s2", formatted)], artifacts })), []);
+  // A skipped fact still fails.
+  assert.deepEqual(failed(gradeVoiceover({ calls: [voices, speak("s2"), transcribe("s2", formatted.replace(" Bangkok", ""))], artifacts })), [
+    "Transcript keeps every fact in the script",
+  ]);
   // Checking only the first take, then delivering an unchecked second one, does not count.
   const unchecked = [voices, speak("s1"), transcribe("s1", good), speak("s2")];
   assert.deepEqual(failed(gradeVoiceover({ calls: unchecked, artifacts })), [

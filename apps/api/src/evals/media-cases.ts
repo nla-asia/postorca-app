@@ -120,15 +120,16 @@ export const voiceoverCase: MediaProcessCase = {
     "The voice fits the founder's brand; numbers, the time and the link are spoken naturally (\"lu dot ma slash autopilot AMA\"), with nothing skipped or mispronounced.",
   ],
 };
-// Matched on the normalized transcript; a transcriber may write numbers in words.
+// Matched on the normalized transcript; a transcriber may write numbers in words,
+// a time as "7:00 PM" (normalized to "700 pm") and the link run together.
 const voiceoverFacts = [
   /\b(120|one hundred (and )?twenty)\b/,
   /\b(310|three hundred (and )?ten)\b/,
   /\bfriday\b/,
-  /\b(7|seven)\b/,
+  /\b(7|700|seven)\b/,
   /\bbangkok\b/,
-  /\blu ?(dot )?ma\b/,
-  /\bautopilot ?ama\b/,
+  /lu ?(dot )?ma/,
+  /autopilot ?ama\b/,
 ];
 
 const refsOf = (call: any) =>
