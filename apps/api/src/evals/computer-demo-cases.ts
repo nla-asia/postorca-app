@@ -32,11 +32,6 @@ const clipsReview = [
   "The clips follow the demo in order, each a few seconds long, and the payoff stays on screen for 2–3 seconds before the clip ends.",
   "The final app state matches what the clips show and what the answer reports; nothing is claimed that the recordings don't show.",
 ];
-const videoReview = [
-  "The finished video is built from the real recordings, not stills or generated images of the app, and shows the feature working.",
-  "The narration explains the feature the way a founder would to their audience: the problem, the payoff, how little it takes. It matches what is on screen at each moment.",
-  "Format, length and captions fit the requested platform; the video is delivered as an MP4.",
-];
 
 export const demoCases: DemoCase[] = [
   {
@@ -90,39 +85,6 @@ export const demoCases: DemoCase[] = [
       "The clip shows a fresh search for Bangkok, Thailand and its place card.",
       ...clipsReview,
     ],
-  },
-  {
-    id: "demo-mac-maps-video",
-    level: 3,
-    name: "Narrated route-planning demo video from Maps",
-    app: "maps",
-    brief: `demo video for linkedin, landscape, ~20 sec. pretend apple maps on my mac is my product. show planning a trip across bangkok: siam paragon to the grand palace, comparing driving vs transit. record it yourself, voiceover + captions. ${noPublish}`,
-    typed: ["Grand Palace", "Siam Paragon"],
-    min_clips: 2,
-    video: { seconds: [15, 30] },
-    criteria: videoReview,
-  },
-  {
-    id: "demo-sim-reminders-video",
-    level: 3,
-    name: "Narrated launch-checklist demo reel from Simulator Reminders",
-    app: "simulator",
-    brief: `instagram reel, 20-30 sec, showing how i get a launch done with the reminders app on iphone (use the ios simulator, pretend it's my product). make a Launch list, add a few tasks, set a due date, tick one off. record it yourself, voiceover + captions. ${noPublish}`,
-    typed: ["Launch"],
-    min_clips: 2,
-    video: { seconds: [18, 35] },
-    criteria: videoReview,
-  },
-  {
-    id: "demo-mac-clock-video",
-    level: 3,
-    name: "Narrated focus-timer demo video from Clock",
-    app: "clock",
-    brief: `15 sec video for X: how i keep a remote team's hours straight with the clock app on my mac (pretend it's my product). world clocks for tokyo and london, then a 25 min focus timer. record it yourself, voiceover + captions. ${noPublish}`,
-    typed: ["Tokyo", "London"],
-    min_clips: 2,
-    video: { seconds: [10, 25] },
-    criteria: videoReview,
   },
 ];
 

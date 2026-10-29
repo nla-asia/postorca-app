@@ -94,41 +94,6 @@ export const writingCases: WritingCase[] = [
       "The revision answers the feedback (more personal, less marketing) and keeps what already worked; the supplied facts are unchanged.",
     ],
   },
-  {
-    id: "research-to-post",
-    category: "content",
-    level: 3,
-    name: "Research a topic, then post my take",
-    turns: [
-      "See what founders are saying on X this week about [topic or product], then write me a post with my take on it for X and LinkedIn. Don't post or engage with anyone.",
-    ],
-    expect: { docs: ["x", "linkedin"], research: true },
-    criteria: [
-      ...voice,
-      "The take is grounded in what people actually said this week, from posts the agent opened; the research behind it is linked or summarized for the founder.",
-      "It adds the founder's own angle instead of summarizing others; any personal detail it needs comes from the profile or is asked for, never invented.",
-    ],
-    parameters: true,
-  },
-  {
-    id: "image-post",
-    category: "content",
-    level: 3,
-    name: "LinkedIn post with an image",
-    turns: [
-      "Make a LinkedIn post with an image about this: today we shipped the Weekly Founder Digest. Every Monday it summarizes what your startup's agents did last week and lists the decisions waiting for you. It's live at autopilotstartup.com. Don't publish anything.",
-    ],
-    expect: {
-      docs: ["linkedin"],
-      must_include: ["Weekly Founder Digest", "Monday"],
-      image: true,
-    },
-    criteria: [
-      ...voice,
-      "The image supports the post and follows the founder's brand colours and style; any text in it is spelled correctly and nothing in it misrepresents the product.",
-      "The launch is told from the founder's point of view, not as an ad.",
-    ],
-  },
 ];
 
 const platformTitle = { x: /\b(X|Twitter)\b/, linkedin: /LinkedIn/i };
@@ -259,4 +224,61 @@ export function gradeWriting(
     });
   }
   return checks;
+}
+
+/** Writing tool health (level 1): documents, in-place edits, replies and saved posts. */
+export const writingToolsCase = {
+  id: "tools",
+  name: "Every writing tool: document, read, edit in place, reply, saved posts",
+  brief: `This is a temporary check of the writing tools. 1) Save a document titled "Tool check" containing exactly: Shipping beats polishing. 2) Read it back, then change "beats" to "wins over" in that same document. 3) Draft a reply on X to Maya Chen (@mayabuilds), whose post says "What broke first for you?", with exactly: Same here. 4) Find my most recent saved post and tell me its first line. Don't publish or post anything, or save memory.`,
+  criteria: [
+    "The first line reported is the first line of the founder's most recent saved post.",
+  ],
+};
+
+export function gradeWritingTools(evidence: {
+  status: string;
+  calls: any[];
+  artifacts: any[];
+}): EvalCheck[] {
+  const ok = evidence.calls.filter((c) => !c.failed);
+  const used = (name: string) => ok.filter((c) => c.name === name);
+  const doc = evidence.artifacts.find(
+    (a) => a.kind === "document" && /tool check/i.test(a.title ?? ""),
+  );
+  const reply = evidence.artifacts
+    .filter((a) => a.kind === "reply")
+    .map((a) => parse(a.content))
+    .find(Boolean);
+  return [
+    { name: "Turn completed", passed: evidence.status === "completed" },
+    {
+      name: "Document created",
+      passed: used("create_artifact").some((c) => c.args?.kind === "document"),
+    },
+    { name: "Document read back", passed: used("read_artifact").length > 0 },
+    {
+      name: "Edited in place to the exact text",
+      passed:
+        used("edit_document").length > 0 &&
+        String(doc?.content ?? "").trim() === "Shipping wins over polishing.",
+      details: doc?.content,
+    },
+    {
+      name: "Only one Tool check document",
+      passed:
+        evidence.artifacts.filter(
+          (a) => a.kind === "document" && /tool check/i.test(a.title ?? ""),
+        ).length === 1,
+    },
+    {
+      name: "Reply drafted with the exact text",
+      passed: String(reply?.text ?? "").trim() === "Same here.",
+    },
+    {
+      name: "Saved posts read",
+      passed:
+        used("list_my_posts").length + used("search_my_posts").length > 0,
+    },
+  ];
 }

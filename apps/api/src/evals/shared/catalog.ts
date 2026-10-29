@@ -6,7 +6,8 @@ import {
 } from "../computer-mac-cases.js";
 import { videoCases } from "../video-cases.js";
 import { mediaToolsCase } from "../media-cases.js";
-import { writingCases } from "../writing-cases.js";
+import { writingCases, writingToolsCase } from "../writing-cases.js";
+import { browserToolsCase } from "../browser-tools.js";
 import { demoCases } from "../computer-demo-cases.js";
 import { caseSchema, type EvalCase } from "./contracts.js";
 
@@ -100,7 +101,8 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       source: "apps/api/src/evals/computer-demo-cases.ts",
     }),
   );
-  const videos = videoCases.map((c) => {
+  // Story reels (B cases) belonged to Content, which is being redesigned.
+  const videos = videoCases.filter((c) => c.id.startsWith("F")).map((c) => {
     const parent =
       "of" in c.start
         ? videoCases.find((v) => v.id === (c.start as { of: string }).of)!
@@ -135,10 +137,8 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
           ];
     return caseSchema.parse({
       id: `video-${c.id}`,
-      // Story reels are end-to-end content; F cases test one video feature.
-      ...(c.id.startsWith("B")
-        ? { plugin: "content", level: 3 }
-        : { plugin: "media", level: 2 }),
+      plugin: "media",
+      level: 2,
       ...(c.revision ? { revision: c.revision } : {}),
       ...(c.revision_change ? { revision_change: c.revision_change } : {}),
       title: c.name,
@@ -168,6 +168,16 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
     });
   });
   return [
+    caseSchema.parse({
+      id: `browser-${browserToolsCase.id}`,
+      plugin: "browser",
+      level: 1,
+      title: browserToolsCase.name,
+      turns: [{ brief: browserToolsCase.brief }],
+      criteria: criteria(browserToolsCase.criteria),
+      prerequisites: ["browser_connected"],
+      source: "apps/api/src/evals/browser-tools.ts",
+    }),
     ...browser,
     ...computers,
     ...demos,
@@ -191,6 +201,16 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       source: "apps/api/src/evals/media-cases.ts",
     }),
     ...videos,
+    caseSchema.parse({
+      id: `writing-${writingToolsCase.id}`,
+      plugin: "writing",
+      level: 1,
+      title: writingToolsCase.name,
+      turns: [{ brief: writingToolsCase.brief }],
+      criteria: criteria(writingToolsCase.criteria),
+      prerequisites: ["saved_posts_present"],
+      source: "apps/api/src/evals/writing-cases.ts#writingToolsCase",
+    }),
     ...writingCases.map((c) =>
       caseSchema.parse({
         id: `${c.category}-${c.id}`,

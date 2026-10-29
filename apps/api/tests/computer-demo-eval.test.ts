@@ -54,7 +54,7 @@ test("a level 2 demo passes on recorded, on-camera work delivered as clips", () 
 });
 
 test("a level 3 demo needs a narrated export built from the recorded clips", () => {
-  const entry = demo("demo-mac-maps-video");
+  const entry = { ...demo("demo-mac-maps-route"), level: 3 as const, video: { seconds: [15, 30] as [number, number] } };
   const calls = recorded([["Siam Paragon"], ["Grand Palace"]]);
   const exportCall = (scenes: object[], voiceover_file?: string) => ({
     name: "video_export",

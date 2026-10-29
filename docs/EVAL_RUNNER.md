@@ -260,42 +260,29 @@ over merely asserting that a tool was invoked.
 
 ## Existing case migration
 
-All 43 agent cases are registered: Browser 6, Computer 8, Media 10, Writing 3,
-Content 16.
+All 29 agent cases are registered: Browser 7, Computer 8, Media 10, Writing 4.
+Content is being redesigned and has no cases yet.
 
 ### Categories
 
 The case's `plugin` field holds its category; `npm run eval -- list writing` lists one.
-Case IDs stay stable when a case changes category, so `video-B3` keeps its history
-under Content.
+Case IDs stay stable when a case changes category. Every category has a level 1
+tool check and level 2 process cases; level 3 belongs to Content.
 
-| Category | Question | Levels |
-| --- | --- | --- |
-| Browser | Can Orca browse and research? | 2 |
-| Computer | Can Orca control apps and record clips? | 1–2 |
-| Media | Can Orca make and edit images, audio and video? | 1–2 |
-| Writing | Does Orca write like the founder? | 2 |
-| Content | Can Orca do the founder's whole job, end to end? | 3 |
+| Category | Question | Level 1 | Level 2 |
+| --- | --- | --- | --- |
+| Browser | Can Orca browse and research? | `browser-tools`: every browser tool on Wikipedia | 6 research cases |
+| Computer | Can Orca control apps and record clips? | Calculator, Notepad, Edge, Mac Calculator | 4 demo-recording cases |
+| Media | Can Orca make and edit images, audio and video? | `media-M1`: every media tool; speech and transcription check each other | 9 video-feature cases (F) |
+| Writing | Does Orca write like the founder? | `writing-tools`: document, in-place edit, reply, saved posts | post, reply, revision |
+| Content | Can Orca do the founder's whole job, end to end? | (being redesigned) | |
 
-Media M1 exercises every media tool in one task; its speech and transcription check
-each other. Video F cases test one video feature (Media, level 2); story reels, the
-product-demo videos, research-to-post and the image post are Content. Writing and
-Content text cases need the founder's real brand profile (`brand_profile_ready`):
+Writing level 2 cases need the founder's real brand profile (`brand_profile_ready`):
 programmatic checks cover platform format, supplied facts, placeholders and in-place
-revision, and the reviewer judges voice.
+revision, and the reviewer judges voice. The writing grader can also require research
+before writing and a generated image, for Content cases to use.
 
-### Levels
-
-Cases carry a `level`; `npm run eval -- list level-2` lists one level.
-
-1. **Tool health:** a quick check that a tool works end to end (Calculator, Notepad,
-   Edge search).
-2. **One process:** a single real step of the work, such as recording demo clips
-   while using an app.
-3. **Real-world work:** the whole job a founder asks for, such as recording an app
-   and editing the clips into a narrated demo video.
-
-### Product-demo cases (Computer level 2, Content level 3)
+### Product-demo cases (Computer level 2)
 
 `apps/api/src/evals/computer-demo-cases.ts` uses built-in apps as the founder's
 product: Mac Maps and Clock, and Reminders and Maps on an iPhone in the iOS
@@ -306,9 +293,9 @@ apps.
 
 Programmatic checks come from the product task: the app was opened, the screen was
 checked before recording, enough clips were recorded with the app in use and the
-requested text typed on camera. Level 2 requires the clips as video artifacts; level
-3 requires a narrated `video_export` built from those clips, plus the standard video
-checks. Clip quality and the app's final state are reviewed by the observer; these
+requested text typed on camera, and the clips delivered as video artifacts. The
+grader also supports a level 3 demo video (a narrated `video_export` built from the
+recorded clips) for Content to use. Clip quality and the app's final state are reviewed by the observer; these
 cases need no native observer hook.
 There is no special three-case browser allowlist.
 

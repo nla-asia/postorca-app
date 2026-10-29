@@ -129,10 +129,10 @@ async function reviewed(runner: EvalRunner, id: string) {
   });
 }
 
-test("all 43 cases share the catalog, browser cases have no execution allowlist", () => {
+test("all 29 cases share the catalog, browser cases have no execution allowlist", () => {
   const cases = builtinCases();
-  assert.equal(cases.length, 43);
-  assert.equal(cases.filter((c) => c.plugin === "browser").length, 6);
+  assert.equal(cases.length, 29);
+  assert.equal(cases.filter((c) => c.plugin === "browser").length, 7);
   assert.equal(new Set(cases.map((c) => c.id)).size, cases.length);
   assert.throws(
     () =>
@@ -149,32 +149,29 @@ test("all 43 cases share the catalog, browser cases have no execution allowlist"
     ).turns[0].brief,
     /Claude Code/,
   );
-  assert.equal(cases.find((c) => c.id === "video-B7")!.turns.length, 3);
+  assert.ok(!cases.some((c) => c.id === "video-B7"), "story reels wait for the Content redesign");
   const count = (key: (c: any) => unknown) =>
     Object.fromEntries(
       [...new Set(cases.map(key))].map((k) => [k, cases.filter((c) => key(c) === k).length]),
     );
   assert.deepEqual(count((c) => c.plugin), {
-    browser: 6,
+    browser: 7,
     computer: 8,
-    content: 16,
     media: 10,
-    writing: 3,
+    writing: 4,
   });
   assert.ok(cases.every((c) => c.level), "every case has a level");
   assert.deepEqual(count((c) => `${c.plugin}-${c.level}`), {
+    "browser-1": 1,
     "browser-2": 6,
     "computer-1": 4,
     "computer-2": 4,
-    "content-3": 16,
     "media-1": 1,
     "media-2": 9,
+    "writing-1": 1,
     "writing-2": 3,
   });
-  assert.equal(cases.find((c) => c.id === "video-B3")!.plugin, "content");
   assert.equal(cases.find((c) => c.id === "video-F3")!.plugin, "media");
-  for (const c of cases.filter((c) => c.id.startsWith("content-demo")))
-    assert.ok(c.turns[0].video_case && c.prerequisites.includes("media_providers_ready"), c.id);
 });
 test("assertions distinguish attempts, successes, dotted results and missing results", () => {
   const calls = normalizeCalls({

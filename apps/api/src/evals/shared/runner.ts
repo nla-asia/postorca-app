@@ -13,7 +13,8 @@ import {
 import type { ComputerEvalCase, EvalCheck } from "../computer-eval-types.js";
 import { gradeDemoCapture } from "../computer-demo-cases.js";
 import { gradeMediaTools } from "../media-cases.js";
-import { gradeWriting } from "../writing-cases.js";
+import { gradeWriting, gradeWritingTools } from "../writing-cases.js";
+import { gradeBrowserTools } from "../browser-tools.js";
 import {
   caseSchema,
   checkSchema,
@@ -610,6 +611,30 @@ export class EvalRunner {
           ...graded(
             gradeMediaTools({ turns: evidence.task.turns, calls: evidence.calls }),
             "media",
+          ),
+        );
+      const last = evidence.task.turns.at(-1);
+      const artifacts = evidence.task.turns.flatMap((t: any) => t.artifacts);
+      if (entry.id === "browser-tools")
+        checks.push(
+          ...graded(
+            gradeBrowserTools({
+              status: last?.status,
+              calls: evidence.calls,
+              artifacts,
+              final: (last?.messages ?? [])
+                .filter((m: any) => m.kind === "assistant")
+                .map((m: any) => m.content.text ?? "")
+                .join("\n"),
+            }),
+            "browser",
+          ),
+        );
+      if (entry.id === "writing-tools")
+        checks.push(
+          ...graded(
+            gradeWritingTools({ status: last?.status, calls: evidence.calls, artifacts }),
+            "writing-tools",
           ),
         );
       if (entry.writing)

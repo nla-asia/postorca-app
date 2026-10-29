@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { gradeWriting, writingCases } from "../src/evals/writing-cases.js";
+import { gradeWriting, gradeWritingTools, writingCases } from "../src/evals/writing-cases.js";
+import { gradeBrowserTools } from "../src/evals/browser-tools.js";
 import { gradeMediaTools, mediaSentence } from "../src/evals/media-cases.js";
 
 const expect = (id: string) => writingCases.find((c) => c.id === id)!.expect;
@@ -55,7 +56,7 @@ test("research must come before writing; image posts need a generated image", ()
   const turns = [{ id: "t1", status: "completed", artifacts: [doc("X", "take"), doc("LinkedIn", linkedin)] }];
   const write = { name: "create_artifact", args: { kind: "document" }, result: {} };
   const browse = { name: "browser_snapshot", args: {}, result: {} };
-  const research = expect("research-to-post");
+  const research = { docs: ["x", "linkedin"] as ("x" | "linkedin")[], research: true };
   assert.ok(!failed(gradeWriting(research, { status: "completed", turns, calls: [browse, write] })).length);
   assert.deepEqual(failed(gradeWriting(research, { status: "completed", turns, calls: [write, browse] })), [
     "Researched in the browser before writing",
@@ -72,8 +73,9 @@ test("research must come before writing; image posts need a generated image", ()
     },
   ];
   const generate = { name: "media_generate_image", args: {}, result: { attachments: [image] } };
-  assert.deepEqual(failed(gradeWriting(expect("image-post"), { status: "completed", turns: imageTurns, calls: [generate] })), []);
-  assert.deepEqual(failed(gradeWriting(expect("image-post"), { status: "completed", turns: imageTurns, calls: [] })), [
+  const imagePost = { docs: ["linkedin"] as ("x" | "linkedin")[], image: true };
+  assert.deepEqual(failed(gradeWriting(imagePost, { status: "completed", turns: imageTurns, calls: [generate] })), []);
+  assert.deepEqual(failed(gradeWriting(imagePost, { status: "completed", turns: imageTurns, calls: [] })), [
     "Generated image delivered",
   ]);
 });
@@ -106,5 +108,48 @@ test("M1 needs every media tool, and the transcript must match the spoken senten
     "Speech uses a voice from media_list_voices",
     "Transcript matches the spoken sentence",
     "Nothing else made again in the revision",
+  ]);
+});
+
+test("the writing tools check needs the exact edited text, one document and the exact reply", () => {
+  const calls = [
+    { name: "create_artifact", args: { kind: "document" }, result: {} },
+    { name: "read_artifact", args: {}, result: {} },
+    { name: "edit_document", args: {}, result: {} },
+    { name: "list_my_posts", args: {}, result: {} },
+  ];
+  const artifacts: any[] = [
+    doc("Tool check", "Shipping wins over polishing."),
+    { kind: "reply", content: JSON.stringify({ text: "Same here." }) },
+  ];
+  assert.deepEqual(failed(gradeWritingTools({ status: "completed", calls, artifacts })), []);
+  artifacts.push(doc("Tool check (edited)", "Shipping wins over polishing."));
+  artifacts[0].content = "Shipping beats polishing.";
+  assert.deepEqual(failed(gradeWritingTools({ status: "completed", calls, artifacts })), [
+    "Edited in place to the exact text",
+    "Only one Tool check document",
+  ]);
+});
+
+test("the browser tools check needs every tool, delivered images and every tab closed", () => {
+  const shot = { kind: "screenshot", file: "users/u/screenshots/s.jpg", mime_type: "image/jpeg" };
+  const image = { file: "users/u/downloads/bangkok.jpg", mime_type: "image/jpeg" };
+  const calls: any[] = [
+    { name: "browser_open", args: {}, result: { tab: "t1" } },
+    { name: "browser_snapshot", args: { tab: "t1" }, result: {} },
+    { name: "browser_type", args: { text: "Grand Palace" }, result: {} },
+    { name: "browser_scroll", args: {}, result: {} },
+    { name: "browser_click", args: {}, result: {} },
+    { name: "browser_screenshot", args: {}, result: { attachments: [shot] } },
+    { name: "browser_fetch_file", args: {}, result: { attachments: [image] } },
+    { name: "browser_close", args: { tab: "t1" }, result: {} },
+  ];
+  const artifacts = [shot, image].map((a) => ({ kind: "image", content: JSON.stringify({ file: a.file }) }));
+  const grade = (c: any[]) =>
+    failed(gradeBrowserTools({ status: "completed", calls: c, artifacts, final: "Bangkok - Wikipedia" }));
+  assert.deepEqual(grade(calls), []);
+  assert.deepEqual(grade(calls.filter((c) => !["browser_close", "browser_fetch_file"].includes(c.name))), [
+    "Image file fetched and delivered",
+    "Closed every tab it opened",
   ]);
 });
