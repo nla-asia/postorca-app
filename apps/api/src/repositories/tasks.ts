@@ -158,7 +158,7 @@ export async function startOnboarding(
     if (history.rowCount) return null;
     const turn = await createTurnInTransaction(client, userId, taskId);
     await appendMessage(client, turn.id, "assistant", {
-      text: "Hi, I’m Orca. Let’s set up your brand profile—it takes about 3 minutes. We’ll cover what you’re building, choose the platforms to grow your brand on, add those accounts, and pick the topics you want to share, then confirm the profile together. You can pick from the suggestions or write your own answers.\n\nTo start: what are you building?",
+      text: "Hi, I’m Orca. Let’s set up your brand profile—it takes about 3 minutes. We’ll cover what you’re building, choose the platforms to grow your brand on, add those accounts, pick the topics you want to share, and pick how your posts should sound, then confirm the profile together. You can pick from the suggestions or write your own answers.\n\nTo start: what are you building?",
     });
     // The opening is fixed text, so it completes without a model call;
     // Orca picks up from the founder's first reply.

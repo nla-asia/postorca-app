@@ -3,7 +3,8 @@ import type { WorkTask, TurnStatus, PlatformName } from "./schedules";
 /** A multiple-choice question Orca asked with request_user_input. */
 export type ChatQuestion = {
   question: string;
-  options: string[];
+  /** A plain answer, or a style name with the full sample post it stands for. */
+  options: (string | { label: string; preview: string })[];
   multiple?: boolean;
 };
 

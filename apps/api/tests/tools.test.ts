@@ -8,6 +8,7 @@ import { migrate } from "../src/migrate.js";
 import { memoryIndex } from "../src/memory.js";
 import { createUser } from "../src/repositories/users.js";
 import {
+  appendMessage,
   createTask,
   createTurn,
   createWorkTask,
@@ -17,6 +18,7 @@ import {
   createArtifact,
   updateDocumentArtifact,
 } from "../src/repositories/artifacts.js";
+import { completeTurn } from "../src/repositories/turns.js";
 import { executeTool, toolsForTask, type DispatchTask } from "../src/tools/index.js";
 import { temporaryPostgres } from "./postgres.js";
 
@@ -80,6 +82,7 @@ test("each task kind gets its tools; chat-only tools stay out of background work
       "save_my_post",
       "mark_my_posts_synced",
       "delete_my_post",
+      "list_content_feedback",
     ])
       assert.ok(names(kind).includes(name), `${name} in ${kind}`);
   }
@@ -137,12 +140,12 @@ test("link tools save or delete one owned link and profile updates leave links a
   await run(context, "update_brand_profile", {
     company: "Product",
     topics: "Research",
-    voice: "Direct",
+    audience: "Builders",
     onboarding_status: "completed",
   });
   profile = await run(context, "read_brand_profile", {});
   assert.equal(profile.links.length, 2);
-  assert.equal(profile.voice, "Direct");
+  assert.equal(profile.audience, "Builders");
   assert.equal(profile.onboarding_status, "completed");
 
   // Links change only through the link tools, and only with valid, owned IDs.
@@ -179,7 +182,7 @@ test("link tools save or delete one owned link and profile updates leave links a
   profile = await run(context, "read_brand_profile", {});
   assert.deepEqual(profile.links, []);
   assert.equal(profile.onboarding_status, "in_progress");
-  assert.equal(profile.voice, "Direct");
+  assert.equal(profile.audience, "Builders");
 });
 
 test("completing a profile seeds default routines, and deleting their link pauses them", async () => {
@@ -198,11 +201,11 @@ test("completing a profile seeds default routines, and deleting their link pause
     onboarding_status: "completed",
   });
   assert.ok(profile.default_routines_created.length > 0);
-  // The posts sync covers every account, so only the link's own routines pause.
+  // The posts sync and voice review cover every account, so only the link's own routines pause.
   const deleted = await run(context, "delete_brand_link", { id: link.id });
   assert.equal(
     deleted.routines_paused,
-    profile.default_routines_created.length - 1,
+    profile.default_routines_created.length - 2,
   );
   const { rows } = await fixture.db.query(
     "SELECT platform, active FROM routines WHERE user_id=$1",
@@ -384,6 +387,54 @@ test("list_content_ideas returns the founder's recent ideas, newest first", asyn
   await assert.rejects(run(context, "list_content_ideas", { days: 61 }));
 });
 
+test("list_content_feedback returns the founder's messages in content tasks of the last day", async () => {
+  const userId = await account();
+  // A routine's run: its instructions and Orca's draft, then the founder's change requests.
+  const contentTask = async (owner: string, workType = "content") => {
+    const { task, turn } = await createWorkTask(
+      fixture.db,
+      owner,
+      "Daily quote",
+      "Read the daily-quote skill with read_skill, then follow it.",
+      "X",
+    );
+    await fixture.db.query("UPDATE tasks SET work_type=$2 WHERE id=$1", [task.id, workType]);
+    await appendMessage(fixture.db, turn.id, "assistant", { text: "Here is today's draft." });
+    await completeTurn(fixture.db, turn.id);
+    return task.id as string;
+  };
+  const feedback = async (taskId: string, text: string) => {
+    const turn = await createTurn(fixture.db, userId, taskId, text);
+    await appendMessage(fixture.db, turn.id, "assistant", { text: "Done." });
+    await completeTurn(fixture.db, turn.id);
+    return turn.id as string;
+  };
+  const edited = await contentTask(userId);
+  await feedback(edited, "don't end on a question");
+  await feedback(edited, "and drop the emoji");
+  // Feedback older than the window, a task with no feedback, other work, another founder.
+  const old = await contentTask(userId);
+  const oldTurn = await feedback(old, "shorter");
+  await fixture.db.query("UPDATE messages SET created_at=now()-interval '2 days' WHERE turn_id=$1", [oldTurn]);
+  await contentTask(userId);
+  await feedback(await contentTask(userId, "general"), "make it about pricing");
+  const context = { userId, taskId: "unused", turnId: "unused" };
+  const texts = (tasks: any[]) =>
+    tasks.map((task) => [task.task_id, task.platform, task.messages.map((m: any) => m.text)]);
+  assert.deepEqual(texts((await run(context, "list_content_feedback", {})).tasks), [
+    [edited, "X", ["don't end on a question", "and drop the emoji"]],
+  ]);
+  assert.deepEqual(texts((await run(context, "list_content_feedback", { hours: 72 })).tasks), [
+    [edited, "X", ["don't end on a question", "and drop the emoji"]],
+    [old, "X", ["shorter"]],
+  ]);
+  assert.deepEqual(
+    await run({ ...context, userId: await account() }, "list_content_feedback", {}),
+    { tasks: [], message: "The founder sent no messages in content tasks in the last 24 hours." },
+  );
+  await assert.rejects(run(context, "list_content_feedback", { hours: 169 }));
+});
+
 test("memory: save, grep, edit, read and delete Markdown files per founder", async () => {
   const founder = randomUUID();
   const other = randomUUID();
@@ -482,8 +533,26 @@ test("request_user_input asks one valid question, from the founder's own chat on
     status: "awaiting_user_input",
     ...args,
   });
+  // Style choices carry the full sample post; plain and card options can mix.
+  const styles = {
+    questions: [
+      {
+        question: "Which sounds most like you?",
+        options: [
+          { label: "Blunt and opinionated", preview: "Most launch advice is wrong.\n\nShip it ugly." },
+          "Calm teacher who explains",
+        ],
+      },
+    ],
+  };
+  assert.deepEqual(await run(context, "request_user_input", styles), {
+    status: "awaiting_user_input",
+    ...styles,
+  });
   for (const questions of [
     [],
+    [{ question: "Pick", options: [{ label: "A" }, { label: "B", preview: "x" }] }],
+    [{ question: "Pick", options: [{ label: "A", preview: "x".repeat(1501) }, "B"] }],
     [{ question: "Choose", options: [""] }],
     [{ question: "What are you building?", options: [] }],
     [

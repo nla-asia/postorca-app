@@ -228,6 +228,7 @@ export async function queueIdeaContent(
       run_at: new Date(Date.now() + IDEA_QUEUE_DELAY_MS).toISOString(),
       timezone: idea.timezone,
       source_artifact_id: idea.id,
+      work_type: "content",
     });
     return getRoutine(db, userId, routineId);
   } catch (error) {

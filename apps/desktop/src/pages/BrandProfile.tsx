@@ -11,6 +11,7 @@ import {
 import type { Brand, BrandProject } from "../lib/brand";
 import { api } from "../lib/api";
 import { Button } from "../components/ui";
+import Markdown from "../components/Markdown";
 import "./BrandProfile.css";
 import "../components/tabs.css";
 import "../components/forms.css";
@@ -30,11 +31,7 @@ const tabs = [
     icon: Users,
     fields: [{ key: "audience", label: "Target audience" }],
   },
-  {
-    name: "Voice",
-    icon: MessageSquare,
-    fields: [{ key: "voice", label: "Brand voice" }],
-  },
+  { name: "Voice", icon: MessageSquare, fields: [] },
   { name: "Colours", icon: Palette, fields: [] },
   { name: "Links", icon: Globe2, fields: [] },
   { name: "Projects", icon: FolderGit2, fields: [] },
@@ -157,7 +154,9 @@ export default function BrandProfile({
           id={`brand-panel-${tab}`}
           aria-labelledby={`brand-tab-${tab}`}
         >
-          {tab === "Projects" ? (
+          {tab === "Voice" ? (
+            <Voice />
+          ) : tab === "Projects" ? (
             <Projects brand={brand} onChange={setBrand} notify={notify} />
           ) : tab === "Colours" ? (
             <>
@@ -252,6 +251,54 @@ export default function BrandProfile({
         </div>
       </div>
     </div>
+  );
+}
+
+/** voice.md, the voice Orca writes in: picked in onboarding, learned from posts and edits. */
+function Voice() {
+  const [voice, setVoice] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    const controller = new AbortController();
+    void api<{ content: string }>("/brand-profile/voice", {
+      signal: controller.signal,
+    })
+      .then(({ content }) =>
+        // The frontmatter is Orca's own index line, not part of the voice.
+        setVoice(content.replace(/^---\n[\s\S]*?\n---\n/, "").trim()),
+      )
+      .catch((failure) => {
+        if (!controller.signal.aborted)
+          setError(
+            failure instanceof Error
+              ? failure.message
+              : "Unable to load voice.",
+          );
+      });
+    return () => controller.abort();
+  }, []);
+  if (error) return <p role="alert">{error}</p>;
+  if (voice === null)
+    return (
+      <p className="brand-loading" role="status">
+        Loading voice…
+      </p>
+    );
+  return voice ? (
+    <>
+      <div className="brand-voice">
+        <Markdown text={voice} />
+      </div>
+      <p className="brand-empty">
+        Orca writes in this voice and updates it from your posts and edits. Ask
+        Orca to change it.
+      </p>
+    </>
+  ) : (
+    <p className="brand-empty">
+      No voice yet. Orca asks about it in onboarding and learns it from your
+      posts.
+    </p>
   );
 }
 

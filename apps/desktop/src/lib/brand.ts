@@ -28,7 +28,6 @@ export type Brand = {
   name: string;
   company: string;
   audience: string;
-  voice: string;
   topics: string;
   /** Brand colours used in videos, as #RRGGBB. */
   colors: { background?: string; text?: string; highlight?: string };

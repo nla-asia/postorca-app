@@ -4,6 +4,7 @@ import type { TaskKind } from "../repositories/tasks.js";
 import { artifactTools } from "./artifacts.js";
 import { brandTools } from "./brand.js";
 import { desktopToolset } from "./desktop.js";
+import { feedbackTools } from "./feedback.js";
 import { memoryTools } from "./memory.js";
 import { questionTool } from "./questions.js";
 import { socialPostTools } from "./social-posts.js";
@@ -26,6 +27,7 @@ const tools: Tool[] = [
   ...artifactTools,
   ...memoryTools,
   ...socialPostTools,
+  ...feedbackTools,
   ...desktopToolset,
   ...taskTools,
   questionTool,

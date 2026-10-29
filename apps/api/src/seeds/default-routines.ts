@@ -119,6 +119,16 @@ export const FOUNDER_ROUTINES: FounderRoutine[] = [
     instructions:
       "Read the sync-my-posts skill with read_skill, then follow it for every social account in the brand profile, in this one task.",
   },
+  // Before the day's drafts, so they follow what yesterday's edits taught.
+  {
+    title: "Voice review",
+    time: "06:30",
+    days: [1, 2, 3, 4, 5, 6, 7],
+    workType: "general",
+    skill: "review-voice-feedback",
+    instructions:
+      "Read the review-voice-feedback skill with read_skill, then follow it for the founder's content tasks of the last 24 hours.",
+  },
 ];
 
 /**

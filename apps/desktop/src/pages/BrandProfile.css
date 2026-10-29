@@ -192,3 +192,9 @@
   font-size: 13px;
   font-weight: 550;
 }
+
+.brand-voice {
+  margin-bottom: 16px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
