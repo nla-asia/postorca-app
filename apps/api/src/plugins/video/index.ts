@@ -87,7 +87,7 @@ const clipArgs = z
               .enum(["cover", "contain"])
               .optional()
               .describe(
-                "cover fills/crops; contain shows the whole image or clip over a blurred background.",
+                "cover fills/crops; contain shows the whole image or clip over a blurred background. Stickers and captions sit over cover content; in 16:9, 1:1 and 4:5, contain or a device frame gives them their own space above and below instead. In 9:16 they always sit over the content.",
               ),
             device: z
               .enum(["browser", "laptop", "phone"])
