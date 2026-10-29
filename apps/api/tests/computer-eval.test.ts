@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { computerPluginOnly } from "../src/evals/computer-eval-types.js";
 import {
   assertGate,
   passingStreak,
@@ -325,4 +326,11 @@ test("Notepad exact-text check rejects extra document content", () => {
     )?.passed,
     false,
   );
+});
+
+test("switching back to the default tools is not a substitute workflow", () => {
+  const plugin = (code: unknown) => ({ name: "activate_plugin", args: { code }, result: {} });
+  for (const code of ["computer", null, "null"]) assert.equal(computerPluginOnly(plugin(code)), true, String(code));
+  assert.equal(computerPluginOnly(plugin("browser")), false);
+  assert.equal(computerPluginOnly({ name: "computer_click", args: {}, result: {} }), true);
 });

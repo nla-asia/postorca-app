@@ -1,3 +1,4 @@
+import { computerPluginOnly } from "./computer-eval-types.js";
 import type {
   EvalCall,
   EvalCheck,
@@ -373,8 +374,7 @@ export function gradeComputer(
         name: "Computer use only",
         passed: calls.every(
           (c) =>
-            allowed.has(c.name) &&
-            (c.name !== "activate_plugin" || c.args.code === "computer"),
+            allowed.has(c.name) && computerPluginOnly(c),
         ),
       },
       {
