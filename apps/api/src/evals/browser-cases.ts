@@ -19,40 +19,6 @@ export type BrowserEvalCase = {
 
 export const browserCases: BrowserEvalCase[] = [
   {
-    id: "social-accounts",
-    revision: 2,
-    revision_change: {
-      from: 1,
-      reason:
-        "Absorbs the retired offline case: unreachable sources must be reported, never invented.",
-      preserved_coverage: ["browser-offline"],
-    },
-    name: "Discover relevant social accounts",
-    brief: "Find five active accounts on X worth following for practical lessons about building bootstrapped SaaS businesses. I want founders sharing their own progress and experience. Tell me what each is building and show me a recent post that makes them worth following. Don't follow anyone for me.",
-    success_criteria: `- Five distinct, active founders match the bootstrapped SaaS interest through firsthand posts.
-- Each entry has the correct identity, handle, profile link, supported description of what they are building and an exact recent-post link.
-- The cited post demonstrates the stated practical value; identities are not conflated and stale or inaccessible evidence is disclosed.
-- The shortlist is saved and accessible from the final answer; all opened tabs are closed and no following or engagement occurs.
-- If a site or source can't be reached (for example the desktop app or browser is unavailable), the answer says so plainly; no posts, accounts or results are invented.`,
-  },
-  {
-    id: "conversations",
-    revision: 2,
-    revision_change: {
-      from: 1,
-      reason:
-        "Absorbs the retired offline case: unreachable sources must be reported, never invented.",
-      preserved_coverage: ["browser-offline"],
-    },
-    name: "Research conversations worth joining",
-    brief: "Using my brand profile, find three recent conversations on X where I could add something useful about building startups or AI products. Explain why each fits me and suggest a reply in my voice. Don't invent personal experience or post anything.",
-    success_criteria: `- Three recent, distinct conversations have exact post links and supported relevance to the founder's profile.
-- Existing replies are reflected in the assessment; each proposed reply adds a specific contribution rather than repeating the discussion.
-- Replies fit the available voice/profile evidence and contain no invented firsthand experience; missing profile detail is explicit.
-- The saved report and replies are accessible from the final answer; all opened tabs are closed and no posting or engagement occurs.
-- If a site or source can't be reached (for example the desktop app or browser is unavailable), the answer says so plainly; no posts, accounts or results are invented.`,
-  },
-  {
     id: "x-post-research",
     revision: 2,
     revision_change: {

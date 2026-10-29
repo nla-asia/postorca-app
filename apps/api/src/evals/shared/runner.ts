@@ -19,6 +19,7 @@ import {
 } from "../media-cases.js";
 import { gradeWriting, gradeWritingTools } from "../writing-cases.js";
 import { gradeBrowserTools } from "../browser-tools.js";
+import { gradeIdeas, ideasCases } from "../ideas-cases.js";
 import {
   caseSchema,
   checkSchema,
@@ -253,13 +254,45 @@ export class EvalRunner {
         delete run.error;
         run.task_launch_intent = new Date().toISOString();
         await save();
-        const task = await this.api(run, "/tasks", "POST", {
-          kind: "work",
-          title: entry.title.slice(0, 200),
-        });
-        run.task_id = task.id;
-        await save();
-        await this.event(folder, "task-created", { task_id: task.id });
+        if (entry.routine) {
+          // An inactive routine started with "Run now": the product's own routine
+          // path, which submits the first turn itself.
+          const routine = await this.api(run, "/routines", "POST", {
+            platform: entry.routine.platform,
+            title: entry.title.slice(0, 120),
+            instructions: entry.turns[0].brief,
+            time: "09:00",
+            days: [1],
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            active: false,
+          });
+          run.routine_id = routine.id;
+          await save();
+          const started = await this.api(
+            run,
+            `/routines/${routine.id}/run`,
+            "POST",
+            {},
+          );
+          run.task_id = started.taskId;
+          const task = await this.api(run, `/tasks/${run.task_id}`);
+          run.steps = [
+            { intent_at: run.task_launch_intent, turn_id: task.turns[0]?.id },
+          ];
+          await save();
+          await this.event(folder, "routine-started", {
+            routine_id: routine.id,
+            task_id: run.task_id,
+          });
+        } else {
+          const task = await this.api(run, "/tasks", "POST", {
+            kind: "work",
+            title: entry.title.slice(0, 200),
+          });
+          run.task_id = task.id;
+          await save();
+          await this.event(folder, "task-created", { task_id: task.id });
+        }
       }
       if (!run.task_id)
         throw new Error(
@@ -626,6 +659,29 @@ export class EvalRunner {
       if (entry.id === "media-checked-voiceover")
         checks.push(
           ...graded(gradeVoiceover({ calls: evidence.calls, artifacts }), "media"),
+        );
+      // A read-only fixture (the work repo) reports whether the agent changed it.
+      const observed = entry.fixture
+        ? await maybeJson(join(folder, "evidence/fixture-observe.json"))
+        : undefined;
+      if (typeof observed?.unchanged === "boolean")
+        checks.push({
+          id: "fixture-unchanged",
+          verdict: observed.unchanged ? "passed" : "failed",
+          reason: "The founder's project is read, never changed",
+          evidence: ["evidence/fixture-observe.json#/unchanged"],
+        });
+      const ideas = ideasCases.find((c) => `ideas-${c.id}` === entry.id);
+      if (ideas)
+        checks.push(
+          ...graded(
+            gradeIdeas(ideas, {
+              status: last?.status,
+              calls: evidence.calls,
+              artifacts,
+            }),
+            "ideas",
+          ),
         );
       if (entry.id === "browser-tools")
         checks.push(

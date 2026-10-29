@@ -110,6 +110,14 @@ export const caseSchema = z
     platform: z.enum(["win32", "darwin"]).optional(),
     /** 1: tool health check. 2: one process. 3: real-world end-to-end work. */
     level: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+    /** Run as a real routine ("Run now"); the single turn's brief is its instructions. */
+    routine: z
+      .object({
+        skill: z.string().min(1),
+        platform: z.string().min(1).nullable(),
+      })
+      .strict()
+      .optional(),
     writing: z
       .object({
         docs: z.array(z.enum(["x", "linkedin"])).optional(),
@@ -128,7 +136,9 @@ export const caseSchema = z
         id: z.string(),
         level: z.union([z.literal(2), z.literal(3)]),
         name: z.string(),
-        app: z.enum(["maps", "clock", "simulator"]),
+        app: z.enum(["maps", "clock", "simulator", "web"]),
+        url: z.string().optional(),
+        read_work: z.boolean().optional(),
         brief: z.string(),
         typed: z.array(z.string()),
         min_clips: z.number().int().positive(),
@@ -225,6 +235,11 @@ export const caseSchema = z
         code: "custom",
         message: "Programmatic cases require an outcome assertion or verifier",
       });
+    if (value.routine && value.turns.length !== 1)
+      ctx.addIssue({
+        code: "custom",
+        message: "A routine case has exactly one turn: its instructions",
+      });
     if (value.computer && value.computer.id !== value.computer.contract.id)
       ctx.addIssue({
         code: "custom",
@@ -303,6 +318,8 @@ export type Run = {
     "prepared" | "running" | "completed" | "failed" | "blocked" | "unknown";
   task_id?: string;
   task_launch_intent?: string;
+  /** Routine cases: the inactive routine created for this attempt. */
+  routine_id?: string;
   fixture_started?: boolean;
   fixture_cleaned?: boolean;
   started_at?: string;

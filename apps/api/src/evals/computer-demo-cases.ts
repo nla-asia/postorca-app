@@ -6,12 +6,16 @@
  */
 import type { EvalCheck, EvalEvidence } from "./computer-eval-types.js";
 
-export type DemoApp = "maps" | "clock" | "simulator";
+export type DemoApp = "maps" | "clock" | "simulator" | "web";
 export type DemoCase = {
   id: string;
   level: 2 | 3;
   name: string;
   app: DemoApp;
+  /** web: the local app's address, opened in the founder's browser. */
+  url?: string;
+  /** Finds what to demo in the founder's recent work (the work fixture). */
+  read_work?: boolean;
   brief: string;
   /** Text the demo has to type into the app while recording, as regexes. */
   typed: string[];
@@ -21,7 +25,7 @@ export type DemoCase = {
   criteria: string[];
 };
 
-const appPaths: Record<Exclude<DemoApp, "simulator">, string> = {
+const appPaths: Record<"maps" | "clock", string> = {
   maps: "/System/Applications/Maps.app",
   clock: "/System/Applications/Clock.app",
 };
@@ -31,6 +35,11 @@ const clipsReview = [
   "Every clip shows the app itself, clean and readable: no notifications, unrelated windows, personal data or leftover dialogs.",
   "The clips follow the demo in order, each a few seconds long, and the payoff stays on screen for 2–3 seconds before the clip ends.",
   "The final app state matches what the clips show and what the answer reports; nothing is claimed that the recordings don't show.",
+];
+const videoReview = [
+  "The finished video is built from the real recordings, not stills or generated images of the app, and shows the feature working.",
+  "The narration explains the feature the way a founder would to their audience: the problem, the payoff, how little it takes. It matches what is on screen at each moment.",
+  "Format, length and captions fit the requested platform; the video is delivered as an MP4.",
 ];
 
 export const demoCases: DemoCase[] = [
@@ -86,6 +95,46 @@ export const demoCases: DemoCase[] = [
       ...clipsReview,
     ],
   },
+  // Content (level 3): record the app and edit the clips into a narrated demo video.
+  {
+    id: "demo-work-video",
+    level: 3,
+    name: "Product demo video of what I just shipped (work fixture)",
+    app: "web",
+    url: "http://127.0.0.1:4110",
+    read_work: true,
+    brief: `i just shipped something in my Streaks project. make a ~20 sec demo video of it for X, landscape, voiceover + captions. record it yourself from the running app. ${noPublish}`,
+    typed: [],
+    min_clips: 2,
+    video: { seconds: [15, 30] },
+    criteria: [
+      "The video demonstrates the newly shipped weekly recap card (opening it and copying the share text), found from the recent commits rather than guessed.",
+      "It opens on the viewer's problem (wanting to share their week), not the feature's name, and claims nothing the commits and notes don't support.",
+      ...videoReview,
+    ],
+  },
+  {
+    id: "demo-mac-maps-video",
+    level: 3,
+    name: "Product demo video of a Mac app (Maps)",
+    app: "maps",
+    brief: `demo video for linkedin, landscape, ~20 sec. pretend apple maps on my mac is my product. show planning a trip across bangkok: siam paragon to the grand palace, comparing driving vs transit. record it yourself, voiceover + captions. ${noPublish}`,
+    typed: ["Grand Palace", "Siam Paragon"],
+    min_clips: 2,
+    video: { seconds: [15, 30] },
+    criteria: videoReview,
+  },
+  {
+    id: "demo-sim-reminders-video",
+    level: 3,
+    name: "Product demo video of an iOS app in the Simulator (Reminders)",
+    app: "simulator",
+    brief: `instagram reel, 20-30 sec, showing how i get a launch done with the reminders app on iphone (use the ios simulator, pretend it's my product). make a Launch list, add a few tasks, set a due date, tick one off. record it yourself, voiceover + captions. ${noPublish}`,
+    typed: ["Launch"],
+    min_clips: 2,
+    video: { seconds: [18, 35] },
+    criteria: videoReview,
+  },
 ];
 
 const inputNames = new Set([
@@ -107,7 +156,7 @@ const fileOf = (artifact: any) => {
     return undefined;
   }
 };
-const opensApp = (app: DemoApp, opened: any) =>
+const opensApp = (app: "maps" | "clock" | "simulator", opened: any) =>
   app === "simulator"
     ? opened?.name === "Simulator" &&
       /\/Simulator\.app$/.test(opened?.path ?? "")
@@ -146,12 +195,24 @@ export function gradeDemoCapture(
     { name: "Turn completed", passed: evidence.status === "completed" },
     {
       name: "Opened the app being demonstrated",
-      passed: ok.some(
-        (c) =>
-          c.name === "computer_open" &&
-          (c.result.apps ?? []).some((app: any) => opensApp(entry.app, app)),
+      passed: ok.some((c) =>
+        entry.app === "web"
+          ? c.name === "browser_open" &&
+            String(c.args.url ?? "").startsWith(entry.url ?? "-")
+          : c.name === "computer_open" &&
+            (c.result.apps ?? []).some((app: any) =>
+              opensApp(entry.app as "maps" | "clock" | "simulator", app),
+            ),
       ),
     },
+    ...(entry.read_work
+      ? [
+          {
+            name: "Read the recent work in the project's git history",
+            passed: ok.some((c) => c.name === "git_activity"),
+          },
+        ]
+      : []),
     {
       name: "Looked at the screen before recording",
       passed:

@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { gradeWriting, gradeWritingTools, writingCases } from "../src/evals/writing-cases.js";
 import { gradeBrowserTools } from "../src/evals/browser-tools.js";
+import { gradeIdeas, ideasCases } from "../src/evals/ideas-cases.js";
 import { gradeMediaTools, gradeQuoteCard, gradeVoiceover, mediaSentence } from "../src/evals/media-cases.js";
 
 const expect = (id: string) => writingCases.find((c) => c.id === id)!.expect;
@@ -188,4 +189,25 @@ test("the voiceover must be transcribed after its final recording and keep every
     "Final recording transcribed before delivery",
     "Transcript keeps every fact in the script",
   ]);
+});
+
+test("idea routines need their skill, the right number of ideas, and the work read for work ideas", () => {
+  const idea = { kind: "idea", title: "Idea", content: "..." };
+  const work = ideasCases.find((c) => c.id === "work-ideas")!;
+  const calls = [
+    { name: "read_skill", args: { name: "work-content-ideas" }, result: {} },
+    { name: "git_activity", args: { path: "streaks" }, result: {} },
+  ];
+  const grade = (c: any[], artifacts: any[]) => failed(gradeIdeas(work, { status: "completed", calls: c, artifacts }));
+  assert.deepEqual(grade(calls, [idea, idea]), []);
+  assert.deepEqual(grade(calls.slice(0, 1), [idea, idea, idea, idea]), [
+    "1–3 idea artifacts",
+    "Read the recent work in the project's git history",
+  ]);
+  const strategy = ideasCases.find((c) => c.id === "weekly-strategy")!;
+  const read = [{ name: "read_skill", args: { name: "weekly-strategy-research" }, result: {} }];
+  assert.deepEqual(
+    failed(gradeIdeas(strategy, { status: "completed", calls: read, artifacts: [{ kind: "document", title: "Strategy — X — 2026-10-29" }] })),
+    [],
+  );
 });
