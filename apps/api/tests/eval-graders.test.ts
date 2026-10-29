@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { gradeWriting, gradeWritingTools, writingCases } from "../src/evals/writing-cases.js";
 import { gradeBrowserTools } from "../src/evals/browser-tools.js";
-import { gradeMediaTools, mediaSentence } from "../src/evals/media-cases.js";
+import { gradeMediaTools, gradeQuoteCard, gradeVoiceover, mediaSentence } from "../src/evals/media-cases.js";
 
 const expect = (id: string) => writingCases.find((c) => c.id === id)!.expect;
 const failed = (checks: { name: string; passed: boolean }[]) =>
@@ -151,5 +151,41 @@ test("the browser tools check needs every tool, delivered images and every tab c
   assert.deepEqual(grade(calls.filter((c) => !["browser_close", "browser_fetch_file"].includes(c.name))), [
     "Image file fetched and delivered",
     "Closed every tab it opened",
+  ]);
+});
+
+test("the quote card's portrait version must be edited from the square image", () => {
+  const square = { name: "media_generate_image", args: {}, result: { ref: "sq1", attachments: [{ file: "users/u/media/sq.png" }] } };
+  const portrait = {
+    name: "media_edit_image",
+    args: { file: "sq1", size: "1024x1536" },
+    result: { ref: "pt1", attachments: [{ file: "users/u/media/pt.png" }] },
+  };
+  const artifacts = ["sq", "pt"].map((n) => ({ kind: "image", content: JSON.stringify({ file: `users/u/media/${n}.png` }) }));
+  assert.deepEqual(failed(gradeQuoteCard({ calls: [square, portrait], artifacts })), []);
+  const fresh = { ...portrait, name: "media_generate_image", args: { size: "1024x1536" } };
+  assert.deepEqual(failed(gradeQuoteCard({ calls: [square, fresh], artifacts })), [
+    "Portrait version edited from the square image",
+    "Both images delivered",
+  ]);
+});
+
+test("the voiceover must be transcribed after its final recording and keep every fact", () => {
+  const voices = { name: "media_list_voices", args: {}, result: { voices: [{ voice_id: "v1" }] } };
+  const speak = (ref: string) => ({
+    name: "media_generate_speech",
+    args: { voice_id: "v1", text: "..." },
+    result: { ref, attachments: [{ file: `users/u/media/${ref}.mp3` }] },
+  });
+  const transcribe = (file: string, text: string) => ({ name: "media_transcribe", args: { file }, result: { text } });
+  const good = "Last month we went from 120 to 310 weekly founders. Join our live AMA on Friday at 7 PM Bangkok time. Sign up at lu dot ma slash autopilot AMA.";
+  const artifacts = [{ kind: "audio", content: JSON.stringify({ file: "users/u/media/s2.mp3" }) }];
+  const fixed = [voices, speak("s1"), transcribe("s1", "... lou mah ..."), speak("s2"), transcribe("s2", good)];
+  assert.deepEqual(failed(gradeVoiceover({ calls: fixed, artifacts })), []);
+  // Checking only the first take, then delivering an unchecked second one, does not count.
+  const unchecked = [voices, speak("s1"), transcribe("s1", good), speak("s2")];
+  assert.deepEqual(failed(gradeVoiceover({ calls: unchecked, artifacts })), [
+    "Final recording transcribed before delivery",
+    "Transcript keeps every fact in the script",
   ]);
 });

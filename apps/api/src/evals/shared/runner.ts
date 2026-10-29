@@ -12,7 +12,11 @@ import {
 } from "../computer-mac-cases.js";
 import type { ComputerEvalCase, EvalCheck } from "../computer-eval-types.js";
 import { gradeDemoCapture } from "../computer-demo-cases.js";
-import { gradeMediaTools } from "../media-cases.js";
+import {
+  gradeMediaTools,
+  gradeQuoteCard,
+  gradeVoiceover,
+} from "../media-cases.js";
 import { gradeWriting, gradeWritingTools } from "../writing-cases.js";
 import { gradeBrowserTools } from "../browser-tools.js";
 import {
@@ -615,6 +619,14 @@ export class EvalRunner {
         );
       const last = evidence.task.turns.at(-1);
       const artifacts = evidence.task.turns.flatMap((t: any) => t.artifacts);
+      if (entry.id === "media-quote-card")
+        checks.push(
+          ...graded(gradeQuoteCard({ calls: evidence.calls, artifacts }), "media"),
+        );
+      if (entry.id === "media-checked-voiceover")
+        checks.push(
+          ...graded(gradeVoiceover({ calls: evidence.calls, artifacts }), "media"),
+        );
       if (entry.id === "browser-tools")
         checks.push(
           ...graded(

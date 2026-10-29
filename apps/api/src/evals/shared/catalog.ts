@@ -5,7 +5,11 @@ import {
   macComputerCaseOrder,
 } from "../computer-mac-cases.js";
 import { videoCases } from "../video-cases.js";
-import { mediaToolsCase } from "../media-cases.js";
+import {
+  mediaToolsCase,
+  quoteCardCase,
+  voiceoverCase,
+} from "../media-cases.js";
 import { writingCases, writingToolsCase } from "../writing-cases.js";
 import { browserToolsCase } from "../browser-tools.js";
 import { demoCases } from "../computer-demo-cases.js";
@@ -101,8 +105,9 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       source: "apps/api/src/evals/computer-demo-cases.ts",
     }),
   );
-  // Story reels (B cases) belonged to Content, which is being redesigned.
-  const videos = videoCases.filter((c) => c.id.startsWith("F")).map((c) => {
+  // Story reels (B cases) wait for the Content redesign; F cases test one video process.
+  const kept = ["F3", "F9", "F6"];
+  const videos = videoCases.filter((c) => kept.includes(c.id)).map((c) => {
     const parent =
       "of" in c.start
         ? videoCases.find((v) => v.id === (c.start as { of: string }).of)!
@@ -201,6 +206,21 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       source: "apps/api/src/evals/media-cases.ts",
     }),
     ...videos,
+    ...[quoteCardCase, voiceoverCase].map((c) =>
+      caseSchema.parse({
+        id: `media-${c.id}`,
+        plugin: "media",
+        level: 2,
+        title: c.name,
+        turns: [{ brief: c.brief }],
+        criteria: criteria(c.criteria),
+        prerequisites: [
+          "media_providers_ready",
+          "brand_profile_ready",
+        ],
+        source: "apps/api/src/evals/media-cases.ts",
+      }),
+    ),
     caseSchema.parse({
       id: `writing-${writingToolsCase.id}`,
       plugin: "writing",

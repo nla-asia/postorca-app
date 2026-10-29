@@ -97,3 +97,144 @@ export function gradeMediaTools(evidence: {
     },
   ];
 }
+
+export type MediaProcessCase = {
+  id: string;
+  name: string;
+  brief: string;
+  criteria: string[];
+};
+
+/** Media processes (level 2) beyond video: an image in two shapes, a checked voiceover. */
+export const quoteCardCase: MediaProcessCase = {
+  id: "quote-card",
+  name: "Quote card in my brand, square and portrait",
+  brief: `Make a quote card image with this line from my post: "Shipping fast means deciding fast." Use my brand colours. Make it square for LinkedIn, then a portrait version of the same design for Instagram Stories. Deliver both here. Don't publish anything.`,
+  criteria: [
+    "Both images use the founder's brand colours and show the quote spelled exactly, large and readable.",
+    "The portrait version keeps the same design, rearranged to fit the taller shape rather than cropped or stretched.",
+  ],
+};
+export const voiceoverScript =
+  "Last month we went from 120 to 310 weekly founders. Join our live AMA on Friday at 7 pm Bangkok time. Sign up at lu.ma/autopilot-ama.";
+export const voiceoverCase: MediaProcessCase = {
+  id: "checked-voiceover",
+  name: "Voiceover checked by transcription",
+  brief: `Record this voiceover for my reel in a voice that fits my brand: "${voiceoverScript}" Read the link the way a person would say it. Before you give it to me, check the recording by transcribing it, and fix anything that was said wrong. Deliver the final voiceover here. Don't publish anything.`,
+  criteria: [
+    "The voice fits the founder's brand; numbers, the time and the link are spoken naturally (\"lu dot ma slash autopilot AMA\"), with nothing skipped or mispronounced.",
+  ],
+};
+// Matched on the normalized transcript; a transcriber may write numbers in words.
+const voiceoverFacts = [
+  /\b(120|one hundred (and )?twenty)\b/,
+  /\b(310|three hundred (and )?ten)\b/,
+  /\bfriday\b/,
+  /\b(7|seven)\b/,
+  /\bbangkok\b/,
+  /\blu ?(dot )?ma\b/,
+  /\bautopilot ?ama\b/,
+];
+
+const refsOf = (call: any) =>
+  new Set([
+    call.result?.ref,
+    ...(call.result?.attachments ?? []).map((a: any) => a.file),
+  ]);
+const fileOf = (artifact: any) => {
+  try {
+    return (
+      typeof artifact.content === "string"
+        ? JSON.parse(artifact.content)
+        : artifact.content
+    )?.file;
+  } catch {
+    return undefined;
+  }
+};
+
+export function gradeQuoteCard(evidence: {
+  calls: any[];
+  artifacts: any[];
+}): EvalCheck[] {
+  const ok = evidence.calls.filter((c) => !c.failed);
+  const square = ok.filter(
+    (c) =>
+      c.name === "media_generate_image" &&
+      (c.args.size ?? "1024x1024") === "1024x1024",
+  );
+  const squareRefs = new Set(square.flatMap((c) => [...refsOf(c)]));
+  const portrait = ok.filter(
+    (c) =>
+      c.name === "media_edit_image" &&
+      c.args.size === "1024x1536" &&
+      squareRefs.has(c.args.file),
+  );
+  const delivered = (calls: any[]) => {
+    const files = new Set(
+      calls.flatMap((c) => (c.result?.attachments ?? []).map((a: any) => a.file)),
+    );
+    return evidence.artifacts.some(
+      (a) => a.kind === "image" && files.has(fileOf(a)),
+    );
+  };
+  return [
+    { name: "Square image generated", passed: square.length > 0 },
+    {
+      name: "Portrait version edited from the square image",
+      passed: portrait.length > 0,
+    },
+    {
+      name: "Both images delivered",
+      passed: delivered(square) && delivered(portrait),
+    },
+  ];
+}
+
+export function gradeVoiceover(evidence: {
+  calls: any[];
+  artifacts: any[];
+}): EvalCheck[] {
+  const ok = evidence.calls.filter((c) => !c.failed);
+  const voices = new Set(
+    ok
+      .filter((c) => c.name === "media_list_voices")
+      .flatMap((c) => (c.result?.voices ?? []).map((v: any) => v.voice_id)),
+  );
+  const speech = ok.filter((c) => c.name === "media_generate_speech");
+  const final = speech.at(-1);
+  const finalRefs = final ? refsOf(final) : new Set();
+  const check = ok.filter(
+    (c) =>
+      c.name === "media_transcribe" &&
+      finalRefs.has(c.args.file) &&
+      evidence.calls.indexOf(c) > evidence.calls.indexOf(final),
+  );
+  const transcript = normalize(String(check.at(-1)?.result?.text ?? ""));
+  return [
+    {
+      name: "Speech uses a voice from media_list_voices",
+      passed: !!final && voices.has(final.args.voice_id),
+    },
+    {
+      name: "Final recording transcribed before delivery",
+      passed: check.length > 0,
+    },
+    {
+      name: "Transcript keeps every fact in the script",
+      passed: voiceoverFacts.every((fact) => fact.test(transcript)),
+      details: transcript,
+    },
+    {
+      name: "Final recording delivered",
+      passed: evidence.artifacts.some(
+        (a) => a.kind === "audio" && finalRefs.has(fileOf(a)),
+      ),
+    },
+    {
+      name: "At most three recordings",
+      passed: speech.length <= 3,
+      details: speech.length,
+    },
+  ];
+}
