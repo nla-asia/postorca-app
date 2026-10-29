@@ -73,24 +73,6 @@ export const browserCases: BrowserEvalCase[] = [
 - A concise research note is saved and opens from the final answer. Missing results, access barriers and uncertain dates remain explicit limitations; all owned tabs are closed and no connecting, messaging or other engagement occurs.
 - If a site or source can't be reached (for example the desktop app or browser is unavailable), the answer says so plainly; no posts, accounts or results are invented.`,
   },
-  {
-    id: "threads-post-research",
-    revision: 2,
-    revision_change: {
-      from: 1,
-      reason:
-        "Absorbs the retired offline case: unreachable sources must be reported, never invented.",
-      preserved_coverage: ["browser-offline"],
-    },
-    name: "Threads — recent posts about a topic or product",
-    brief: "Find five posts from different people on Threads from the past seven days about [topic or product]. Summarize what each person is saying, link me to the posts, and save a short research note on the recurring themes and useful angles for my own content. Research only; don't engage with anyone.",
-    success_criteria: `- Five distinct original posts from different authors genuinely discuss the requested topic/product and have publication dates within the seven-day window frozen at run start. Plain reposts, unrelated matches and older content do not count as qualifying results.
-- Actual post text and the necessary parent/continuation context were inspected. Search snippets, profile pages and isolated reply fragments do not establish the original post's meaning.
-- Each result has the correct author, exact Threads post permalink, supported publication date and faithful summary; replies and quoted material remain correctly attributed.
-- Recurring themes and proposed content angles trace to specific collected posts; engagement claims use observed metrics and do not imply platform-wide trends from five examples.
-- A concise research note is saved and opens from the final answer. Missing results, unavailable context and uncertain dates are explicit; all owned tabs are closed and no following, replying or other engagement occurs.
-- If a site or source can't be reached (for example the desktop app or browser is unavailable), the answer says so plainly; no posts, accounts or results are invented.`,
-  },
 ];
 
 export function browserCase(id: string): BrowserEvalCase {
