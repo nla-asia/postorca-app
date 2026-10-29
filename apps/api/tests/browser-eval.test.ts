@@ -20,8 +20,8 @@ import {
 const apiRoot = fileURLToPath(new URL("../", import.meta.url));
 
 test("the browser case catalog has distinct cases with reviewer-only bullet criteria", () => {
-  assert.equal(browserCases.length, 4);
-  assert.equal(new Set(browserCases.map((entry) => entry.id)).size, 4);
+  assert.equal(browserCases.length, 3);
+  assert.equal(new Set(browserCases.map((entry) => entry.id)).size, 3);
   for (const entry of browserCases) {
     assert.ok(entry.name && entry.brief, entry.id);
     const lines = entry.success_criteria.split("\n");
@@ -48,7 +48,7 @@ test("observed cases fill every brief placeholder with a rolling window", () => 
   for (const id of observedCaseIds)
     assert.doesNotMatch(preparedCase(id, now).brief, /\[[^\]]+\]/, id);
   // Catalog cases without an observer, or with unfilled placeholders, are refused.
-  assert.throws(() => preparedCase("threads-post-research", now), /threads-post-research has no observer/);
+  assert.throws(() => preparedCase("linkedin-post-research", now), /linkedin-post-research has no observer/);
   assert.deepEqual(rollingWindow("2026-10-27T10:00:00.000Z"), {
     window_start: "2026-10-20T10:00:00.000Z",
     window_end: "2026-10-27T10:00:00.000Z",
