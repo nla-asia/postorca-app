@@ -20,8 +20,8 @@ import {
 const apiRoot = fileURLToPath(new URL("../", import.meta.url));
 
 test("the browser case catalog has distinct cases with reviewer-only bullet criteria", () => {
-  assert.equal(browserCases.length, 20);
-  assert.equal(new Set(browserCases.map((entry) => entry.id)).size, 20);
+  assert.equal(browserCases.length, 10);
+  assert.equal(new Set(browserCases.map((entry) => entry.id)).size, 10);
   for (const entry of browserCases) {
     assert.ok(entry.name && entry.brief, entry.id);
     const lines = entry.success_criteria.split("\n");
@@ -33,26 +33,12 @@ test("the browser case catalog has distinct cases with reviewer-only bullet crit
       entry.id,
     );
   }
-  assert.equal(browserCase("flights").name, "Find a flight");
+  assert.equal(browserCase("offline").name, "Browser work while the desktop app is closed");
   assert.throws(() => browserCase("shopping"), /Unknown browser eval: shopping/);
 });
 
-test("observed cases fill every brief placeholder with fixed dates or a rolling window", () => {
+test("observed cases fill every brief placeholder with a rolling window", () => {
   const now = new Date("2026-10-27T03:00:00.000Z");
-  const flights = preparedCase("flights", now);
-  assert.match(flights.brief, /November 12, 2026 to November 19, 2026/);
-  assert.deepEqual(flights.parameters, {
-    departure_date: "2026-11-12",
-    return_date: "2026-11-19",
-  });
-  assert.equal(
-    flights.title,
-    "Browser eval — Bangkok–Tokyo flights (November 12–19, 2026)",
-  );
-  assert.equal(flights.success_criteria, browserCase("flights").success_criteria);
-  const hotels = preparedCase("hotels", now);
-  assert.match(hotels.brief, /for November 12, 2026 to November 19, 2026, for two adults/);
-  assert.equal(hotels.parameters.nightly_budget_thb, "5000");
   const posts = preparedCase("x-post-research", now);
   assert.match(posts.brief, /from the past seven days about Claude Code\./);
   assert.deepEqual(
@@ -62,7 +48,7 @@ test("observed cases fill every brief placeholder with fixed dates or a rolling 
   for (const id of observedCaseIds)
     assert.doesNotMatch(preparedCase(id, now).brief, /\[[^\]]+\]/, id);
   // Catalog cases without an observer, or with unfilled placeholders, are refused.
-  assert.throws(() => preparedCase("dinner", now), /dinner has no observer/);
+  assert.throws(() => preparedCase("conversations", now), /conversations has no observer/);
   assert.deepEqual(rollingWindow("2026-10-27T10:00:00.000Z"), {
     window_start: "2026-10-20T10:00:00.000Z",
     window_end: "2026-10-27T10:00:00.000Z",
@@ -187,7 +173,7 @@ test("the observer's diagnose mode works offline from a run folder", async () =>
     const turn = sampleTurn();
     await writeFile(
       join(folder, "run.json"),
-      JSON.stringify({ case_id: "flights", task_id: "missing-task", turn_id: turn.id }),
+      JSON.stringify({ case_id: "x-post-research", task_id: "missing-task", turn_id: turn.id }),
     );
     await writeFile(
       join(folder, "evidence.json"),
@@ -207,7 +193,7 @@ test("the observer's diagnose mode works offline from a run folder", async () =>
     const diagnosed = run("diagnose", folder);
     assert.equal(diagnosed.status, 0, diagnosed.stderr);
     const saved = JSON.parse(await readFile(join(folder, "diagnostics.json"), "utf8"));
-    assert.equal(saved.case_id, "flights");
+    assert.equal(saved.case_id, "x-post-research");
     assert.equal(saved.measured.tool_calls, 4);
     assert.equal(saved.reviewer_assessment.counts.avoidable, 1);
     // No local traces for this task: usage is unknown rather than zero.
@@ -215,7 +201,7 @@ test("the observer's diagnose mode works offline from a run folder", async () =>
 
     const wrong = run("launch");
     assert.notEqual(wrong.status, 0);
-    assert.match(wrong.stderr, /Use prepare flights\|hotels\|x-post-research/);
+    assert.match(wrong.stderr, /Use prepare x-post-research /);
   } finally {
     await rm(folder, { recursive: true, force: true });
   }

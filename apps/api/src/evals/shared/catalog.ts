@@ -33,7 +33,7 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       criteria: criteria(bullets(c.success_criteria)),
       prerequisites: [
         c.id === "offline" ? "desktop_unavailable" : "browser_connected",
-        ...(["feedhub", "notebook-quote", "session-downloads"].includes(c.id)
+        ...(["feedhub", "session-downloads"].includes(c.id)
           ? ["fixture_ready"]
           : []),
       ],
