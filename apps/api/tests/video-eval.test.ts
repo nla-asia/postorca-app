@@ -264,3 +264,18 @@ test("missing or malformed tool results do not become successful evidence", () =
   assert.equal(evidence[0].failed, true);
   assert.deepEqual(evidence[0].args, {});
 });
+
+test("browsing for web music is not counted against a creation-only video", () => {
+  const f3 = videoCases.find((item) => item.id === "F3")!;
+  const f6 = videoCases.find((item) => item.id === "F6")!;
+  const messages = [
+    ...call("browser_click", { tab: "t1", ref: "e1" }),
+    ...call("video_export", { scenes }, { attachments: [{ file: video, mime_type: "video/mp4" }] }),
+  ];
+  const named = (entry: typeof f3) =>
+    gradeVideo(entry, messages, [artifact], 1).checks.find(
+      (check) => check.name === "No browser inputs during this creation-only task",
+    );
+  assert.equal(named(f3), undefined);
+  assert.equal(named(f6)!.ok, false);
+});
