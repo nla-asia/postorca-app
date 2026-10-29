@@ -119,3 +119,24 @@ error remains visible, and the original browser-discovery criterion still fails.
 Triage records both the eval-design defect and the agent's scoped-file mistake.
 The notebook remains passed. No fresh revision 2 success or agent improvement is
 claimed, and no additional model execution was needed for this correction.
+
+## Policy 3: distinguish rejected image attempts from generated images
+
+The Video image-style check previously evaluated the prompt of every image tool
+attempt. A locally rejected call containing speech arguments produced no image,
+yet its narration text failed the candid-photography check. Policy 3 assesses
+image style on successful image-generation calls. Every successfully generated
+image must still satisfy the same style requirement. A real non-candid image
+continues to fail even when other images are candid.
+
+Rejected calls remain in error diagnostics, total call counts and paid-retry
+checks. This correction neither excuses invalid agent arguments nor establishes
+that a missing deliverable exists. No brief, case expectation, product prompt or
+provider quota rule changes. Regression coverage checks both the corrected
+false failure and preserved rejection of actual non-candid work.
+
+The original B3 result and three-side triage are retained in history when an
+explicit policy-3 regrade is requested. Its silent fallback remains unaccepted
+because narration hit a provider quota limit; this correction is not a B3 pass.
+Other stored policy versions are never silently rewritten. See the
+[cross-plugin pilot record](eval-cross-plugin-2026-10-29.md).
