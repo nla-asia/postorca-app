@@ -10,7 +10,8 @@ const { test, before, after } = require("node:test");
 const WebSocket = require("ws");
 const { BrowserRelay } = require("./relay.cjs");
 
-const ORIGIN = "chrome-extension://bdfijompoabfinpmaepcpcfhdneghegf";
+const { EXTENSION_ID } = require("./extension-id.cjs");
+const ORIGIN = `chrome-extension://${EXTENSION_ID}`;
 let chromium, getAriaSnapshot, context, browserWs, relay, pairing;
 
 before(async () => {

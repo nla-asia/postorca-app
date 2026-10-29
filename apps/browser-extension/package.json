@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "package": "node package.mjs",
     "test": "node --test \"tests/*.test.js\""
+  },
+  "devDependencies": {
+    "fflate": "0.8.2"
   }
 }
