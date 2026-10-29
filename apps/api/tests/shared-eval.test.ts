@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm, readFile, writeFile, access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { builtinCases, renderParameters } from "../src/evals/shared/catalog.js";
 import { caseSchema, type EvalCase } from "../src/evals/shared/contracts.js";
 import {
@@ -18,7 +17,6 @@ import {
   sha,
   evidenceHash,
   checkReferences,
-  hook,
 } from "../src/evals/shared/io.js";
 import { EvalRunner } from "../src/evals/shared/runner.js";
 
@@ -131,22 +129,22 @@ async function reviewed(runner: EvalRunner, id: string) {
   });
 }
 
-test("all 47 legacy cases share the catalog, browser cases have no execution allowlist", () => {
+test("all 33 legacy cases share the catalog, browser cases have no execution allowlist", () => {
   const cases = builtinCases();
-  assert.equal(cases.length, 47);
-  assert.equal(cases.filter((c) => c.plugin === "browser").length, 20);
+  assert.equal(cases.length, 33);
+  assert.equal(cases.filter((c) => c.plugin === "browser").length, 6);
   assert.equal(new Set(cases.map((c) => c.id)).size, cases.length);
   assert.throws(
     () =>
       renderParameters(
-        cases.find((c) => c.id === "browser-youtube-post-research")!,
+        cases.find((c) => c.id === "browser-threads-post-research")!,
         {},
       ),
     /Missing brief/,
   );
   assert.match(
     renderParameters(
-      cases.find((c) => c.id === "browser-youtube-post-research")!,
+      cases.find((c) => c.id === "browser-threads-post-research")!,
       { "topic or product": "Claude Code" },
     ).turns[0].brief,
     /Claude Code/,
@@ -492,52 +490,6 @@ test("M1 does not start a paid revision when the initial artifacts are missing",
   assert.equal((await runner.grade(run.id)).verdict, "failed");
 });
 
-test("the notebook verifier checks independent events and the delivered document", async (t) => {
-  const root = await sandbox(t);
-  const runner = new EvalRunner(root);
-  const run = await runner.prepare(entry(), runtime);
-  const folder = runner.folder(run.id);
-  await json(join(folder, "evidence/fixture-observe.json"), {
-    quote: { quantity: 3, subtotal: 58.5, shipping: 4.25, total: 62.75 },
-  });
-  await json(join(folder, "evidence.json"), {
-    task: {
-      turns: [
-        {
-          artifacts: [
-            {
-              kind: "document",
-              content: "Subtotal $58.50, shipping $4.25, total $62.75.",
-            },
-          ],
-        },
-      ],
-    },
-  });
-  const command = {
-    executable: process.execPath,
-    args: [
-      fileURLToPath(
-        new URL(
-          "../../../scripts/evals/verify-notebook-quote.mjs",
-          import.meta.url,
-        ),
-      ),
-    ],
-    timeout_ms: 60_000,
-  };
-  const first = await hook(command, folder, "evidence/verifier");
-  assert.ok(first.checks.every((c: any) => c.verdict === "passed"));
-  await json(join(folder, "evidence/fixture-observe.json"), {
-    quote: { quantity: 2, subtotal: 58.5, shipping: 4.25, total: 62.75 },
-  });
-  const second = await hook(command, folder, "evidence/verifier");
-  assert.equal(
-    second.checks.find((c: any) => c.id === "quote-quantity").verdict,
-    "failed",
-  );
-});
-
 test("recovered errors are diagnostic; declared error budgets still fail", async (t) => {
   const root = await sandbox(t),
     api = fakeApi({ error: true });
@@ -741,7 +693,7 @@ test("policy corrections require a reason and archive the old judgment without e
   );
 });
 
-test("a frozen procedural criterion still fails after regrading; future case revisions are separate", async (t) => {
+test("a frozen procedural criterion still fails after regrading", async (t) => {
   const root = await sandbox(t),
     api = fakeApi(),
     runner = new EvalRunner(root, { token: "token", fetch: api.fetch });
@@ -783,17 +735,5 @@ test("a frozen procedural criterion still fails after regrading; future case rev
   assert.equal(
     await readFile(join(runner.folder(run.id), "case.json"), "utf8"),
     before,
-  );
-  const next = builtinCases().find((c) => c.id === "browser-downloads")!,
-    session = builtinCases().find((c) => c.id === "browser-session-downloads")!;
-  assert.equal(next.revision, 2);
-  assert.equal(session.revision ?? 1, 1);
-  assert.deepEqual(next.revision_change?.preserved_coverage, [session.id]);
-  assert.equal(
-    next.turns[0].brief,
-    "Download the W3C logo at https://www.w3.org/Icons/w3c_home.png, the sample audio at https://download.samplelib.com/mp3/sample-3s.mp3 and the TypeScript license from https://github.com/microsoft/TypeScript/blob/main/LICENSE.txt. Keep the originals and make them available here, including image and audio previews.",
-  );
-  assert.ok(
-    session.criteria.some((c) => /anonymous request fails/i.test(c.text)),
   );
 });

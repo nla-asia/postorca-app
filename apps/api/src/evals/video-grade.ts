@@ -123,18 +123,26 @@ export function gradeVideo(
     retries === 0,
     `${retries} calls after a failure of the same paid tool`,
   );
+  const attachmentRef = (attachment: any) =>
+    attachment.ref ?? String(attachment.file).split("/").at(-1)?.slice(0, 8);
   const imported = new Map<string, string>();
   const screenshots = new Map<string, string>();
   for (const call of named("read_file"))
     for (const attachment of call.result?.attachments ?? []) {
-      const ref =
-        attachment.ref ??
-        String(attachment.file).split("/").at(-1)?.slice(0, 8);
+      const ref = attachmentRef(attachment);
       if (attachment.mime_type === "audio/mpeg")
         imported.set(ref, String(call.args.path).split(/[\\/]/).at(-1) ?? "");
       if (String(attachment.mime_type).startsWith("image/"))
         screenshots.set(ref, String(call.args.path));
     }
+  const downloaded = new Map<string, string>();
+  for (const call of named("browser_fetch_file").filter((c) => !c.failed))
+    for (const attachment of call.result?.attachments ?? [])
+      if (String(attachment.mime_type).startsWith("audio/"))
+        downloaded.set(
+          attachmentRef(attachment),
+          String(attachment.filename ?? attachment.file),
+        );
   const speech = named("media_generate_speech").map((call) =>
     String(call.args.text ?? ""),
   );
@@ -222,11 +230,14 @@ export function gradeVideo(
     }
     const music = entry.expect.music;
     if (music) {
-      const title = imported.get(args.music?.file);
+      const web = music.source === "web";
+      const title = (web ? downloaded : imported).get(args.music?.file);
       check(
-        "Music comes from a supplied local file",
+        web
+          ? "Music was downloaded from the web"
+          : "Music comes from a supplied local file",
         !!title && named("media_generate_music").length === 0,
-        title ?? "no imported music",
+        title ?? (web ? "no downloaded music" : "no imported music"),
       );
       if (music.title)
         check(

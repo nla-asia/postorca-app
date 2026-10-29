@@ -3,7 +3,7 @@
  * Only the frozen brief is submitted; success criteria and results stay with the
  * observer. No model calls in prepare, inspect or diagnose.
  *
- *   npm run browser:eval -- prepare flights|hotels|x-post-research <readiness-json>
+ *   npm run browser:eval -- prepare x-post-research <readiness-json>
  *   npm run browser:eval -- start <run-folder>
  *   npm run browser:eval -- inspect <run-folder>
  *   npm run browser:eval -- diagnose <run-folder>

@@ -10,6 +10,8 @@ export type VideoExpectation = {
   formats?: string[];
   screens?: { folder: string; min: number; contain?: boolean; focus?: boolean };
   music?: {
+    /** "web": the agent finds and downloads a free track itself. */
+    source?: "web";
     title?: string;
     notTitle?: string;
     minStart?: number;
@@ -18,6 +20,12 @@ export type VideoExpectation = {
 };
 export type VideoCase = {
   id: string;
+  revision?: number;
+  revision_change?: {
+    from: number;
+    reason: string;
+    preserved_coverage: string[];
+  };
   name: string;
   start: { brief: string } | { of: string; messages: string[] };
   expect: VideoExpectation;
@@ -190,15 +198,22 @@ export const videoCases: VideoCase[] = [
   },
   {
     id: "F3",
+    revision: 2,
+    revision_change: {
+      from: 1,
+      reason:
+        "Absorbs the retired morning-assets-artifacts case: the agent now finds and downloads a free lo-fi track itself instead of using the project music folder.",
+      preserved_coverage: ["browser-morning-assets-artifacts"],
+    },
     name: "Music under a voiceover",
     start: {
-      brief: `Make a 15-second UGC-style reel of my morning before any calls: coffee at 6, inbox cleared by 7, then one hour on the product. Voiceover and captions, with soft lo-fi music from the music folder in my project folder underneath. ${deliver}`,
+      brief: `Make a 15-second UGC-style reel of my morning before any calls: coffee at 6, inbox cleared by 7, then one hour on the product. Voiceover and captions, with soft lo-fi music underneath. Find a free track online that I'm allowed to use, and tell me where it's from and any credit it needs. ${deliver}`,
     },
     expect: {
       exports: 1,
       seconds: [10, 25],
       skill: "video-music",
-      music: { title: "lo-?fi" },
+      music: { source: "web" },
     },
   },
   {
