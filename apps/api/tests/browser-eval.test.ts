@@ -20,8 +20,8 @@ import {
 const apiRoot = fileURLToPath(new URL("../", import.meta.url));
 
 test("the browser case catalog has distinct cases with reviewer-only bullet criteria", () => {
-  assert.equal(browserCases.length, 3);
-  assert.equal(new Set(browserCases.map((entry) => entry.id)).size, 3);
+  assert.equal(browserCases.length, 4);
+  assert.equal(new Set(browserCases.map((entry) => entry.id)).size, 4);
   for (const entry of browserCases) {
     assert.ok(entry.name && entry.brief, entry.id);
     const lines = entry.success_criteria.split("\n");

@@ -19,6 +19,16 @@ export type BrowserEvalCase = {
 
 export const browserCases: BrowserEvalCase[] = [
   {
+    id: "find-music",
+    name: "Find a free music track online",
+    brief: "Find a free calm lo-fi instrumental I can use under the voiceover of my Instagram reels, and save the original audio file here. Tell me where it's from, its license and any credit it needs. Don't sign up for anything or buy anything.",
+    success_criteria: `- An original audio file (not a preview clip, stream capture or page) is saved here as an audio artifact, fetched through the browser from the track's own file address.
+- The track is an instrumental that fits "calm lo-fi"; its title, artist and source page are reported correctly.
+- Its license, read on the source site, allows free use in social media videos including commercial use, with at most a credit line; share-alike and no-derivatives licenses are not accepted. Any required credit is given.
+- Sites whose only download is a script button or behind a pop-up are skipped rather than retried; all opened tabs are closed and nothing is signed up for or bought.
+- If a site or source can't be reached (for example the desktop app or browser is unavailable), the answer says so plainly; no posts, accounts or results are invented.`,
+  },
+  {
     id: "x-post-research",
     revision: 2,
     revision_change: {

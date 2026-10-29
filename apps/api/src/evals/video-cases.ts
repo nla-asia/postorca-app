@@ -198,14 +198,28 @@ export const videoCases: VideoCase[] = [
   },
   {
     id: "F3",
-    revision: 2,
+    revision: 3,
     revision_change: {
-      from: 1,
+      from: 2,
       reason:
-        "Absorbs the retired morning-assets-artifacts case: the agent now finds and downloads a free lo-fi track itself instead of using the project music folder.",
-      preserved_coverage: ["browser-morning-assets-artifacts"],
+        "F3 tests mixing music under a voiceover, so the track is a fixture handed to Orca; finding music online moved to browser-find-music (level 2) and content-reel-with-music (level 3).",
+      preserved_coverage: ["video-F3 music under a voiceover with ducking", "content-reel-with-music", "browser-find-music"],
     },
     name: "Music under a voiceover",
+    start: {
+      brief: `Make a 15-second UGC-style reel of my morning before any calls: coffee at 6, inbox cleared by 7, then one hour on the product. Voiceover and captions, with my track sleepy-cat-lofi.mp3 underneath (it's in the eval-fixtures folder of my working folder). ${deliver}`,
+    },
+    expect: {
+      exports: 1,
+      seconds: [10, 25],
+      skill: "video-music",
+      music: { title: "sleepy-cat" },
+    },
+  },
+  {
+    // Content (level 3): the real-world reel, finding the music online too.
+    id: "C1",
+    name: "Reel with music found online",
     start: {
       brief: `Make a 15-second UGC-style reel of my morning before any calls: coffee at 6, inbox cleared by 7, then one hour on the product. Voiceover and captions, with soft lo-fi music underneath. Find a free track online that I'm allowed to use, and tell me where it's from and any credit it needs. ${deliver}`,
     },

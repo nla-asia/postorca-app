@@ -19,25 +19,31 @@ import { browserToolsCase } from "../browser-tools.js";
 import { demoCases } from "../computer-demo-cases.js";
 import { caseSchema, type EvalCase } from "./contracts.js";
 
-/** The Streaks repo the "from your work" cases read; its script is pinned by hash. */
-const workScript = fileURLToPath(
-  new URL("../../../../../scripts/evals/work-fixture.mjs", import.meta.url),
-);
-const workHook = (mode: string) => ({
-  executable: process.execPath,
-  args: [workScript, mode],
+/** A fixture whose script and files are pinned by hash: the Streaks repo the "from
+ * your work" cases read, and the music track handed to the mixing case. */
+const repoFile = (path: string) =>
+  fileURLToPath(new URL(`../../../../../${path}`, import.meta.url));
+const pinned = (path: string) => ({
+  path,
+  sha256: createHash("sha256").update(readFileSync(path)).digest("hex"),
 });
-const workFixture = () => ({
-  files: [
-    {
-      path: workScript,
-      sha256: createHash("sha256").update(readFileSync(workScript)).digest("hex"),
-    },
-  ],
-  prepare: workHook("prepare"),
-  observe: workHook("observe"),
-  cleanup: workHook("cleanup"),
-});
+const fixture = (script: string, files: string[] = []) => {
+  const hook = (mode: string) => ({
+    executable: process.execPath,
+    args: [repoFile(script), mode],
+  });
+  return {
+    files: [script, ...files].map((f) => pinned(repoFile(f))),
+    prepare: hook("prepare"),
+    observe: hook("observe"),
+    cleanup: hook("cleanup"),
+  };
+};
+const workFixture = () => fixture("scripts/evals/work-fixture.mjs");
+const musicFixture = () =>
+  fixture("scripts/evals/music-fixture.mjs", [
+    "fixtures/evals/music/sleepy-cat-lofi.mp3",
+  ]);
 const criteria = (texts: string[]) =>
   texts.map((text, i) => ({ id: `outcome-${i + 1}`, text }));
 const bullets = (text: string) =>
@@ -131,8 +137,9 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       source: "apps/api/src/evals/computer-demo-cases.ts",
     }),
   );
-  // Story reels (B cases) wait for the Content redesign; F cases test one video process.
-  const kept = ["F3", "F6"];
+  // F cases test one video process (Media level 2); C cases are end-to-end Content.
+  const kept = ["F3", "F6", "C1"];
+  const contentIds: Record<string, string> = { C1: "reel-with-music" };
   const videos = videoCases.filter((c) => kept.includes(c.id)).map((c) => {
     const parent =
       "of" in c.start
@@ -166,10 +173,12 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
               exports: expected[i],
             })),
           ];
+    const content = c.id in contentIds;
     return caseSchema.parse({
-      id: `video-${c.id}`,
-      plugin: "media",
-      level: 2,
+      id: content ? `content-${contentIds[c.id]}` : `video-${c.id}`,
+      plugin: content ? "content" : "media",
+      level: content ? 3 : 2,
+      ...(c.expect.music?.title ? { fixture: musicFixture() } : {}),
       ...(c.revision ? { revision: c.revision } : {}),
       ...(c.revision_change ? { revision_change: c.revision_change } : {}),
       title: c.name,
@@ -188,9 +197,7 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
         "media_providers_ready",
         ...(c.expect.screens ? ["supplied_screenshots_ready"] : []),
         ...(c.expect.music?.source === "web" ? ["browser_connected"] : []),
-        ...(c.expect.music && c.expect.music.source !== "web"
-          ? ["supplied_music_ready"]
-          : []),
+        ...(c.expect.music?.title ? ["fixture_ready"] : []),
         ...(c.expect.noProfileColors
           ? ["profile_colours_cleared_with_restore_plan"]
           : []),
