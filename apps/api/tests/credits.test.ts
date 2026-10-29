@@ -324,6 +324,68 @@ test("an exhausted allowance stops the real SDK before transport with no automat
   assert.equal(rows[0].credit_state, "blocked");
   assert.equal(rows[0].error_code, "insufficient_credits");
 });
+test("large image transport does not block funded Meta requests; real insufficient funds still block before dispatch", async (t) => {
+  const { usageFetch } = await import("../src/api-usage/ledger.js");
+  const funded = await user(40),
+    empty = await user(0);
+  const body = JSON.stringify({
+    model: "muse-spark-1.3",
+    input: [
+      {
+        role: "user",
+        content: Array.from({ length: 4 }, () => ({
+          type: "input_image",
+          image_url: `data:image/png;base64,${"A".repeat(3_000_000)}`,
+          detail: "auto",
+        })),
+      },
+    ],
+  });
+  let calls = 0;
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (_input: string | URL | Request, init?: RequestInit) => {
+      calls++;
+      assert.equal(
+        init?.body,
+        body,
+        "the original image bytes reach the provider unchanged",
+      );
+      return Response.json({
+        id: "response",
+        status: "completed",
+        model: "muse-spark-1.3",
+        output: [],
+        usage: {
+          input_tokens: 8000,
+          input_tokens_details: { cached_tokens: 0 },
+          output_tokens: 1,
+        },
+      });
+    },
+  );
+  const send = (userId: string) =>
+    withApiUsage({ db: f.db, userId, recoveryDirectory }, () =>
+      usageFetch("https://api.meta.ai/v1/responses", { method: "POST", body }),
+    );
+  assert.equal((await send(funded)).status, 200);
+  assert.equal(calls, 1);
+  const rows = (
+    await f.db.query("SELECT * FROM api_requests WHERE user_id=$1", [funded])
+  ).rows;
+  assert.equal(rows[0].credit_state, "settled");
+  assert.equal(rows[0].credit_charged, costToCredits("0.010004250000"));
+  assert.equal((await getCreditSummary(f.db, funded)).balance, 39);
+  assert.equal((await send(empty)).status, 402);
+  assert.equal(
+    calls,
+    1,
+    "an empty account must never dispatch the paid request",
+  );
+  assert.equal((await getCreditSummary(f.db, empty)).balance, 0);
+});
+
 test("unknown models cannot bypass credit reservations; free catalog reads need no hold", async (t) => {
   const id = await user(0);
   let calls = 0;
