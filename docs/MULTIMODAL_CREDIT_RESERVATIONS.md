@@ -33,3 +33,10 @@ Regression coverage checks transport-size invariance for both supported response
 providers, increasing allowances for additional images and ordinary text, and
 unchanged request bodies. A funded Meta request with four large image inputs
 dispatches and settles its real usage; a zero-credit account still cannot dispatch.
+
+A controlled live retry kept the original compiled API/prompt assets and replaced
+only the reservation module. It completed narration, images, previews and a
+20.5-second narrated MP4 with no tool errors. The account received no credit
+adjustment. The case still failed its independent source-grounding review because
+the agent invented personal founder claims; fixing accounting did not override
+content acceptance. Both failed attempts and their separate diagnoses are retained.
