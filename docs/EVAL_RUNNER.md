@@ -213,6 +213,50 @@ uses an attempt-specific ownership nonce and refuses to stop a different server.
 Fixture commands are extension points, not automatic imports of every Autopilot
 site; each fixture still needs its actual startup/reset/observation adapter.
 
+### Development desktop Computer observer
+
+`scripts/evals/observe-computer.mjs` supplies a read-only verifier for the existing
+Computer graders. Start the executing development Electron desktop with a
+temporary loopback main-process inspector, for example `--inspect=127.0.0.1:9232`.
+Use the absolute `apps/desktop` directory belonging to that executing desktop,
+which may differ from the runner's worktree. Before preparing an attempt, run:
+
+```sh
+node scripts/evals/observe-computer.mjs --desktop-root /absolute/apps/desktop --inspector http://127.0.0.1:9232 --preflight
+```
+
+This checks the actual loaded controller is available and inactive and the native
+helper can list applications. Also verify API health, the normal authenticated
+session, and the desktop's connection to that API. Record fresh
+`desktop_connected` and `independent_observer_ready` readiness evidence. Configure:
+
+```json
+{
+  "verifier": {
+    "executable": "/absolute/node",
+    "args": [
+      "/absolute/scripts/evals/observe-computer.mjs",
+      "--desktop-root", "/absolute/apps/desktop",
+      "--inspector", "http://127.0.0.1:9232"
+    ],
+    "timeout_ms": 60000
+  }
+}
+```
+
+After the product task settles, the observer reads the last successful native
+window from the actual tool evidence, verifies its process identity, reads its
+Accessibility tree, and saves `evidence/computer-observer.png`. It reads controller
+status before and after observation to establish release. It never opens an app,
+enters input, or reads the expected answer. The inspector adapter refuses unloaded
+modules: creating a fresh idle controller would falsely establish release.
+
+Inspect the original agent screenshot artifact as well as this independent
+readback. Do not overlap desktop work or change its windows during observation.
+This adapter was exercised on Windows with the development desktop; it does not
+establish packaged-desktop or macOS parity. Once all work and observation have
+settled, restart the owned development desktop without its temporary debug ports.
+
 For custom cases, supply the complete `case` object in the config with its ID,
 plugin, title, turns, grading mode, semantic criteria and trajectory assertions.
 Matcher operators mirror Autopilot: `equals`, `contains`, `regex`, `exists`,
@@ -237,6 +281,7 @@ There is no special three-case browser allowlist.
   from the product task, never from observer-supplied replacements. A missing
   computer observer blocks launch; the legacy standalone runners still provide
   the existing native observer/desktop bridge implementations as references.
+  The development desktop adapter above is available for Windows live pilots.
 - Video cases reuse `gradeVideo` with frozen expectations, plus required external
   inspection of actual media properties and complete playback. B7 creates a fresh
   B5 parent and runs its two follow-ups in the same task. Export counts and
@@ -301,3 +346,6 @@ product transport and real observer subprocesses: lost responses, duplication
 prevention, prerequisite/fixture failures, follow-up stopping, pending/invalidated
 reviews, evidence references, fixture cleanup and retained timeout ownership.
 These are runner checks, not claims that live PostOrca agent cases passed.
+`apps/desktop/electron/eval-observer.test.cjs` covers native readback, incorrect
+answer preservation, active control, missing/truncated evidence and inspector
+operation/endpoint restrictions without operating the desktop.

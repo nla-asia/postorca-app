@@ -102,3 +102,42 @@ still failed. Its triage record identifies the two separate causes. Future
 public-download contracts are revision 2; genuine session-transfer coverage is
 preserved in the existing protected-resource case. No prompt change or new paid
 attempt was used to manufacture a passing result.
+
+## Cross-plugin Computer pilot — 29 October 2026
+
+The unchanged `computer-calculator` case ran once through the same shared
+prepare/run/collect/verifier/grading lifecycle. It passed all 13 checks in
+113.979 seconds, with 23 tool calls and zero tool errors. The agent discovered
+and opened Calculator, entered `37 × 24 + 19`, delivered its screenshot artifact,
+and left the app displaying **907**. Both the delivered screenshot and the
+independent observer screenshot were inspected and show `888 + 19 = 907`.
+
+The new external `observe-computer.mjs` adapter read native Accessibility
+(`Display is 907`) from the actual window and checked the already-loaded desktop
+controller before and after observation: available, inactive, control released.
+It supplied no input and no expected answer. The original brief, deterministic
+grader and product prompts were unchanged. There was no retry or regrade.
+
+Preflight first found the existing local database was stopped, making API health
+return HTTP 500. This was an infrastructure prerequisite failure before any agent
+request. Restarting the existing persistent local database restored health; no
+database reset, schema change or authentication bypass was used. The signed-in
+session and connected desktop were then verified before preparing the attempt.
+
+This pilot used the same older local `gpt-6-luna` API build described above, on
+Windows. Its target-runtime manifest records the executing desktop's source
+hashes separately from the runner worktree. Evidence remains in ignored
+`.data/evals/computer-calculator-746040b1-c440-4998-a04b-d3ea4e5aa5e2/`.
+This is one successful Computer case alongside the two Browser pilots, not a
+repeatability result or evidence that all Computer cases pass. Media and Video
+still need live pilots through the shared lifecycle.
+
+Validation on the latest develop base: `npm run check` passed. Browser-extension
+tests passed 11/11, connector-service tests 2/2, and desktop tests 85 passed with
+3 existing platform skips, including all four new observer tests. Ordinary
+`npm test` stalled after successful assertions in the existing API connector and
+plugin files; the stuck test processes were stopped, so that command is not
+reported as passing. A separate full API run with Node's `--test-force-exit`
+completed 260/260 assertions with no failures or skips. That diagnostic option
+does not resolve the ordinary command's exit hang. The follow-up PR remains draft
+with this validation limitation recorded; no test script was changed to hide it.
