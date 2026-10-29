@@ -96,13 +96,12 @@ test("M1 needs every media tool, and the transcript must match the spoken senten
     call("t1", "media_generate_image"),
     call("t1", "media_list_voices", {}, { voices: [{ voice_id: "v1" }] }),
     call("t1", "media_generate_speech", { voice_id: "v1", text: mediaSentence }),
-    call("t1", "media_generate_music"),
     call("t1", "media_generate_sound_effect"),
     call("t2", "media_edit_image"),
     call("t2", "media_transcribe", {}, { text: "welcome to personal brand agent" }),
   ];
   assert.deepEqual(failed(gradeMediaTools({ turns, calls })), []);
-  calls[6].result = { text: "Welcome to Personal Brand Agency." };
+  calls.find((c) => c.name === "media_transcribe")!.result = { text: "Welcome to Personal Brand Agency." };
   calls.push(call("t2", "media_generate_speech", { voice_id: "v1", text: mediaSentence }));
   calls[2].args = { voice_id: "made-up", text: mediaSentence };
   assert.deepEqual(failed(gradeMediaTools({ turns, calls })), [

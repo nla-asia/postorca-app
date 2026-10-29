@@ -274,7 +274,7 @@ have only level 3.
 | --- | --- | --- | --- |
 | Browser | Can Orca browse and research? | `browser-tools`: every browser tool on Wikipedia | X, LinkedIn, Threads and Instagram post research |
 | Computer | Can Orca control apps and record clips? | Calculator, Notepad, Edge, Mac Calculator | 4 demo-recording cases |
-| Media | Can Orca make and edit images, audio and video? | `media-M1`: every media tool; speech and transcription check each other | Video F3 (music under voiceover), F6 (no brand colours); `media-quote-card` (square, then portrait edited from it); `media-checked-voiceover` (transcribe the final take; every fact kept) |
+| Media | Can Orca make and edit images, audio and video? | `media-M1`: every media tool except music (out of scope: the key has no access); speech and transcription check each other | Video F3 (music under voiceover), F6 (no brand colours); `media-quote-card` (square, then portrait edited from it); `media-checked-voiceover` (transcribe the final take; every fact kept) |
 | Writing | Does Orca write like the founder? | `writing-tools`: document, in-place edit, reply, saved posts | post, reply, revision |
 | Ideas | Do the idea routines find things worth posting? | level 3 only: daily content ideas, ideas from your work, weekly strategy research, each run as a real routine | |
 | Content | Can Orca do the founder's whole job, end to end? | level 3 only: product demo videos of a Mac app, an iOS app in the Simulator, and what the founder just shipped (work fixture) | |

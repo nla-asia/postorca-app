@@ -1,25 +1,25 @@
 /**
- * Media tool health (level 1): every media plugin tool in one task. Speech and
- * transcription check each other: the transcript must match the exact sentence.
+ * Media tool health (level 1): every media plugin tool in one task, except music,
+ * which the provider key has no access to. Speech and transcription check each
+ * other: the transcript must match the exact sentence.
  */
 import type { EvalCheck } from "./computer-eval-types.js";
 
 export const mediaSentence = "Welcome to Personal Brand Agent.";
 export const mediaToolsCase = {
   id: "M1",
-  name: "Every media tool: image, edit, voices, speech, music, sound effect, transcription",
+  name: "Every media tool: image, edit, voices, speech, sound effect, transcription",
   turns: [
     `This is a temporary check of the media tools. Make each of these and deliver every file here as an artifact:
 1. One square flat illustration of a small green sprout in a terracotta pot on a warm cream background, with no text.
 2. Speech that says exactly: ${mediaSentence} Pick a warm, friendly voice from the available voices.
-3. About 10 seconds of calm instrumental background music.
-4. A short, soft notification chime sound effect.
+3. A short, soft notification chime sound effect.
 Don't publish anything or save memory.`,
     "Now revise the image: change only the pot to blue, keeping the sprout, square framing and cream background, and keep the original. Then transcribe the speech you made and show me the transcript. Don't make any of the other files again.",
   ],
   criteria: [
     "The original image shows the green sprout in a terracotta pot on a cream background with no text; the revision changes only the pot to blue and both images remain available.",
-    "The speech says the exact sentence clearly in the chosen voice; the music is calm and instrumental; the sound effect is a soft chime. All play.",
+    "The speech says the exact sentence clearly in the chosen voice and the sound effect is a soft chime. Both play.",
   ],
 };
 
@@ -49,7 +49,6 @@ export function gradeMediaTools(evidence: {
   const repeated = [
     "media_generate_image",
     "media_generate_speech",
-    "media_generate_music",
     "media_generate_sound_effect",
   ].filter((name) => inTurn(second, name).length);
   return [
@@ -66,10 +65,6 @@ export function gradeMediaTools(evidence: {
       passed: speech.some(
         (c) => normalize(c.args.text ?? "") === normalize(mediaSentence),
       ),
-    },
-    {
-      name: "Music generated",
-      passed: inTurn(first, "media_generate_music").length > 0,
     },
     {
       name: "Sound effect generated",
