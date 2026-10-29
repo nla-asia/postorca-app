@@ -260,7 +260,29 @@ over merely asserting that a tool was invoked.
 
 ## Existing case migration
 
-All 38 agent cases are registered: Browser 6, Computer 11, Media 1, Video 20.
+All 43 agent cases are registered: Browser 6, Computer 8, Media 10, Writing 3,
+Content 16.
+
+### Categories
+
+The case's `plugin` field holds its category; `npm run eval -- list writing` lists one.
+Case IDs stay stable when a case changes category, so `video-B3` keeps its history
+under Content.
+
+| Category | Question | Levels |
+| --- | --- | --- |
+| Browser | Can Orca browse and research? | 2 |
+| Computer | Can Orca control apps and record clips? | 1–2 |
+| Media | Can Orca make and edit images, audio and video? | 1–2 |
+| Writing | Does Orca write like the founder? | 2 |
+| Content | Can Orca do the founder's whole job, end to end? | 3 |
+
+Media M1 exercises every media tool in one task; its speech and transcription check
+each other. Video F cases test one video feature (Media, level 2); story reels, the
+product-demo videos, research-to-post and the image post are Content. Writing and
+Content text cases need the founder's real brand profile (`brand_profile_ready`):
+programmatic checks cover platform format, supplied facts, placeholders and in-place
+revision, and the reviewer judges voice.
 
 ### Levels
 
@@ -273,7 +295,7 @@ Cases carry a `level`; `npm run eval -- list level-2` lists one level.
 3. **Real-world work:** the whole job a founder asks for, such as recording an app
    and editing the clips into a narrated demo video.
 
-### Product-demo cases (Computer, levels 2 and 3)
+### Product-demo cases (Computer level 2, Content level 3)
 
 `apps/api/src/evals/computer-demo-cases.ts` uses built-in apps as the founder's
 product: Mac Maps and Clock, and Reminders and Maps on an iPhone in the iOS

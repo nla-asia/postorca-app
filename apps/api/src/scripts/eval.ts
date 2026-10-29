@@ -108,7 +108,7 @@ if (mode === "list") {
         )
         .map((c) => ({
           id: c.id,
-          plugin: c.plugin,
+          category: c.plugin,
           title: c.title,
           turns: c.turns.length,
           prerequisites: c.prerequisites,
