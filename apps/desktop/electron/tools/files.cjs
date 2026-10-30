@@ -305,6 +305,7 @@ const uploadFile = {
 };
 
 module.exports = {
+  mediaBinary,
   list_dir: listDir,
   read_file: readFile,
   upload_file: uploadFile,

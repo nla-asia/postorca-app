@@ -8,6 +8,12 @@ export const settings = {
   orca: { provider: "meta", model: "muse-spark-1.3" } satisfies ModelChoice,
   /** The model the image tools generate and edit with. */
   images: { provider: "meta", model: "muse-image-1.0" } satisfies ModelChoice,
+  /** media_transcribe only. Switch to { provider: "elevenlabs", model: "scribe_v2" }
+   * to use Scribe again. Video word-timed captions keep their separate Scribe path. */
+  transcription: {
+    provider: "meta",
+    model: "muse-voice-transcribe-1.0",
+  } satisfies TranscriptionChoice,
   /** Credits granted once to every new account. */
   welcomeCredits: 250,
   /** Model responses that still see a tool image before only its reference is kept
@@ -17,3 +23,8 @@ export const settings = {
 
 export type Provider = "openai" | "meta";
 export type ModelChoice = { provider: Provider; model: string };
+
+export type TranscriptionChoice = {
+  provider: "meta" | "elevenlabs";
+  model: string;
+};
