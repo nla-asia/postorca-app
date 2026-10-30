@@ -31,12 +31,15 @@ function electron() {
 }
 
 // The name System Settings lists the app under ("Electron" in development).
-const appName = () => /([^/]+)\.app\//.exec(process.execPath)?.[1] ?? "PostOrca";
+const appName = () =>
+  /([^/]+)\.app\//.exec(process.execPath)?.[1] ?? "PostOrca";
 const permissionMessage = () =>
   `The desktop app doesn't have the Screen Recording permission, so it can't capture the screen or windows (the Simulator works without it). Ask the founder to turn on "${appName()}" in System Settings → Privacy & Security → Screen & System Audio Recording, then quit and reopen the app.`;
 
 function screenAccess() {
-  return electron()?.systemPreferences.getMediaAccessStatus("screen") ?? "granted";
+  return (
+    electron()?.systemPreferences.getMediaAccessStatus("screen") ?? "granted"
+  );
 }
 
 /** Checks a target from the model: the screen, one window, or the Simulator. */
@@ -45,17 +48,23 @@ function parseTarget(target) {
     case "screen": {
       const display = target.display ?? 1;
       if (!Number.isInteger(display) || display < 1 || display > 16)
-        throw new Error("display must be a display number from list_capture_targets.");
+        throw new Error(
+          "display must be a display number from list_capture_targets.",
+        );
       return { type: "screen", display };
     }
     case "window":
       if (!Number.isInteger(target.window_id) || target.window_id <= 0)
-        throw new Error("window_id must be a window id from list_capture_targets.");
+        throw new Error(
+          "window_id must be a window id from list_capture_targets.",
+        );
       return { type: "window", window_id: target.window_id };
     case "simulator": {
       const udid = target.udid ?? "booted";
       if (udid !== "booted" && !/^[0-9A-F-]{36}$/i.test(udid))
-        throw new Error("udid must be a Simulator udid from list_capture_targets.");
+        throw new Error(
+          "udid must be a Simulator udid from list_capture_targets.",
+        );
       return { type: "simulator", udid };
     }
     default:
@@ -75,20 +84,43 @@ const screenshotCommand = (target, file) =>
     : ["screencapture", ["-x", "-t", "png", ...sourceArgs(target), file]];
 const recordCommand = (target, file) =>
   target.type === "simulator"
-    ? ["xcrun", ["simctl", "io", target.udid, "recordVideo", "--codec=h264", "--force", file]]
+    ? [
+        "xcrun",
+        [
+          "simctl",
+          "io",
+          target.udid,
+          "recordVideo",
+          "--codec=h264",
+          "--force",
+          file,
+        ],
+      ]
     : ["screencapture", ["-x", "-v", ...sourceArgs(target), file]];
 
 function captureError(target, output) {
-  const detail = String(output ?? "").trim().split("\n").at(-1) ?? "";
-  if (target.type === "window" && /could not create image from window/i.test(detail))
+  const detail =
+    String(output ?? "")
+      .trim()
+      .split("\n")
+      .at(-1) ?? "";
+  if (
+    target.type === "window" &&
+    /could not create image from window/i.test(detail)
+  )
     return new Error(
       "That window can't be captured: it was closed, or is minimized or on another desktop. Call list_capture_targets for the current windows.",
     );
-  if (target.type === "simulator" && /no devices are booted|invalid device/i.test(detail))
+  if (
+    target.type === "simulator" &&
+    /no devices are booted|invalid device/i.test(detail)
+  )
     return new Error(
       "No Simulator is running. Ask the founder to run their app in the iOS Simulator, or check list_capture_targets.",
     );
-  return new Error(`Capture failed${detail ? `: ${detail.slice(0, 300)}` : "."}`);
+  return new Error(
+    `Capture failed${detail ? `: ${detail.slice(0, 300)}` : "."}`,
+  );
 }
 
 function ffmpeg(args) {
@@ -101,7 +133,17 @@ async function probe(file) {
   const { filename, directory } = mediaBinary("ffprobe");
   const { stdout } = await run(
     filename,
-    ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_name,width,height:format=duration", "-of", "json", file],
+    [
+      "-v",
+      "error",
+      "-select_streams",
+      "v:0",
+      "-show_entries",
+      "stream=codec_name,width,height:format=duration",
+      "-of",
+      "json",
+      file,
+    ],
     { cwd: directory },
   );
   const info = JSON.parse(stdout);
@@ -120,11 +162,27 @@ async function probe(file) {
  * it recorded). The Simulator records only when its screen changes, so a clip
  * ending on a still screen is short: its last frame is held to the end.
  */
-async function toMp4(input, output, { seconds = 0, maxBytes = MAX_VIDEO_BYTES } = {}) {
+async function toMp4(
+  input,
+  output,
+  { seconds = 0, maxBytes = MAX_VIDEO_BYTES } = {},
+) {
   const { codec, duration_seconds } = await probe(input);
-  const hold = seconds - duration_seconds > 0.5 ? seconds - duration_seconds : 0;
+  const hold =
+    seconds - duration_seconds > 0.5 ? seconds - duration_seconds : 0;
   if (codec === "h264" && !hold) {
-    await ffmpeg(["-i", input, "-map", "0:v:0", "-c", "copy", "-movflags", "+faststart", "-y", output]);
+    await ffmpeg([
+      "-i",
+      input,
+      "-map",
+      "0:v:0",
+      "-c",
+      "copy",
+      "-movflags",
+      "+faststart",
+      "-y",
+      output,
+    ]);
     if ((await fs.stat(output)).size <= maxBytes) return output;
   }
   const inputs = ["-i", input];
@@ -132,22 +190,50 @@ async function toMp4(input, output, { seconds = 0, maxBytes = MAX_VIDEO_BYTES } 
   if (hold) {
     const last = path.join(path.dirname(output), "last.png");
     await ffmpeg(["-sseof", "-1", "-i", input, "-update", "1", "-y", last]);
-    inputs.push("-loop", "1", "-framerate", "30", "-t", hold.toFixed(2), "-i", last);
+    inputs.push(
+      "-loop",
+      "1",
+      "-framerate",
+      "30",
+      "-t",
+      hold.toFixed(2),
+      "-i",
+      last,
+    );
     video = "[0:v][1:v]concat=n=2:v=1,";
   }
   await ffmpeg([
     ...inputs,
-    "-filter_complex", `${video}scale='min(1920,iw)':-2,format=yuv420p[v]`,
-    "-map", "[v]",
-    "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-fps_mode", "cfr", "-r", "30",
-    "-movflags", "+faststart", "-y", output,
+    "-filter_complex",
+    `${video}scale='min(1920,iw)':-2,format=yuv420p[v]`,
+    "-map",
+    "[v]",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "veryfast",
+    "-crf",
+    "23",
+    "-fps_mode",
+    "cfr",
+    "-r",
+    "30",
+    "-movflags",
+    "+faststart",
+    "-y",
+    output,
   ]);
   if ((await fs.stat(output)).size > maxBytes)
-    throw new Error("The recording is too large to save (over 200 MB). Record shorter clips.");
+    throw new Error(
+      "The recording is too large to save (over 200 MB). Record shorter clips.",
+    );
   return output;
 }
 
-const pngSize = (data) => ({ width: data.readUInt32BE(16), height: data.readUInt32BE(20) });
+const pngSize = (data) => ({
+  width: data.readUInt32BE(16),
+  height: data.readUInt32BE(20),
+});
 
 // The windows on screen (all desktops' windows aren't capturable), from CoreGraphics.
 const WINDOWS_SCRIPT = `ObjC.import("CoreGraphics");
@@ -229,13 +315,16 @@ function createScreenTools({
   let active = null;
 
   async function requireAccess(target) {
-    if (platform !== "darwin") throw new Error("Screen capture works on macOS only.");
+    if (platform !== "darwin")
+      throw new Error("Screen capture works on macOS only.");
     if (target.type === "simulator") return;
     const status = access();
     if (status === "granted") return;
     // Asks macOS to show its permission prompt and list the app in System Settings.
     if (status === "not-determined")
-      electron()?.desktopCapturer.getSources({ types: ["screen"] }).catch(() => {});
+      electron()
+        ?.desktopCapturer.getSources({ types: ["screen"] })
+        .catch(() => {});
     throw new Error(permissionMessage());
   }
 
@@ -270,16 +359,31 @@ function createScreenTools({
   electron()?.app.on("will-quit", stopActive);
 
   const listTargets = async () => {
-    if (platform !== "darwin") throw new Error("Screen capture works on macOS only.");
+    if (platform !== "darwin")
+      throw new Error("Screen capture works on macOS only.");
     const status = access();
     // screencapture numbers displays from the main one.
     const screen = electron()?.screen;
     const primary = screen?.getPrimaryDisplay().id;
     const displays = (screen?.getAllDisplays() ?? [])
       .sort((a, b) => (b.id === primary) - (a.id === primary))
-      .map((d, i) => ({ display: i + 1, label: d.label, width: d.size.width, height: d.size.height, main: d.id === primary }));
-    const { stdout } = await exec("osascript", ["-l", "JavaScript", "-e", WINDOWS_SCRIPT], { timeout: 15_000 });
-    const simulators = await exec("xcrun", ["simctl", "list", "devices", "booted", "-j"], { timeout: 15_000 })
+      .map((d, i) => ({
+        display: i + 1,
+        label: d.label,
+        width: d.size.width,
+        height: d.size.height,
+        main: d.id === primary,
+      }));
+    const { stdout } = await exec(
+      "osascript",
+      ["-l", "JavaScript", "-e", WINDOWS_SCRIPT],
+      { timeout: 15_000 },
+    );
+    const simulators = await exec(
+      "xcrun",
+      ["simctl", "list", "devices", "booted", "-j"],
+      { timeout: 15_000 },
+    )
       .then(({ stdout }) =>
         Object.values(JSON.parse(stdout).devices ?? {})
           .flat()
@@ -308,7 +412,11 @@ function createScreenTools({
         throw captureError(target, error.stderr || error.message);
       });
       let data = await fs.readFile(file);
-      for (let size = 2560; data.length > MAX_IMAGE_BYTES && size >= 640; size = Math.round(size * 0.75)) {
+      for (
+        let size = 2560;
+        data.length > MAX_IMAGE_BYTES && size >= 640;
+        size = Math.round(size * 0.75)
+      ) {
         await exec("sips", ["-Z", String(size), file], { timeout: 30_000 });
         data = await fs.readFile(file);
       }
@@ -316,7 +424,9 @@ function createScreenTools({
       return {
         target,
         ...pngSize(data),
-        attachments: [{ file: key, mime_type: "image/png", title: "Screenshot" }],
+        attachments: [
+          { file: key, mime_type: "image/png", title: "Screenshot" },
+        ],
       };
     } finally {
       await fs.rm(dir, { recursive: true, force: true });
@@ -326,22 +436,32 @@ function createScreenTools({
   const start = async ({ target }) => {
     target = parseTarget(target);
     if (active)
-      throw new Error(`Recording ${active.id} is still running. Stop it with screen_record_stop first.`);
+      throw new Error(
+        `Recording ${active.id} is still running. Stop it with screen_record_stop first.`,
+      );
     await requireAccess(target);
     // screencapture records a window even behind others, which looks fine in the clip
     // while the founder sees nothing and a moving pointer misses it. Bring it forward.
-    let inFront;
     if (target.type === "window") {
-      inFront = await raiseWindow(target.window_id).then(
+      const inFront = await raiseWindow(target.window_id).then(
         (result) => result?.foreground === true,
         () => false,
       );
+      if (!inFront)
+        throw new Error(
+          "The window could not be brought to the front, so nothing was recorded. Close what covers it or ask the founder to, then try again.",
+        );
       await new Promise((resolve) => setTimeout(resolve, 300));
     }
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "postorca-recording-"));
-    const raw = path.join(dir, target.type === "simulator" ? "raw.mp4" : "raw.mov");
+    const raw = path.join(
+      dir,
+      target.type === "simulator" ? "raw.mp4" : "raw.mov",
+    );
     const [command, args] = recordCommand(target, raw);
-    const child = spawnProcess(command, args, { stdio: ["ignore", "ignore", "pipe"] });
+    const child = spawnProcess(command, args, {
+      stdio: ["ignore", "ignore", "pipe"],
+    });
     let stderr = "";
     child.stderr?.on("data", (chunk) => (stderr += chunk));
     const exited = new Promise((resolve) => {
@@ -356,7 +476,10 @@ function createScreenTools({
     const started = await Promise.race([
       exited.then(() => false),
       new Promise((resolve) => {
-        const timer = setTimeout(() => resolve(true), target.type === "simulator" ? startupMs * 5 : startupMs);
+        const timer = setTimeout(
+          () => resolve(true),
+          target.type === "simulator" ? startupMs * 5 : startupMs,
+        );
         child.stderr?.on("data", () => {
           if (/recording started/i.test(stderr)) {
             clearTimeout(timer);
@@ -379,28 +502,28 @@ function createScreenTools({
       stderr: () => stderr,
       startedAt: Date.now(),
     };
-    recording.timer = setTimeout(() => finish(recording, "max_duration"), maxSeconds * 1000);
+    recording.timer = setTimeout(
+      () => finish(recording, "max_duration"),
+      maxSeconds * 1000,
+    );
     // Ended by itself (such as its window closing): no longer shown as recording.
     exited.then(() => recording.saved ?? finish(recording, "ended"));
     recordings.set(recording.id, recording);
     active = recording;
     recordingNow = true;
-    indicator.show({ startedAt: recording.startedAt, stop: () => finish(recording, "founder") });
-    return {
-      id: recording.id,
-      target,
-      max_seconds: maxSeconds,
-      ...(inFront === false && {
-        warning:
-          "The window could not be brought to the front, so the founder can't see it and the pointer won't land on it. Stop, close what covers it, and record again.",
-      }),
-    };
+    indicator.show({
+      startedAt: recording.startedAt,
+      stop: () => finish(recording, "founder"),
+    });
+    return { id: recording.id, target, max_seconds: maxSeconds };
   };
 
   const stop = async ({ id }, context) => {
     const recording = typeof id === "string" && recordings.get(id);
     if (!recording)
-      throw new Error("No recording with that id: it was already saved, or the desktop app restarted.");
+      throw new Error(
+        "No recording with that id: it was already saved, or the desktop app restarted.",
+      );
     let file;
     try {
       file = await finish(recording, "tool");
@@ -418,12 +541,15 @@ function createScreenTools({
     return {
       id,
       target: recording.target,
-      duration_seconds: info.duration_seconds || Math.round(recording.seconds * 10) / 10,
+      duration_seconds:
+        info.duration_seconds || Math.round(recording.seconds * 10) / 10,
       width: info.width,
       height: info.height,
       bytes: data.length,
       stopped_by: recording.stopped_by,
-      attachments: [{ file: key, mime_type: "video/mp4", title: "Screen recording" }],
+      attachments: [
+        { file: key, mime_type: "video/mp4", title: "Screen recording" },
+      ],
     };
   };
 
@@ -437,7 +563,8 @@ function createScreenTools({
 
 let tools;
 const lazy = (name) => ({
-  run: (args, context) => (tools ??= createScreenTools())[name].run(args, context),
+  run: (args, context) =>
+    (tools ??= createScreenTools())[name].run(args, context),
 });
 module.exports = {
   list_capture_targets: lazy("list_capture_targets"),

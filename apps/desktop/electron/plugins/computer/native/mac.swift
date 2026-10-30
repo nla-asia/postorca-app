@@ -29,6 +29,9 @@ func axFrame(_ element: AXUIElement) -> CGRect? {
     AXValueGetValue(p as! AXValue, .cgPoint, &point); AXValueGetValue(s as! AXValue, .cgSize, &size)
     return size.width > 0 && size.height > 0 ? CGRect(origin: point, size: size) : nil
 }
+@_silgen_name("_AXUIElementGetWindow")
+func _AXUIElementGetWindow(_ element: AXUIElement, _ id: UnsafeMutablePointer<CGWindowID>) -> AXError
+
 func axWindow(_ pid: pid_t, _ target: [String: Any]) throws -> AXUIElement {
     let app = AXUIElementCreateApplication(pid)
     AXUIElementSetMessagingTimeout(app, 2)
@@ -44,6 +47,14 @@ func axWindow(_ pid: pid_t, _ target: [String: Any]) throws -> AXUIElement {
     add(axValue(app, kAXFocusedWindowAttribute)); add(axValue(app, kAXMainWindowAttribute))
     for window in candidates {
         for child in axValue(window, kAXChildrenAttribute) as? [AXUIElement] ?? [] where axValue(child, kAXRoleAttribute) as? String == kAXSheetRole { add(child) }
+    }
+    // Same-sized windows (browser windows usually are) can't be told apart by frame.
+    // Their window number settles it; this call has no public equivalent.
+    if let number = Int(target["id"] as? String ?? "") {
+        for element in candidates {
+            var id = CGWindowID(0)
+            if _AXUIElementGetWindow(element, &id) == .success, Int(id) == number { return element }
+        }
     }
     let frame = target["bounds"] as! [String: Any]
     let rect = CGRect(x: frame["x"] as! Double, y: frame["y"] as! Double, width: frame["width"] as! Double, height: frame["height"] as! Double)
