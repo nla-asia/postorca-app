@@ -22,7 +22,10 @@ import {
 import { loadFile, saveFile, fileRef } from "../src/storage.js";
 import { executeTool } from "../src/tools/index.js";
 import { loadPluginState } from "../src/plugins/service.js";
-import { alignScenes } from "../src/plugins/video/index.js";
+import {
+  alignScenes,
+  transcriptWithScript,
+} from "../src/plugins/video/index.js";
 import { temporaryPostgres } from "./postgres.js";
 
 const secret = "media-suite-test-secret-at-least-32-characters";
@@ -620,5 +623,48 @@ test("scenes that declare their words start when those words are spoken", () => 
   assert.throws(
     () => alignScenes([{}, { says: "I open" }], [1000, 1000], transcript),
     /at least 0.5 s/,
+  );
+});
+
+test("captions take the script's words and keep the transcript's timing", () => {
+  const word = (text: string, start: number) => ({
+    text,
+    type: "word",
+    start,
+    end: start + 0.3,
+  });
+  const space = { text: " ", type: "spacing", start: 0, end: 0 };
+  const result = transcriptWithScript(
+    {
+      words: [
+        word("I", 0.1),
+        space,
+        word("stop", 0.3),
+        space,
+        word("guessing.", 0.6),
+        word("I", 2),
+        word("track", 2.2),
+        word("habits", 2.5),
+        word("and", 2.8),
+        word("streaks", 3),
+      ],
+    } as any,
+    "I stopped guessing. I track habits in Streaks.",
+  );
+  const words = (result.words ?? []).filter((w) => w.type === "word");
+  assert.deepEqual(
+    words.map((w) => w.text),
+    ["I", "stopped", "guessing.", "I", "track", "habits", "in", "Streaks."],
+  );
+  assert.equal(words[1].start, 0.3);
+  assert.equal(result.words?.[1], space);
+  // Words that don't line up one to one stay as heard.
+  const uneven = transcriptWithScript(
+    { words: [word("sixteen", 0), word("check-ins", 1)] } as any,
+    "sixteen really great check-ins",
+  );
+  assert.deepEqual(
+    uneven.words?.map((w) => w.text),
+    ["sixteen", "check-ins"],
   );
 });

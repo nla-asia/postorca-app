@@ -166,6 +166,14 @@ const clipArgs = z
       .nullable()
       .optional(),
     captions: z.boolean().optional(),
+    voiceover_script: z
+      .string()
+      .trim()
+      .max(5000)
+      .optional()
+      .describe(
+        "The text the voiceover was generated from. Captions and `says` then use its exact words instead of what transcription heard.",
+      ),
     brand: brandColorsSchema
       .optional()
       .describe(
@@ -305,6 +313,53 @@ function speechRanges(transcript: Transcript) {
   return ranges;
 }
 
+/**
+ * Keeps the transcript's timing but the script's words: transcription mishears
+ * ("in Streaks" as "and streaks"). Words that don't line up one to one are left alone.
+ */
+export function transcriptWithScript(
+  transcript: Transcript,
+  script: string,
+): Transcript {
+  const heard = (transcript.words ?? []).flatMap((word, index) =>
+    word.type === "word" ? [{ index, key: spokenWord(word.text) }] : [],
+  );
+  const written = script.split(/\s+/).filter((word) => spokenWord(word));
+  const keys = written.map(spokenWord);
+  // Longest common subsequence of the two word lists.
+  const table = Array.from({ length: heard.length + 1 }, () =>
+    new Array<number>(keys.length + 1).fill(0),
+  );
+  for (let a = heard.length - 1; a >= 0; a--)
+    for (let b = keys.length - 1; b >= 0; b--)
+      table[a][b] =
+        heard[a].key === keys[b]
+          ? table[a + 1][b + 1] + 1
+          : Math.max(table[a + 1][b], table[a][b + 1]);
+  const words = [...(transcript.words ?? [])];
+  const replace = (a: number, b: number) => {
+    words[heard[a].index] = { ...words[heard[a].index], text: written[b] };
+  };
+  let a = 0,
+    b = 0;
+  while (a < heard.length && b < keys.length) {
+    if (heard[a].key === keys[b]) replace(a++, b++);
+    else {
+      const gapA = a,
+        gapB = b;
+      while (a < heard.length && b < keys.length && heard[a].key !== keys[b]) {
+        if (table[a + 1][b] >= table[a][b + 1]) a++;
+        else b++;
+      }
+      if (a - gapA === b - gapB)
+        for (let i = 0; i < a - gapA; i++) replace(gapA + i, gapB + i);
+    }
+  }
+  if (heard.length - a === keys.length - b)
+    while (a < heard.length) replace(a++, b++);
+  return { ...transcript, words };
+}
+
 const spokenWord = (text: string) =>
   text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 
@@ -401,7 +456,11 @@ async function prepare(context: PluginContext, clip: Clip) {
       ? clipTiming(scene, videos.get(scene.video_file)!.seconds)
       : undefined,
   );
-  const transcript = voice ? await transcriptFor(context, voice) : undefined;
+  const heard = voice ? await transcriptFor(context, voice) : undefined;
+  const transcript =
+    heard && clip.voiceover_script
+      ? transcriptWithScript(heard, clip.voiceover_script)
+      : heard;
   const planned = clip.scenes.map(
     (scene, index) =>
       clips[index]?.duration_ms ?? Math.round(scene.duration_seconds! * 1000),
@@ -434,6 +493,7 @@ async function prepare(context: PluginContext, clip: Clip) {
       JSON.stringify(scene.focus ?? null) !==
         JSON.stringify(scenes[index - 1].focus ?? null),
   ).length;
+  const format = clip.format ?? "9:16";
   return {
     render: {
       format: clip.format,
@@ -450,7 +510,13 @@ async function prepare(context: PluginContext, clip: Clip) {
           end_ms: clips[index].end_ms,
           speed: clips[index].speed,
         }),
-        fit: scene.fit,
+        // A screen recording keeps its text readable: outside portrait, contain gives
+        // stickers and captions their own space instead of covering the app.
+        fit:
+          scene.fit ??
+          (scene.video_file && !scene.device && format !== "9:16"
+            ? "contain"
+            : undefined),
         device: scene.device,
         focus: scene.focus,
         highlight: scene.highlight,
