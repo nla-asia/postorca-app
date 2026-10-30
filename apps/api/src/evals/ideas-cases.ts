@@ -72,6 +72,7 @@ export const ideasCases: IdeasCase[] = [
     proposes: /quick.?add|sentence/i,
     criteria: [
       "The strongest idea, listed first, is quick add as a product demo. The refactor, the dependency bump and older work are not pitched.",
+      "The demo's title plainly names the feature, and its opening says what was added and why, the way a product page announces a feature: no slogan or abstract concept.",
       "Its demo plan lets the founder judge the content before approving it: what to show, steps that match the code, and an opening built on the problem in the notes (adding a task takes too many clicks).",
       "The two-tab fix, if used, is a different kind of content such as a text post, not a second demo of the same thing.",
       "No code is quoted and nothing beyond the commits, changes and notes is claimed, including about the founder. " +

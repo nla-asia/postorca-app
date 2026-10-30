@@ -127,13 +127,11 @@ export const demoCases: DemoCase[] = [
     fixture_script: "scripts/evals/tide-fixture.mjs",
     brief: `Read the create-content skill with read_skill, then follow it for this idea.
 
-Idea: Add a task by typing one sentence
+Idea: Quick add: type a sentence to add a task
 
 **From your work**: Tide, commits "Add quick add: type a sentence, get a dated task" and "Quick add: show date, time and project as chips while typing". Beta notes: 6 of 9 testers said adding a task takes too many clicks.
 
 **What happened**: Adding a task used to mean a title, then a date picker, then a project. Now you type one sentence and Tide reads the date, time and project from it as you type.
-
-**Angle**: High level. The best form is no form.
 
 **Why people would care**: Anyone who drops a todo app because capturing a task is slower than forgetting it.
 
@@ -142,9 +140,9 @@ Idea: Add a task by typing one sentence
 **Demo plan**: Short video, on the Today view at the top. The app runs at http://127.0.0.1:4120 (see the project's README).
 1. Click the quick add box and type "Call Sam tomorrow 3pm #work". The chips for Tomorrow, 3 pm and #work appear while typing.
 2. Press Enter. The task lands in Upcoming with its date, time and tag.
-Open on the problem, not the feature's name.
+Say plainly what was added and why.
 
-**Sample opening**: Adding a task shouldn't take three clicks.
+**Sample opening**: Testers said adding a task took too many clicks, so we added quick add.
 
 Founder's note: Make it a ~20 sec landscape video with voiceover and captions. Record it yourself from the running app. ${noPublish}`,
     typed: ["tomorrow"],
@@ -152,7 +150,7 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
     video: { seconds: [15, 35] },
     criteria: [
       "The video follows the approved idea: it shows the sentence being typed, the chips appearing, and the task landing with its date, time and tag.",
-      "It opens on the viewer's problem (adding a task takes too many clicks) and claims nothing the idea, commits and notes don't support.",
+      "It says plainly what was added and why (adding a task took too many clicks), like a product page, with no slogans, and claims nothing the idea, commits and notes don't support.",
       "The recording looks like a person using the app: window in view, pointer moving, text typed key by key, no fumbling, repeated steps or long pauses.",
       ...videoReview,
     ],
