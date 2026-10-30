@@ -219,7 +219,15 @@ test("web music must be downloaded through the browser, not taken from the proje
     ...call(
       "browser_fetch_file",
       { tab: "t1", url: "https://example.com/calm-lofi.mp3" },
-      { attachments: [{ ref: "aaaa1111", filename: "calm-lofi.mp3", mime_type: "audio/mpeg" }] },
+      {
+        attachments: [
+          {
+            ref: "aaaa1111",
+            filename: "calm-lofi.mp3",
+            mime_type: "audio/mpeg",
+          },
+        ],
+      },
     ),
     ...exported("aaaa1111"),
   ]);
@@ -254,6 +262,51 @@ test("consecutive scenes on one image are one shot for pacing", () => {
   );
 });
 
+test("a demo of a web app may click in the browser; other creation tasks may not", () => {
+  const messages = [
+    ...call("browser_click", { ref: "e1" }, {}),
+    ...call(
+      "video_export",
+      { scenes },
+      {
+        attachments: [{ file: video, mime_type: "video/mp4" }],
+      },
+    ),
+  ];
+  const inputs = (options?: { demoOfWebApp?: boolean }) =>
+    gradeVideo(b5, messages, [artifact], 1, options).checks.find((check) =>
+      check.name.includes("No browser inputs"),
+    );
+  assert.equal(inputs()?.ok, false);
+  assert.equal(inputs({ demoOfWebApp: true }), undefined);
+});
+
+test("clip scenes are graded from the tool's pacing, and can open on a hook", () => {
+  const exported = (timing: object) =>
+    call(
+      "video_export",
+      {
+        scenes: [
+          { video_file: "clip", text: "Hook", start_seconds: 1 },
+          { video_file: "clip", start_seconds: 3, end_seconds: 6 },
+        ],
+      },
+      { attachments: [{ file: video, mime_type: "video/mp4" }], ...timing },
+    );
+  const pacing = (timing: object) =>
+    gradeVideo(b5, exported(timing), [artifact], 1).checks;
+  const cuts = (checks: any[]) =>
+    checks.find((check) => check.name.includes("cuts every"))!;
+  assert.equal(cuts(pacing({})).ok, true);
+  const slow = cuts(pacing({ pacing: "Shots average 6.9 s" }));
+  assert.equal(slow.ok, false);
+  assert.equal(slow.detail, "Shots average 6.9 s");
+  assert.equal(
+    pacing({}).find((check) => check.name.includes("hook sticker"))!.ok,
+    true,
+  );
+});
+
 test("missing or malformed tool results do not become successful evidence", () => {
   const evidence = toolEvidence([
     {
@@ -270,11 +323,16 @@ test("browsing for web music is not counted against a creation-only video", () =
   const f6 = videoCases.find((item) => item.id === "F6")!;
   const messages = [
     ...call("browser_click", { tab: "t1", ref: "e1" }),
-    ...call("video_export", { scenes }, { attachments: [{ file: video, mime_type: "video/mp4" }] }),
+    ...call(
+      "video_export",
+      { scenes },
+      { attachments: [{ file: video, mime_type: "video/mp4" }] },
+    ),
   ];
   const named = (entry: typeof f3) =>
     gradeVideo(entry, messages, [artifact], 1).checks.find(
-      (check) => check.name === "No browser inputs during this creation-only task",
+      (check) =>
+        check.name === "No browser inputs during this creation-only task",
     );
   assert.equal(named(f3), undefined);
   assert.equal(named(f6)!.ok, false);

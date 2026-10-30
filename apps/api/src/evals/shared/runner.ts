@@ -560,6 +560,7 @@ export class EvalRunner {
             turn.messages,
             turn.artifacts,
             step.exports!,
+            { demoOfWebApp: entry.demo?.app === "web" },
           );
           checks.push(
             ...result.checks.map((c, n): Check => ({

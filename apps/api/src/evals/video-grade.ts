@@ -43,6 +43,7 @@ export function gradeVideo(
   messages: EvalMessage[],
   artifacts: EvalArtifact[],
   expectedExports: number,
+  options: { demoOfWebApp?: boolean } = {},
 ) {
   const calls = toolEvidence(messages);
   const named = (name: string) => calls.filter((call) => call.name === name);
@@ -83,7 +84,8 @@ export function gradeVideo(
     );
   // Retain the original conservative rule. Navigation is reported for review, not proof of
   // publishing. Finding music on the web needs browser input, so that case is exempt.
-  if (entry.expect.music?.source !== "web") {
+  // Demoing a web app means clicking in it too.
+  if (entry.expect.music?.source !== "web" && !options.demoOfWebApp) {
     const browserInputs = calls.filter((call) =>
       ["browser_click", "browser_type", "browser_press"].includes(call.name),
     );
@@ -162,8 +164,8 @@ export function gradeVideo(
       earlierPreviews.length > 0,
     );
     check(
-      `Export ${index + 1} opens on a hook sticker over an image`,
-      !!(scenes[0]?.image_file && scenes[0]?.text),
+      `Export ${index + 1} opens on a hook sticker${scenes[0]?.video_file ? "" : " over an image"}`,
+      !!((scenes[0]?.image_file || scenes[0]?.video_file) && scenes[0]?.text),
       scenes[0]?.text ?? "",
     );
     const shots: number[] = [];
@@ -181,10 +183,14 @@ export function gradeVideo(
     });
     const average =
       shots.reduce((sum, value) => sum + value, 0) / Math.max(1, shots.length);
+    // A clip scene's length is only known to the tool, which reports slow pacing.
+    const clips = scenes.some((scene) => scene.video_file);
     check(
       `Export ${index + 1} cuts every 2–3 s on average`,
-      average <= 3,
-      `${shots.length} shots, mean ${average.toFixed(1)} s, longest ${Math.max(0, ...shots).toFixed(1)} s`,
+      clips ? !call.result?.pacing : average <= 3,
+      clips
+        ? (call.result?.pacing ?? "Tool reported no slow pacing")
+        : `${shots.length} shots, mean ${average.toFixed(1)} s, longest ${Math.max(0, ...shots).toFixed(1)} s`,
     );
     check(
       entry.expect.brandOverride
