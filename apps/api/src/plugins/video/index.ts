@@ -75,6 +75,15 @@ const clipArgs = z
               .describe(
                 "Headline sticker over an image or clip, or a text card without either.",
               ),
+            says: z
+              .string()
+              .trim()
+              .min(1)
+              .max(200)
+              .optional()
+              .describe(
+                "With voiceover_file: the first words of the voiceover this scene goes with, as spoken. The scene starts when they are spoken; the scene before it is held or cut to fit.",
+              ),
             duration_seconds: z
               .number()
               .min(0.5)
@@ -296,6 +305,53 @@ function speechRanges(transcript: Transcript) {
   return ranges;
 }
 
+const spokenWord = (text: string) =>
+  text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+
+/** Moves each scene that declares `says` to the moment those words are spoken. */
+export function alignScenes(
+  scenes: { says?: string }[],
+  durations: number[],
+  transcript: Transcript,
+) {
+  const words = (transcript.words ?? []).filter((w) => w.type === "word");
+  const spoken = words.map((w) => spokenWord(w.text));
+  const aligned = [...durations];
+  let from = 0;
+  let elapsed = 0;
+  scenes.forEach((scene, index) => {
+    if (scene.says) {
+      const wanted = scene.says.split(/\s+/).map(spokenWord).filter(Boolean);
+      let at = -1;
+      for (let i = from; at < 0 && i + wanted.length <= spoken.length; i++)
+        if (wanted.every((word, n) => spoken[i + n] === word)) at = i;
+      if (at < 0)
+        throw new HttpError(
+          400,
+          `Scene ${index + 1} says "${scene.says}", which is not spoken after the previous scene's words. Quote the voiceover exactly and keep scenes in spoken order. It says: ${voiceoverLines(
+            transcript,
+          )
+            .map((line) => line.text)
+            .join(" ")}`,
+        );
+      from = at + wanted.length;
+      const target = Math.round((words[at].start ?? 0) * 1000);
+      if (index > 0) {
+        const previous = aligned[index - 1] + target - elapsed;
+        if (previous < 500)
+          throw new HttpError(
+            400,
+            `Scene ${index} would last ${(previous / 1000).toFixed(2)} s because scene ${index + 1}'s words start at ${(target / 1000).toFixed(1)} s; a scene needs at least 0.5 s. Remove a scene or say something earlier.`,
+          );
+        aligned[index - 1] = previous;
+        elapsed = target;
+      }
+    }
+    elapsed += aligned[index];
+  });
+  return aligned;
+}
+
 function voiceoverLines(transcript: Transcript) {
   const lines: { at_seconds: number; text: string }[] = [];
   let current: (typeof lines)[number] | undefined;
@@ -345,11 +401,14 @@ async function prepare(context: PluginContext, clip: Clip) {
       ? clipTiming(scene, videos.get(scene.video_file)!.seconds)
       : undefined,
   );
-  const durations = clip.scenes.map(
+  const transcript = voice ? await transcriptFor(context, voice) : undefined;
+  const planned = clip.scenes.map(
     (scene, index) =>
       clips[index]?.duration_ms ?? Math.round(scene.duration_seconds! * 1000),
   );
-  const transcript = voice ? await transcriptFor(context, voice) : undefined;
+  const durations = transcript
+    ? alignScenes(clip.scenes, planned, transcript)
+    : planned;
   const originalMs = durations.reduce((sum, value) => sum + value, 0);
   const speechMs = transcript
     ? Math.max(0, ...(transcript.words ?? []).map((word) => word.end ?? 0)) *
@@ -417,6 +476,16 @@ async function prepare(context: PluginContext, clip: Clip) {
         ? brand
         : "No brand colours are saved in the Brand Profile; template defaults were used.",
       ...(transcript && { voiceover_lines: voiceoverLines(transcript) }),
+      ...(clip.scenes.some((scene) => scene.says) && {
+        scene_starts: clip.scenes.map((scene, index) => ({
+          scene: index + 1,
+          at_seconds:
+            Math.round(
+              durations.slice(0, index).reduce((sum, ms) => sum + ms, 0) / 100,
+            ) / 10,
+          ...(scene.says && { says: scene.says }),
+        })),
+      }),
       ...(extension > 0 && {
         note: `The last scene was extended by ${(extension / 1000).toFixed(1)} s to cover the voiceover.`,
       }),

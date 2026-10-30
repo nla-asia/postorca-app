@@ -22,6 +22,7 @@ import {
 import { loadFile, saveFile, fileRef } from "../src/storage.js";
 import { executeTool } from "../src/tools/index.js";
 import { loadPluginState } from "../src/plugins/service.js";
+import { alignScenes } from "../src/plugins/video/index.js";
 import { temporaryPostgres } from "./postgres.js";
 
 const secret = "media-suite-test-secret-at-least-32-characters";
@@ -565,5 +566,59 @@ test("video rejects foreign files before rendering, and reports an offline deskt
       scenes: [{ text: "Hello", duration_seconds: 1 }],
     }),
     /not connected/,
+  );
+});
+
+test("scenes that declare their words start when those words are spoken", () => {
+  const word = (text: string, start: number) => ({
+    text,
+    type: "word",
+    start,
+    end: start + 0.3,
+  });
+  const transcript = {
+    words: [
+      word("I", 0.2),
+      word("open", 0.5),
+      word("Streaks.", 0.9),
+      word("I", 4),
+      word("hit", 4.3),
+      word("recap.", 4.6),
+      word("I", 9),
+      word("copy.", 9.3),
+    ],
+  } as any;
+  const scenes = [
+    { says: "I open" },
+    { says: "I hit recap" },
+    {},
+    { says: "I copy" },
+  ];
+  // Scene 1 is held to 4 s; scene 3 is cut to fill the 5 s to the last line.
+  assert.deepEqual(
+    alignScenes(scenes, [2000, 3000, 3000, 1000], transcript),
+    [4000, 3000, 2000, 1000],
+  );
+  // Plain scenes keep their planned lengths.
+  assert.deepEqual(
+    alignScenes([{}, {}], [2000, 3000], transcript),
+    [2000, 3000],
+  );
+  assert.throws(
+    () => alignScenes([{}, { says: "sixteen" }], [1000, 1000], transcript),
+    /not spoken/,
+  );
+  assert.throws(
+    () =>
+      alignScenes(
+        [{ says: "I hit" }, { says: "I open" }],
+        [1000, 1000],
+        transcript,
+      ),
+    /spoken order/,
+  );
+  assert.throws(
+    () => alignScenes([{}, { says: "I open" }], [1000, 1000], transcript),
+    /at least 0.5 s/,
   );
 });
