@@ -74,7 +74,7 @@ Look at every shot before using it: open screenshots with `read_file` (from the 
 
 ## Deliver
 
-Deliver each finished shot with create_artifact (kind image or video, content the file's ref), titled for its place in the demo ("2 – Payoff: idea in the Inbox"). Then continue to the content when the task asks for it:
+Deliver each shot with create_artifact (kind image or video, content the file's ref) as soon as it is captured and checked, not all at the end: a turn has a limited number of actions, and a shot delivered early is never lost. Title it for its place in the demo ("2 – Payoff: idea in the Inbox"). Then continue to the content when the task asks for it:
 
 - **A demo video:** activate the video plugin, read its video-product-demo skill and build it from these shots.
 - **A screenshot post:** the screenshot (or two, before and after) plus the post text written with the create-content skill, built on the demo's angle.
