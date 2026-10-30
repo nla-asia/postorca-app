@@ -192,19 +192,43 @@ export function gradeDemoCapture(
     .filter((c) => c.name === "computer_type")
     .map((c) => String(c.args.text ?? ""));
   const firstStart = starts.length ? index(starts[0]) : -1;
+  const appWindows = (c: any) =>
+    new Set<string>(
+      (c.result?.apps ?? [])
+        .filter((app: any) =>
+          opensApp(entry.app as "maps" | "clock" | "simulator", app),
+        )
+        .flatMap((app: any) => (app.windows ?? []).map((w: any) => String(w.id))),
+    );
+  const windowsOfApp = new Set<string>(
+    ok
+      .filter((c) => ["computer_list_apps", "computer_open"].includes(c.name))
+      .flatMap((c) => [...appWindows(c)]),
+  );
   const checks: EvalCheck[] = [
     { name: "Turn completed", passed: evidence.status === "completed" },
     {
+      // An app that is already running counts once its window is actually used.
       name: "Opened the app being demonstrated",
-      passed: ok.some((c) =>
+      passed:
         entry.app === "web"
-          ? c.name === "browser_open" &&
-            String(c.args.url ?? "").startsWith(entry.url ?? "-")
-          : c.name === "computer_open" &&
-            (c.result.apps ?? []).some((app: any) =>
-              opensApp(entry.app as "maps" | "clock" | "simulator", app),
+          ? ok.some(
+              (c) =>
+                c.name === "browser_open" &&
+                String(c.args.url ?? "").startsWith(entry.url ?? "-"),
+            )
+          : ok.some(
+              (c) =>
+                c.name === "computer_open" &&
+                (c.result.apps ?? []).some((app: any) =>
+                  opensApp(entry.app as "maps" | "clock" | "simulator", app),
+                ),
+            ) ||
+            ok.some(
+              (c) =>
+                ["computer_observe", ...inputNames].includes(c.name) &&
+                windowsOfApp.has(String(c.args.window)),
             ),
-      ),
     },
     ...(entry.read_work
       ? [
