@@ -148,6 +148,23 @@ export const usageFetch: typeof fetch = async (input, init) => {
     }
   } else if (body instanceof FormData)
     args = Object.fromEntries(body.entries());
+  // Meta ASR carries model/settings in a JSON multipart part, not flat fields.
+  if (
+    provider === "meta" &&
+    url.pathname === "/v1/asr/transcribe" &&
+    body instanceof FormData
+  ) {
+    const part = body.get("request");
+    try {
+      const parsed = JSON.parse(
+        part instanceof Blob ? await part.text() : String(part),
+      );
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+        args = parsed;
+    } catch {
+      /* missing metadata is rejected by reservation before dispatch */
+    }
+  }
   const operation =
     url.pathname === "/v1/responses"
       ? "responses"
@@ -161,7 +178,9 @@ export const usageFetch: typeof fetch = async (input, init) => {
               ? "sound_effect"
               : url.pathname === "/v1/music"
                 ? "music"
-                : url.pathname === "/v1/speech-to-text"
+                : ["/v1/speech-to-text", "/v1/asr/transcribe"].includes(
+                      url.pathname,
+                    )
                   ? "transcription"
                   : "catalog";
   const model = safeId(args.model ?? args.model_id) ?? "unspecified";
@@ -287,6 +306,18 @@ export const usageFetch: typeof fetch = async (input, init) => {
       Array.isArray(data?.data)
     )
       usage.meters.generated_images = data.data.length;
+    if (
+      provider === "meta" &&
+      operation === "transcription" &&
+      response?.ok &&
+      typeof data?.audioDurationMs === "number" &&
+      Number.isFinite(data.audioDurationMs) &&
+      data.audioDurationMs >= 0
+    ) {
+      usage.meters.billed_audio_seconds = Math.floor(
+        data.audioDurationMs / 1000,
+      );
+    }
     if (provider === "elevenlabs" && response?.ok) {
       const characterCost = response.headers.get("character-cost");
       if (

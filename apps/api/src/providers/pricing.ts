@@ -11,6 +11,18 @@ const perMillion = (meter: string, amount: string) => ({
   perUnits: 1_000_000,
 });
 export const PROVIDER_PRICING = [
+  {
+    enabled: true,
+    id: "meta-muse-voice-transcribe-1.0-2026-10-30",
+    source: "https://dev.meta.ai/docs/pricing-rate-limits",
+    provider: "meta",
+    model: "muse-voice-transcribe-1.0",
+    operation: "transcription",
+    currency: "USD",
+    effectiveFrom: "2026-10-30T00:00:00Z",
+    // Meta rounds processed audio down to whole seconds.
+    prices: [{ meter: "billed_audio_seconds", amount: "0.18", perUnits: 3600 }],
+  },
   ...[false, true].map((long) => ({
     enabled: true,
     id: `openai-luna-${long ? "long" : "short"}-2026-10-27`,

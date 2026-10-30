@@ -10,6 +10,7 @@ import {
   createElevenLabsProviderFromEnv,
   ElevenLabsError,
 } from "../../providers/elevenlabs.js";
+import { createTranscriptionProviderFromEnv } from "../../providers/transcription.js";
 import { loadSkill } from "../../skills/load.js";
 import {
   describeFile,
@@ -318,7 +319,7 @@ export const mediaPlugin: PluginDefinition = {
     ),
     mediaTool(
       "media_transcribe",
-      "Transcribe saved audio or an HTTPS media URL. Supply exactly one of file/source_url. Returns text, word times and optional speakers.",
+      "Transcribe saved audio or an HTTPS media URL. Supply exactly one of file/source_url. Returns text, provider-supported word or turn times, and optional speakers. Meta accepts recordings up to 10 minutes; video captions use a separate word-timing path.",
       z
         .object({
           file: text.optional(),
@@ -333,19 +334,21 @@ export const mediaPlugin: PluginDefinition = {
             400,
             "Provide exactly one of file or source_url.",
           );
-        const provider = audioProvider();
+        const provider = createTranscriptionProviderFromEnv();
+        if (!provider)
+          throw new HttpError(
+            503,
+            `Transcription is off. Set ${keyFor("transcription")} on the server.`,
+          );
         const settings = {
-          modelId: "scribe_v2",
           diarize: args.diarize,
           languageCode: args.language_code,
-          timestampsGranularity: "word" as const,
         };
         return provider.transcribe(
           args.file
             ? {
                 ...settings,
                 file: await ownedBlob(context, args.file, "audio"),
-                filename: "audio.mp3",
               }
             : { ...settings, sourceUrl: args.source_url! },
           { signal: context.signal },
