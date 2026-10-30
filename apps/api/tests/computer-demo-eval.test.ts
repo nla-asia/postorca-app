@@ -278,3 +278,13 @@ test("the idea-to-demo case judges how the recording looks", () => {
   });
   assert.ok(!other.some((c) => named.test(c.name)));
 });
+
+test("the idea-to-demo case carries its fixture and prerequisites", async () => {
+  const { builtinCases } = await import("../src/evals/shared/catalog.js");
+  const entry = builtinCases().find(
+    (c) => c.id === "content-demo-tide-from-idea",
+  )!;
+  assert.ok(entry.fixture);
+  assert.ok(entry.fixture.prepare.args[0].endsWith("tide-fixture.mjs"));
+  assert.ok(entry.prerequisites.includes("fixture_ready"));
+});

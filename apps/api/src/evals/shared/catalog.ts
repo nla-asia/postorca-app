@@ -125,13 +125,11 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       ],
       criteria: criteria(c.criteria),
       demo: c,
-      ...(c.read_work
-        ? {
-            fixture: c.fixture_script
-              ? fixture(c.fixture_script)
-              : workFixture(),
-          }
-        : {}),
+      ...(c.fixture_script
+        ? { fixture: fixture(c.fixture_script) }
+        : c.read_work
+          ? { fixture: workFixture() }
+          : {}),
       prerequisites: [
         "desktop_connected",
         "screen_recording_permission",
