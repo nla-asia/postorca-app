@@ -222,8 +222,8 @@ test("an app that is already running counts as opened once its window is used", 
   assert.equal(opened("12"), true);
 });
 
-test("the commit-to-demo case judges how the recording looks", () => {
-  const entry = demo("demo-tide-from-commits");
+test("the idea-to-demo case judges how the recording looks", () => {
+  const entry = demo("demo-tide-from-idea");
   const stop = (id: string, seconds: number) => ({
     name: "screen_record_stop",
     args: { id },

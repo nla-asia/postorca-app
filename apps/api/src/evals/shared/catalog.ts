@@ -137,7 +137,9 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
         "screen_recording_permission",
         ...(c.app === "simulator" ? ["simulator_iphone_booted"] : []),
         ...(c.app === "web" ? ["browser_connected"] : []),
-        ...(c.read_work ? ["work_fixture_project_added", "fixture_ready"] : []),
+        ...(c.read_work || c.fixture_script
+          ? ["work_fixture_project_added", "fixture_ready"]
+          : []),
         ...(c.video ? ["media_providers_ready"] : []),
       ],
       source: "apps/api/src/evals/computer-demo-cases.ts",
@@ -277,12 +279,18 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
         title: c.name,
         turns: [{ brief: routineInstructions(c.skill) }],
         criteria: criteria(c.criteria),
-        routine: { skill: c.skill, platform: "X" },
-        ...(c.work ? { fixture: workFixture() } : {}),
+        routine: { skill: c.skill, platform: c.platform ?? "X" },
+        ...(c.work
+          ? {
+              fixture: c.fixture_script
+                ? fixture(c.fixture_script)
+                : workFixture(),
+            }
+          : {}),
         prerequisites: [
           "brand_profile_ready",
           "desktop_connected",
-          "browser_connected",
+          ...(c.proposes ? [] : ["browser_connected"]),
           ...(c.work
             ? [
                 "work_fixture_project_added",

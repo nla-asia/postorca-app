@@ -261,8 +261,8 @@ over merely asserting that a tool was invoked.
 
 ## Existing case migration
 
-All 30 agent cases are registered: Browser 5, Computer 8, Media 5, Writing 4,
-Ideas 3, Content 5.
+All 31 agent cases are registered: Browser 5, Computer 8, Media 5, Writing 4,
+Ideas 4, Content 5.
 
 ### Categories
 
@@ -323,15 +323,24 @@ already used, so clear those from its `work-ideas.md` memory before each attempt
 
 `scripts/evals/tide-fixture.mjs` rebuilds Tide, a good-looking web todo app, as a git
 repository at `~/PostOrca Evals/tide` with three weeks of commits, and serves it at
-`http://127.0.0.1:4120`, for `content-demo-tide-from-commits`. The recent work is
-deliberately mixed: quick add (the demo), a two-tab sync fix (a text post), and a
-refactor and dependency bump (not content). `notes/beta.md` says what testers asked for.
-Each rebuild restarts from the sample tasks; `/?reset` restores them within an attempt.
+`http://127.0.0.1:4120`. The recent work is deliberately mixed: quick add (the demo), a
+two-tab sync fix (a text post), and a refactor and dependency bump (not content).
+`notes/beta.md` says what testers asked for. Each rebuild restarts from the sample tasks;
+`/?reset` restores them within an attempt.
 
-Add `~/PostOrca Evals/tide` to the founder's Brand Profile projects once. Clear Tide
-from `work-ideas.md` memory before repeat attempts, or the skill treats it as used.
-This case also measures the recording: failed input on camera, clip lengths and takes.
-It is the first of a series: web, then a desktop app, then a mobile app.
+Two separate evals use it, matching the product:
+
+- `ideas-tide-from-commits`: the routine reads the work and proposes content for the
+  founder to approve. It only proposes: no browsing, recording or video. Supply `account`
+  and `account url` for a non-X account, and clear Tide from its `work-ideas.md` memory
+  before repeat attempts.
+- `content-demo-tide-from-idea`: starts where "Create content from this idea" does, with
+  a fixed approved idea in the words `queueIdeaContent` sends, so recording runs can be
+  compared. It records and edits the video, and measures failed input on camera, clip
+  lengths and takes.
+
+Add `~/PostOrca Evals/tide` to the founder's Brand Profile projects once. Web comes first,
+then a desktop app, then a mobile app.
 
 ### Product-demo cases (Computer level 2, Content level 3)
 

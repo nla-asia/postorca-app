@@ -34,7 +34,7 @@ Refer to the founder by name, or as "they". Do not guess pronouns.
 ## Process
 
 1. Read the idea and the founder's note in the task. Search your memory for the founder's stories (`stories.md`) and keep any that fit this idea.
-2. Activate the browser plugin, open the founder's account from the brand profile, and read their recent posts to learn how they write and what they already said. If the reference post helps, open it to see its structure. Do not engage with anything. Close the tabs you opened.
+2. Read the founder's saved recent posts with `list_my_posts` to learn how they write and what they already said; don't open their social accounts for this. If a reference post on another site helps, activate the browser plugin and open just that post to see its structure. Do not engage with anything. Close the tabs you opened.
 3. Write the post. Then check it against voice.md line by line (length and layout, punctuation and capitalization, emojis and hashtags, words they never use, the rules from edits) and fix what doesn't match. Read it once more as a stranger scrolling past: if the opening explains too much, a line is generic, the company appears too early, or it breaks the platform limits, fix it before delivering.
 
 ## Deliver
