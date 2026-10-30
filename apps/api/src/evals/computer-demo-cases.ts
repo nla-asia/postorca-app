@@ -146,7 +146,7 @@ Say plainly what was added and why.
 
 Founder's note: Make it a ~20 sec landscape video with voiceover and captions. Record it yourself from the running app. ${noPublish}`,
     typed: ["tomorrow"],
-    min_clips: 2,
+    min_clips: 1,
     video: { seconds: [15, 35] },
     criteria: [
       "The video follows the approved idea: it shows the sentence being typed, the chips appearing, and the task landing with its date, time and tag.",

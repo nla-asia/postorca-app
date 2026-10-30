@@ -15,7 +15,7 @@ From the demo plan, list every shot, in the order the demo shows them. For each:
 
 - **Purpose**: the viewer's problem, the payoff, or the setup (see the work-content-ideas skill's demo shape: problem, payoff, how little it takes). The payoff gets the most care.
 - **Screen**: where it is and the state it needs (which page, what data on screen).
-- **Still or clip**: follow the plan's format. For a video, every shot is a clip: record the action that gets to each screen (the click into the payoff, the result appearing), not just the screen, even when the screen itself doesn't move; a video built from stills looks like a slideshow. For a screenshot post, stills. Clips are short, one per step (3–15 seconds), and a video needs at least two separately recorded clips: stop after each step and record the next, rather than cutting one recording into scenes; several short clips beat one long take.
+- **Still or clip**: follow the plan's format. For a video, every shot is a clip: record the action that gets to each screen (the click into the payoff, the result appearing), not just the screen, even when the screen itself doesn't move; a video built from stills looks like a slideshow. For a screenshot post, stills. Clips are short, one per step (3–15 seconds); several short clips beat one long take.
 - **Shape**: capture once, at full size: the video skill cuts the portrait (9:16, for Instagram, TikTok, Shorts) and landscape (16:9 or square, for X, LinkedIn) versions the founder's accounts need from the same shots. A desktop window is captured as it is; a phone screen is already portrait.
 
 Keep only the shots the demo needs. Three good shots beat ten.
@@ -44,7 +44,7 @@ Then start the recording, wait a second, perform the steps at a calm pace (with 
 
 ## 3. Who captures each shot
 
-**First, find the running app.** Read the project's README and scripts for how it runs and its local address, and open that address in the browser plugin before anything else. If it isn't running and you have no tool to start it, ask the founder to start it. Never type commands into a terminal, and don't start a server of your own.
+**First, find the running app.** Read the project's README and scripts for how it runs and its local address, and open that address in the browser plugin before anything else. If it isn't running, ask the founder to start it.
 
 **First, look for a web way in.** Many desktop and mobile apps can also run as a web page, and the browser is the path you can drive yourself. Check the project's code (package.json scripts, config, framework): an Electron app's renderer usually has a dev server you can open in the browser (often a localhost port); React Native with Expo or react-native-web, Flutter with web support, Ionic or Capacitor, and Tauri apps often run on the web too. If the screens the demo needs work there, capture them as a website. Be smart about it, not stubborn: parts that need the native shell (file pickers, device features, notifications, native menus) may be missing or broken on the web, and the demo must look like the real product. If the web version differs on the screens that matter, use the native app. A local dev server must already be running; if it isn't, say which command starts it in the guide (from the project's scripts) rather than guessing.
 
