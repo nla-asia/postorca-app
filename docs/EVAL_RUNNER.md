@@ -64,6 +64,7 @@ npm run eval -- review <attempt-id> --review .data/completed-review.json
 npm run eval -- regrade <attempt-id> --reason "Evidence-based grader correction"
 npm run eval -- triage <attempt-id> --triage .data/diagnosis.json
 npm run eval -- report
+npm run eval -- benchmark --out .data/benchmark.html
 ```
 
 `POSTORCA_EVAL_API` defaults to `http://127.0.0.1:3001/api`.
@@ -403,6 +404,64 @@ contract, parameters and runtime. Inspect each result before another paid run.
 gives every attempt and the current consecutive passing streak; failures,
 blocked attempts and unreviewed attempts reset the streak. No batch command
 automatically chains paid runs before required independent review.
+
+## Model benchmark
+
+`benchmark` compares models from the stored attempts. It reads `case.json`,
+`run.json` and `result.json` and never regrades or writes into an attempt.
+
+```sh
+npm run eval -- benchmark --out .data/benchmark.html   # or .md; JSON goes to stdout
+npm run eval -- benchmark --plan luna-writing --out .data/luna-writing.md
+```
+
+Rows are category × level, plus each category over all levels; columns are models.
+Each cell gives the pass rate, the current passing streak, and the median time and
+tool calls over graded attempts. The case table shows the same per case.
+
+- **Pass rate** = passes / (passes + agent failures + untriaged failures). A failure
+  is the agent's when any triage finding on the agent side covers a failed or
+  blocked check. Recovered tool errors alone don't make it the agent's.
+- Eval-defect and infrastructure failures, blocked, unreviewed and stale attempts
+  are shown in the cell ("not counted") but left out of the pass rate and streak:
+  they say nothing about the model. An untriaged failure counts against it until
+  it is triaged.
+- **Stale**: the result's grading policy, case or evidence changed since grading.
+  Run `inspect`/`regrade` on the attempt to count it again.
+- A model **leads** a row (highlighted, and listed under "Where each model is
+  stronger") when it and at least one other model have 3 or more scored attempts
+  there and its pass rate is strictly the highest.
+- Cost stays empty until the runner records it (see Evidence and review).
+
+### Running the same cases on another model
+
+The model is chosen only in `apps/api/src/settings.ts` (`settings.orca`); keys never
+choose it. The API reports the model it serves at `/api/health` (`orca`), and `run`
+refuses an attempt whose declared model differs, so an attempt can't be recorded
+under the wrong model. To benchmark a model:
+
+1. Make a plan: the cases (ids, categories or `level-N`, comma-separated) and how
+   many attempts each gets.
+   ```sh
+   npm run eval -- benchmark-plan luna-writing --model gpt-6-luna --cases writing --repeats 3
+   ```
+2. Switch the serving model: set `settings.orca` to
+   `{ provider: "openai", model: "gpt-6-luna" }` in the checkout the local API runs
+   from, without committing it. Only priced models start. Restarting the API fails
+   running Orca turns, so wait until none are queued or running. Check
+   `curl -s http://127.0.0.1:3001/api/health` shows the model.
+3. Set `"model": "gpt-6-luna"` in the observer config, then repeat for each attempt:
+   ```sh
+   npm run eval -- benchmark-next luna-writing --config .data/eval-config.json
+   npm run eval -- run <attempt-id>
+   # review and triage the result as usual
+   ```
+   `benchmark-next` prepares the case with the fewest attempts in the plan. It
+   refuses while the previous attempt is unrun or awaiting review, and when the
+   config or this checkout's `settings.orca` names another model. Paid runs are
+   never chained unseen. Refresh the config's readiness checks before each run.
+4. When the plan reports `done`, put `settings.orca` back, restart the API, and run
+   `benchmark`. Plans live in `.data/evals/benchmarks/<name>.json`.
 
 ## Validation
 

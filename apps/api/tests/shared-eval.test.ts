@@ -107,7 +107,8 @@ function fakeApi(
         return Response.json(task.turns.at(-1));
       }
     }
-    if (path.endsWith("/health")) return Response.json({ ok: true });
+    if (path.endsWith("/health"))
+      return Response.json({ ok: true, orca: "fixture-model" });
     if (path === "/api/tasks") return Response.json([]);
     if (path === "/api/tasks/task-1") return Response.json(task);
     return new Response("Missing", { status: 404 });
