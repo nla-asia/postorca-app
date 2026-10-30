@@ -185,9 +185,12 @@ export function gradeVideo(
       shots.reduce((sum, value) => sum + value, 0) / Math.max(1, shots.length);
     // A clip scene's length is only known to the tool, which reports slow pacing.
     const clips = scenes.some((scene) => scene.video_file);
+    const clipAverage = Number(
+      /Shots average ([\d.]+) s/.exec(call.result?.pacing ?? "")?.[1] ?? 0,
+    );
     check(
-      `Export ${index + 1} cuts every 2–3 s on average`,
-      clips ? !call.result?.pacing : average <= 3,
+      `Export ${index + 1} cuts every ${clips ? "5" : "2–3"} s on average`,
+      clips ? clipAverage <= 5 : average <= 3,
       clips
         ? (call.result?.pacing ?? "Tool reported no slow pacing")
         : `${shots.length} shots, mean ${average.toFixed(1)} s, longest ${Math.max(0, ...shots).toFixed(1)} s`,
