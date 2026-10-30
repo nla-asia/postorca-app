@@ -473,6 +473,58 @@ test("opening an already running app focuses its window without launching anothe
   assert.deepEqual(actions, ["focus"]);
 });
 
+test("a sheet in front of the selected window is named and can be observed and clicked", async () => {
+  const f = fixture();
+  await f.ready();
+  const sheet = {
+    id: "8",
+    pid: 55,
+    title: "Untitled",
+    bounds: { x: 0, y: 40, width: 200, height: 150 },
+  };
+  const original = f.controller.native;
+  f.controller.native = async (request) => {
+    if (request.action !== "focus") return original(request);
+    assert.equal(request.expected_pid, 55);
+    return request.window === "8"
+      ? { window: sheet, foreground: true }
+      : { window: f.window, foreground: false, front: sheet };
+  };
+  await assert.rejects(
+    f.controller.run("computer_observe", { window: "7" }, f.context),
+    /Window 8 \("Untitled"\) of this app is in front.*Observe window 8/,
+  );
+  // The sheet is usable without listing apps again.
+  const shot = await f.controller.run(
+    "computer_observe",
+    { window: "8" },
+    f.context,
+  );
+  assert.deepEqual(shot.capture_bounds, sheet.bounds);
+  await f.controller.run(
+    "computer_click",
+    { window: "8", observation: shot.observation, x: 400, y: 300 },
+    f.context,
+  );
+  assert.deepEqual(f.sent, [
+    ["move", 100, 115],
+    ["click", "left", false],
+  ]);
+});
+test("a covering window of another process is not offered as a target", async () => {
+  const f = fixture();
+  await f.ready();
+  f.controller.native = async () => ({
+    window: f.window,
+    foreground: false,
+    front: { id: "9", pid: 99, title: "Other", bounds: f.window.bounds },
+  });
+  await assert.rejects(
+    f.controller.run("computer_observe", { window: "7" }, f.context),
+    /could not be focused/,
+  );
+  assert.equal(f.controller.windows.has("9"), false);
+});
 test(
   "Windows foreground lock gets one Alt activation retry, but modal windows do not",
   { skip: process.platform !== "win32" },

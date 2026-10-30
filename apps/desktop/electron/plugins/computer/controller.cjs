@@ -291,6 +291,21 @@ class ComputerController {
       );
       this.check(context);
     }
+    const front = result.front;
+    if (
+      focus &&
+      !result.foreground &&
+      front?.id &&
+      front.id !== window &&
+      front.pid === known.pid
+    ) {
+      // A sheet or panel of the same app covers the window; let the caller observe
+      // it directly instead of failing until it is closed.
+      this.windows.set(front.id, { ...front, app_id: known.app_id });
+      throw new Error(
+        `Window ${front.id}${front.title ? ` ("${front.title}")` : ""} of this app is in front of the selected window, such as a sheet or panel. Observe window ${front.id} to use it, or close it first. No task input was sent.`,
+      );
+    }
     if (!result.window || (focus && !result.foreground))
       throw new Error(
         "The target window could not be focused. No task input was sent.",
