@@ -12,6 +12,7 @@ const tools = {
   list_dir: require("./files.cjs").list_dir,
   read_file: require("./files.cjs").read_file,
   upload_file: require("./files.cjs").upload_file,
+  media_transcribe: require("./transcribe.cjs").media_transcribe,
   ...require("./work.cjs"),
   list_capture_targets: require("./screen.cjs").list_capture_targets,
   screen_capture: require("./screen.cjs").screen_capture,

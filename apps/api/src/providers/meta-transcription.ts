@@ -3,12 +3,15 @@ import { z } from "zod";
 import { usageFetch } from "../api-usage/ledger.js";
 import { HttpError } from "../handlers/errors.js";
 import { META_BASE_URL } from "./meta.js";
-import { downloadTranscriptionAudio } from "./transcription-download.js";
-import { transcriptionWav } from "./transcription-audio.js";
-import type {
-  TranscriptionRequest,
-  TranscriptionOptions,
-} from "./transcription.js";
+import type { TranscriptionOptions } from "./transcription.js";
+
+/** Meta's file endpoint takes up to 10 minutes of WAV; the desktop converts it. */
+export const MAX_WAV_BYTES = 32 * 1024 * 1024;
+export type MetaTranscriptionInput = {
+  wav: Blob;
+  diarize?: boolean;
+  languageCode?: string;
+};
 
 const responseSchema = z.object({
   transcript: z.string(),
@@ -63,11 +66,9 @@ export class MetaTranscriptionProvider {
   }
 
   async transcribe(
-    input: TranscriptionRequest,
+    input: MetaTranscriptionInput,
     options: TranscriptionOptions = {},
   ) {
-    if (!!input.file === !!input.sourceUrl)
-      throw new HttpError(400, "Provide exactly one of file or sourceUrl.");
     let language: string | undefined;
     if (input.languageCode) {
       try {
@@ -81,15 +82,16 @@ export class MetaTranscriptionProvider {
         400,
         "That language_code is not supported by Meta transcription. Use a supported language code or omit it for automatic detection.",
       );
+    if (!input.wav.size || input.wav.size - 44 > 600 * 24000 * 2)
+      throw new HttpError(
+        400,
+        "Meta transcription supports recordings up to 10 minutes. Supply a shorter recording.",
+      );
     const signal = AbortSignal.any([
       AbortSignal.timeout(options.timeoutMs ?? 300_000),
       ...(options.signal ? [options.signal] : []),
     ]);
     signal.throwIfAborted();
-    const source =
-      input.file ??
-      (await downloadTranscriptionAudio(input.sourceUrl!, signal));
-    const audio = await transcriptionWav(source, signal);
     const body = new FormData();
     body.set(
       "request",
@@ -105,7 +107,11 @@ export class MetaTranscriptionProvider {
         { type: "application/json" },
       ),
     );
-    body.set("audio", audio, "audio.wav");
+    body.set(
+      "audio",
+      new Blob([input.wav], { type: "audio/wav" }),
+      "audio.wav",
+    );
     const response = await usageFetch(`${META_BASE_URL}/asr/transcribe`, {
       method: "POST",
       headers: {

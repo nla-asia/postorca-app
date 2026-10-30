@@ -1,3 +1,10 @@
+import { withApiUsage } from "../api-usage/ledger.js";
+import { keyFor } from "../config.js";
+import type { Database } from "../db.js";
+import { ownedFile } from "../plugins/media/index.js";
+import type { PluginContext } from "../plugins/types.js";
+import { MAX_WAV_BYTES } from "../providers/meta-transcription.js";
+import { metaTranscriptionFromEnv } from "../providers/transcription.js";
 import express, { Router } from "express";
 import { z } from "zod";
 import { settleDesktopTool } from "../desktop/calls.js";
@@ -25,8 +32,15 @@ const result = z.discriminatedUnion("ok", [
   }),
 ]);
 
+const transcribeQuery = z.object({
+  task_id: z.uuid(),
+  turn_id: z.uuid(),
+  diarize: z.enum(["true", "false"]).optional(),
+  language_code: z.string().min(1).max(40).optional(),
+});
+
 /** HTTP side of the desktop connection. The WebSocket itself is desktop/connections.ts. */
-export function desktopRoutes(secret: string) {
+export function desktopRoutes(secret: string, db: Database) {
   const router = Router();
   // Desktop tools stream files they fetched or the founder chose here, unchanged,
   // with their metadata in a header.
@@ -46,9 +60,18 @@ export function desktopRoutes(secret: string) {
           .min(1)
           .max(120)
           .transform((value) => value.replace(/[\x00-\x1f<>:"/\\|?*]/g, "_")),
-        source_url: z.url({ protocol: /^https?$/ }).max(8192).optional(),
-        download_url: z.url({ protocol: /^https?$/ }).max(8192).optional(),
-        final_url: z.url({ protocol: /^https?$/ }).max(8192).optional(),
+        source_url: z
+          .url({ protocol: /^https?$/ })
+          .max(8192)
+          .optional(),
+        download_url: z
+          .url({ protocol: /^https?$/ })
+          .max(8192)
+          .optional(),
+        final_url: z
+          .url({ protocol: /^https?$/ })
+          .max(8192)
+          .optional(),
         reported_type: z.string().max(200).optional(),
       })
       .strict()
@@ -96,6 +119,62 @@ export function desktopRoutes(secret: string) {
   );
   // Desktop tools read the founder's saved files (e.g. media to edit) by key.
   router.use("/files", authenticateDevice(secret), fileRoutes());
+  // media_transcribe with Meta: the desktop reads the saved audio by ref and sends the
+  // WAV it converted. This route only calls the provider and records the charge.
+  router.get("/audio-file", authenticateDevice(secret), async (req, res) => {
+    const ref = z.string().min(1).max(500).parse(req.query.ref);
+    res.json({
+      key: await ownedFile(
+        { userId: res.locals.userId } as PluginContext,
+        ref,
+        "audio",
+      ),
+    });
+  });
+  router.post(
+    "/transcribe",
+    authenticateDevice(secret),
+    express.raw({ type: "audio/wav", limit: MAX_WAV_BYTES }),
+    async (req, res) => {
+      if (!Buffer.isBuffer(req.body) || !req.body.length)
+        throw new HttpError(400, "Send the audio as WAV.");
+      const query = transcribeQuery.parse(req.query);
+      const userId = res.locals.userId;
+      const {
+        rows: [turn],
+      } = await db.query(
+        "SELECT r.id FROM turns r JOIN tasks t ON t.id=r.task_id WHERE r.id=$1 AND r.task_id=$2 AND t.user_id=$3",
+        [query.turn_id, query.task_id, userId],
+      );
+      if (!turn) throw new HttpError(404, "Turn not found.");
+      const provider = metaTranscriptionFromEnv();
+      if (!provider)
+        throw new HttpError(
+          503,
+          `Transcription is off. Set ${keyFor("transcription")} on the server.`,
+        );
+      const aborted = new AbortController();
+      res.on("close", () => {
+        if (!res.writableFinished) aborted.abort();
+      });
+      res.json(
+        await withApiUsage(
+          { db, userId, taskId: query.task_id, turnId: query.turn_id },
+          () =>
+            provider.transcribe(
+              {
+                wav: new Blob([new Uint8Array(req.body)], {
+                  type: "audio/wav",
+                }),
+                diarize: query.diarize === "true",
+                languageCode: query.language_code,
+              },
+              { signal: aborted.signal },
+            ),
+        ),
+      );
+    },
+  );
   // The desktop posts each tool result here. Delivery may be retried; the tool never is.
   router.post("/tool-result", authenticateDevice(secret), (req, res) => {
     const { executionId, ...outcome } = result.parse(req.body);

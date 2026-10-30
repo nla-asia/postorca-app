@@ -595,7 +595,7 @@ test("Meta transcription reads multipart model metadata, reserves credits and se
     { type: "audio/mpeg" },
   );
   await withApiUsage(s, () =>
-    new MetaTranscriptionProvider("PRIVATE_KEY").transcribe({ file }),
+    new MetaTranscriptionProvider("PRIVATE_KEY").transcribe({ wav: file }),
   );
   const {
     rows: [row],

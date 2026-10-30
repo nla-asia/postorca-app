@@ -11,6 +11,7 @@ import {
   ElevenLabsError,
 } from "../../providers/elevenlabs.js";
 import { createTranscriptionProviderFromEnv } from "../../providers/transcription.js";
+import { settings } from "../../settings.js";
 import { loadSkill } from "../../skills/load.js";
 import {
   describeFile,
@@ -165,6 +166,61 @@ function mediaTool<T extends z.ZodObject>(
 }
 
 const imageArgs = imageOptionsSchema.extend({ title }).strict();
+const transcribeArgs = z
+  .object({
+    file: text.optional(),
+    source_url: z.url({ protocol: /^https$/ }).optional(),
+    diarize: z.boolean().optional(),
+    language_code: text.optional(),
+  })
+  .strict();
+const transcribeDescription =
+  "Transcribe saved audio or an HTTPS media URL. Supply exactly one of file/source_url. Returns text, provider-supported word or turn times, and optional speakers. Meta accepts recordings up to 10 minutes; video captions use a separate word-timing path.";
+/** Meta needs WAV and the server converts nothing, so that choice runs on the desktop. */
+const transcribeTool: PluginToolDefinition =
+  settings.transcription.provider === "meta"
+    ? {
+        name: "media_transcribe",
+        description: transcribeDescription,
+        args: transcribeArgs,
+        parameters: (({ $schema, ...rest }) => rest)(
+          z.toJSONSchema(transcribeArgs),
+        ),
+        runsOn: "desktop",
+        timeoutMs: 420_000,
+      }
+    : mediaTool(
+        "media_transcribe",
+        transcribeDescription,
+        transcribeArgs,
+        async (context, args) => {
+          if (!!args.file === !!args.source_url)
+            throw new HttpError(
+              400,
+              "Provide exactly one of file or source_url.",
+            );
+          const provider = createTranscriptionProviderFromEnv();
+          if (!provider)
+            throw new HttpError(
+              503,
+              `Transcription is off. Set ${keyFor("transcription")} on the server.`,
+            );
+          const settings = {
+            diarize: args.diarize,
+            languageCode: args.language_code,
+          };
+          return provider.transcribe(
+            args.file
+              ? {
+                  ...settings,
+                  file: await ownedBlob(context, args.file, "audio"),
+                }
+              : { ...settings, sourceUrl: args.source_url! },
+            { signal: context.signal },
+          );
+        },
+      );
+
 export const mediaPlugin: PluginDefinition = {
   code: "media",
   name: "Media creation",
@@ -317,43 +373,6 @@ export const mediaPlugin: PluginDefinition = {
           ),
         ),
     ),
-    mediaTool(
-      "media_transcribe",
-      "Transcribe saved audio or an HTTPS media URL. Supply exactly one of file/source_url. Returns text, provider-supported word or turn times, and optional speakers. Meta accepts recordings up to 10 minutes; video captions use a separate word-timing path.",
-      z
-        .object({
-          file: text.optional(),
-          source_url: z.url({ protocol: /^https$/ }).optional(),
-          diarize: z.boolean().optional(),
-          language_code: text.optional(),
-        })
-        .strict(),
-      async (context, args) => {
-        if (!!args.file === !!args.source_url)
-          throw new HttpError(
-            400,
-            "Provide exactly one of file or source_url.",
-          );
-        const provider = createTranscriptionProviderFromEnv();
-        if (!provider)
-          throw new HttpError(
-            503,
-            `Transcription is off. Set ${keyFor("transcription")} on the server.`,
-          );
-        const settings = {
-          diarize: args.diarize,
-          languageCode: args.language_code,
-        };
-        return provider.transcribe(
-          args.file
-            ? {
-                ...settings,
-                file: await ownedBlob(context, args.file, "audio"),
-              }
-            : { ...settings, sourceUrl: args.source_url! },
-          { signal: context.signal },
-        );
-      },
-    ),
+    transcribeTool,
   ],
 };

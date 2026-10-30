@@ -255,24 +255,6 @@ test("audio tools discover voices and preserve the original tool models, duratio
       content: result.ref,
     });
   }
-  const transcript = await owner.call("media_transcribe", {
-    file: speech.ref,
-    diarize: true,
-  });
-  assert.equal(transcript.text, "Ship it.");
-  assert.equal(transcript.timestamp_granularity, "turn");
-  assert.equal(transcript.words, undefined);
-  const transcriptionRequest = requests.at(-1)!;
-  assert.equal(
-    transcriptionRequest.url,
-    "https://api.meta.ai/v1/asr/transcribe",
-  );
-  const form = transcriptionRequest.init.body as FormData;
-  assert.equal(
-    JSON.parse(await (form.get("request") as Blob).text()).mode,
-    "DIARIZATION",
-  );
-  assert.equal((form.get("audio") as Blob).type, "audio/wav");
   const speechRequest = [...requests]
     .reverse()
     .find((request) => request.url.includes("/text-to-speech"))!;
@@ -292,7 +274,6 @@ test("audio tools discover voices and preserve the original tool models, duratio
     true,
   );
   const before = requests.length;
-  await assert.rejects(owner.call("media_transcribe", {}), /exactly one/);
   await assert.rejects(
     owner.call("media_generate_music", {
       title: "Too long",
@@ -307,11 +288,6 @@ test("audio tools discover voices and preserve the original tool models, duratio
       prompt: "Blue",
     }),
     /saved image/,
-  );
-  const other = await founder("media");
-  await assert.rejects(
-    other.call("media_transcribe", { file: speech.ref }),
-    /File not found/,
   );
   assert.equal(requests.length, before);
 });
@@ -703,4 +679,70 @@ test("captions take the script's words and keep the transcript's timing", () => 
     uneven.words?.map((w) => w.text),
     ["sixteen", "check-ins"],
   );
+});
+
+test("the desktop's WAV reaches Meta through the thin route, charged to its own turn", async () => {
+  const owner = await founder("media");
+  const speech = await owner.call("media_generate_speech", {
+    title: "Voice",
+    voice_id: "v1",
+    text: "Ship it.",
+  });
+  const device = issueDeviceToken(owner.userId, randomUUID(), secret);
+  const headers = {
+    Authorization: `Bearer ${device}`,
+    "Content-Type": "audio/wav",
+  };
+  const wav = Buffer.concat([Buffer.from("RIFF"), Buffer.alloc(4096)]);
+  const query = `task_id=${owner.taskId}&turn_id=${owner.turnId}`;
+
+  const audio = await fetch(`${base}/desktop/audio-file?ref=${speech.ref}`, {
+    headers,
+  });
+  assert.equal(audio.status, 200);
+  assert.match(((await audio.json()) as any).key, /\.mp3$/);
+
+  const sent = await fetch(`${base}/desktop/transcribe?${query}&diarize=true`, {
+    method: "POST",
+    headers,
+    body: wav,
+  });
+  assert.equal(sent.status, 200);
+  const transcript = (await sent.json()) as any;
+  assert.equal(transcript.timestamp_granularity, "turn");
+  assert.equal(transcript.words, undefined);
+  const request = requests.at(-1)!;
+  assert.equal(request.url, "https://api.meta.ai/v1/asr/transcribe");
+  const form = request.init.body as FormData;
+  assert.equal(
+    JSON.parse(await (form.get("request") as Blob).text()).mode,
+    "DIARIZATION",
+  );
+  assert.equal((form.get("audio") as Blob).size, wav.length);
+  const {
+    rows: [row],
+  } = await fixture.db.query(
+    "SELECT operation, provider FROM api_requests WHERE turn_id=$1 AND operation='transcription'",
+    [owner.turnId],
+  );
+  assert.deepEqual(row, { operation: "transcription", provider: "meta" });
+
+  // Another founder can use neither this turn nor this audio.
+  const other = await founder("media");
+  const before = requests.length;
+  const otherHeaders = {
+    Authorization: `Bearer ${issueDeviceToken(other.userId, randomUUID(), secret)}`,
+    "Content-Type": "audio/wav",
+  };
+  const stolen = await fetch(`${base}/desktop/transcribe?${query}`, {
+    method: "POST",
+    headers: otherHeaders,
+    body: wav,
+  });
+  assert.equal(stolen.status, 404);
+  const file = await fetch(`${base}/desktop/audio-file?ref=${speech.ref}`, {
+    headers: otherHeaders,
+  });
+  assert.equal(file.status, 404);
+  assert.equal(requests.length, before);
 });
