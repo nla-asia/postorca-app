@@ -139,6 +139,7 @@ export const caseSchema = z
         app: z.enum(["maps", "clock", "simulator", "web"]),
         url: z.string().optional(),
         read_work: z.boolean().optional(),
+        fixture_script: z.string().optional(),
         brief: z.string(),
         typed: z.array(z.string()),
         min_clips: z.number().int().positive(),

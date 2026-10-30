@@ -125,7 +125,13 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       ],
       criteria: criteria(c.criteria),
       demo: c,
-      ...(c.read_work ? { fixture: workFixture() } : {}),
+      ...(c.read_work
+        ? {
+            fixture: c.fixture_script
+              ? fixture(c.fixture_script)
+              : workFixture(),
+          }
+        : {}),
       prerequisites: [
         "desktop_connected",
         "screen_recording_permission",
@@ -140,71 +146,73 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
   // F cases test one video process (Media level 2); C cases are end-to-end Content.
   const kept = ["F3", "F6", "C1"];
   const contentIds: Record<string, string> = { C1: "reel-with-music" };
-  const videos = videoCases.filter((c) => kept.includes(c.id)).map((c) => {
-    const parent =
-      "of" in c.start
-        ? videoCases.find((v) => v.id === (c.start as { of: string }).of)!
-        : undefined;
-    const first = parent ?? c;
-    const expected = Array.isArray(c.expect.exports)
-      ? c.expect.exports
-      : [c.expect.exports];
-    const turns =
-      "brief" in c.start
-        ? [
-            {
-              brief: c.start.brief,
-              video_case: c.id,
-              video_expect: c.expect,
-              exports: expected[0],
-            },
-          ]
-        : [
-            {
-              brief: (first.start as { brief: string }).brief,
-              video_case: first.id,
-              video_expect: first.expect,
-              exports: Number(first.expect.exports),
-            },
-            ...c.start.messages.map((brief, i) => ({
-              brief,
-              video_case: c.id,
-              video_expect: c.expect,
-              exports: expected[i],
-            })),
-          ];
-    const content = c.id in contentIds;
-    return caseSchema.parse({
-      id: content ? `content-${contentIds[c.id]}` : `video-${c.id}`,
-      plugin: content ? "content" : "media",
-      level: content ? 3 : 2,
-      ...(c.expect.music?.title ? { fixture: musicFixture() } : {}),
-      ...(c.revision ? { revision: c.revision } : {}),
-      ...(c.revision_change ? { revision_change: c.revision_change } : {}),
-      title: c.name,
-      turns,
-      criteria: criteria([
-        "The delivered videos fulfill the frozen user requests; exact facts, readable text, image quality, and relevant shots are verified from the actual outputs.",
-        `Independently inspect the delivered files, including duration, dimensions, audio streams and these original case expectations: ${JSON.stringify(c.expect)}.`,
-        ...(c.expect.music?.source === "web"
+  const videos = videoCases
+    .filter((c) => kept.includes(c.id))
+    .map((c) => {
+      const parent =
+        "of" in c.start
+          ? videoCases.find((v) => v.id === (c.start as { of: string }).of)!
+          : undefined;
+      const first = parent ?? c;
+      const expected = Array.isArray(c.expect.exports)
+        ? c.expect.exports
+        : [c.expect.exports];
+      const turns =
+        "brief" in c.start
           ? [
-              "The music was found online and downloaded as an original audio file; it fits the requested mood, is free to use for this reel under its published license, and its source and any required credit are reported and match the page it came from.",
+              {
+                brief: c.start.brief,
+                video_case: c.id,
+                video_expect: c.expect,
+                exports: expected[0],
+              },
             ]
-          : []),
-      ]),
-      prerequisites: [
-        "desktop_connected",
-        "media_providers_ready",
-        ...(c.expect.screens ? ["supplied_screenshots_ready"] : []),
-        ...(c.expect.music?.source === "web" ? ["browser_connected"] : []),
-        ...(c.expect.music?.title ? ["fixture_ready"] : []),
-        ...(c.expect.noProfileColors
-          ? ["profile_colours_cleared_with_restore_plan"]
-          : []),
-      ],
-      source: "apps/api/src/evals/video-cases.ts",
+          : [
+              {
+                brief: (first.start as { brief: string }).brief,
+                video_case: first.id,
+                video_expect: first.expect,
+                exports: Number(first.expect.exports),
+              },
+              ...c.start.messages.map((brief, i) => ({
+                brief,
+                video_case: c.id,
+                video_expect: c.expect,
+                exports: expected[i],
+              })),
+            ];
+      const content = c.id in contentIds;
+      return caseSchema.parse({
+        id: content ? `content-${contentIds[c.id]}` : `video-${c.id}`,
+        plugin: content ? "content" : "media",
+        level: content ? 3 : 2,
+        ...(c.expect.music?.title ? { fixture: musicFixture() } : {}),
+        ...(c.revision ? { revision: c.revision } : {}),
+        ...(c.revision_change ? { revision_change: c.revision_change } : {}),
+        title: c.name,
+        turns,
+        criteria: criteria([
+          "The delivered videos fulfill the frozen user requests; exact facts, readable text, image quality, and relevant shots are verified from the actual outputs.",
+          `Independently inspect the delivered files, including duration, dimensions, audio streams and these original case expectations: ${JSON.stringify(c.expect)}.`,
+          ...(c.expect.music?.source === "web"
+            ? [
+                "The music was found online and downloaded as an original audio file; it fits the requested mood, is free to use for this reel under its published license, and its source and any required credit are reported and match the page it came from.",
+              ]
+            : []),
+        ]),
+        prerequisites: [
+          "desktop_connected",
+          "media_providers_ready",
+          ...(c.expect.screens ? ["supplied_screenshots_ready"] : []),
+          ...(c.expect.music?.source === "web" ? ["browser_connected"] : []),
+          ...(c.expect.music?.title ? ["fixture_ready"] : []),
+          ...(c.expect.noProfileColors
+            ? ["profile_colours_cleared_with_restore_plan"]
+            : []),
+        ],
+        source: "apps/api/src/evals/video-cases.ts",
+      });
     });
-  });
   return [
     caseSchema.parse({
       id: `browser-${browserToolsCase.id}`,
@@ -247,10 +255,7 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
         title: c.name,
         turns: [{ brief: c.brief }],
         criteria: criteria(c.criteria),
-        prerequisites: [
-          "media_providers_ready",
-          "brand_profile_ready",
-        ],
+        prerequisites: ["media_providers_ready", "brand_profile_ready"],
         source: "apps/api/src/evals/media-cases.ts",
       }),
     ),

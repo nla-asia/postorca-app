@@ -76,7 +76,7 @@ Refer to the founder by name, or as "they". Do not guess pronouns.
 3. For each project, see what changed since the last run (or the last 24 hours on a first run; at most the last 7 days):
    - In a git repository: `git_activity` with `since`. It lists commits and uncommitted work. For promising commits, call it again with `commit` to read the changes.
    - Outside git, or for files git doesn't track: `recent_files`, then `read_file` for the ones that matter (notes, docs, plans).
-4. If the browser is available, open the account and skim the founder's recent posts, so an idea doesn't repeat what they already posted. Close the tabs you opened.
+4. Check `list_my_posts` for the founder's saved recent posts, so an idea doesn't repeat what they already posted. Don't open the founder's social accounts for this: finding ideas in their work needs no browsing.
 5. Pick the strongest moments (up to three) and write each as an idea. If something visible changed, read its screens and components and plan the demo first.
 6. Save this run to memory before delivering (see Memory).
 

@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
-const { glide, pointerGlide, screenPoint } = require("./pointer.cjs");
+const { glide, pointerGlide, screenPoint, typeText } = require("./pointer.cjs");
 
 const view = {
   screenX: 10,
@@ -46,4 +46,20 @@ test("a pointer failure never costs the click", async () => {
     },
   });
   await move(page, 1, 1);
+});
+
+test("text appears key by key on camera and at once off camera", async () => {
+  const calls = [];
+  const keys = {
+    keyboard: {
+      type: async (text, options) => calls.push(["type", text, options.delay]),
+      insertText: async (text) => calls.push(["insert", text]),
+    },
+  };
+  await typeText(keys, "hi", { isRecording: () => true });
+  await typeText(keys, "hi", { isRecording: () => false });
+  assert.deepEqual(calls, [
+    ["type", "hi", 55],
+    ["insert", "hi"],
+  ]);
 });

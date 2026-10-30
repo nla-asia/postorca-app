@@ -261,8 +261,8 @@ over merely asserting that a tool was invoked.
 
 ## Existing case migration
 
-All 29 agent cases are registered: Browser 5, Computer 8, Media 5, Writing 4,
-Ideas 3, Content 4.
+All 30 agent cases are registered: Browser 5, Computer 8, Media 5, Writing 4,
+Ideas 3, Content 5.
 
 ### Categories
 
@@ -318,6 +318,20 @@ Before the first run, add `~/PostOrca Evals/streaks` to the founder's Brand Prof
 projects (`work_fixture_project_added`). The work-ideas routine remembers moments it
 already used, so clear those from its `work-ideas.md` memory before each attempt
 (`work_ideas_memory_cleared`).
+
+### Tide fixture
+
+`scripts/evals/tide-fixture.mjs` rebuilds Tide, a good-looking web todo app, as a git
+repository at `~/PostOrca Evals/tide` with three weeks of commits, and serves it at
+`http://127.0.0.1:4120`, for `content-demo-tide-from-commits`. The recent work is
+deliberately mixed: quick add (the demo), a two-tab sync fix (a text post), and a
+refactor and dependency bump (not content). `notes/beta.md` says what testers asked for.
+Each rebuild restarts from the sample tasks; `/?reset` restores them within an attempt.
+
+Add `~/PostOrca Evals/tide` to the founder's Brand Profile projects once. Clear Tide
+from `work-ideas.md` memory before repeat attempts, or the skill treats it as used.
+This case also measures the recording: failed input on camera, clip lengths and takes.
+It is the first of a series: web, then a desktop app, then a mobile app.
 
 ### Product-demo cases (Computer level 2, Content level 3)
 

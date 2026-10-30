@@ -16,6 +16,8 @@ export type DemoCase = {
   url?: string;
   /** Finds what to demo in the founder's recent work (the work fixture). */
   read_work?: boolean;
+  /** The work fixture's script, when it isn't the Streaks one. */
+  fixture_script?: string;
   brief: string;
   /** Text the demo has to type into the app, as regexes. product-demo-capture sets
    * the stage before recording, so this may happen on or off camera. */
@@ -115,6 +117,28 @@ export const demoCases: DemoCase[] = [
     ],
   },
   {
+    id: "demo-tide-from-commits",
+    level: 3,
+    name: "From recent commits to a product demo video (Tide web app)",
+    app: "web",
+    url: "http://127.0.0.1:4120",
+    read_work: true,
+    fixture_script: "scripts/evals/tide-fixture.mjs",
+    brief: `i've been shipping stuff on Tide this week. look at what i did, pick the best thing to show and make me a ~20 sec demo video i can post, landscape, voiceover + captions. record it yourself from the running app. ${noPublish}`,
+    typed: [
+      "tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday",
+    ],
+    min_clips: 2,
+    video: { seconds: [15, 35] },
+    criteria: [
+      "It picks quick add from the recent commits as the thing to show, not the refactor, the dependency bump or older work, and says why.",
+      "The video shows a sentence being typed, the date, time or project chips appearing, and the task landing in the list with them.",
+      "It opens on the viewer's problem from the notes (adding a task takes too many clicks) and claims nothing the commits and notes don't support.",
+      "The recording looks like a person using the app: no fumbling, wrong clicks, repeated steps or long pauses on camera.",
+      ...videoReview,
+    ],
+  },
+  {
     id: "demo-mac-maps-video",
     level: 3,
     name: "Product demo video of a Mac app (Maps)",
@@ -170,6 +194,44 @@ const opensApp = (app: "maps" | "clock" | "simulator", opened: any) =>
     : opened?.path === appPaths[app];
 
 /** Checks from the product task alone; app state and clip quality are reviewed. */
+/**
+ * How the recording looks: a demo can reach every step and still be awkward to watch.
+ * Only for the commit-to-demo cases, which are judged on this; numbers go in the details.
+ */
+function recordingChecks(
+  entry: DemoCase,
+  calls: any[],
+  spans: (readonly [number, number])[],
+  index: (call: any) => number,
+  clips: any[],
+): EvalCheck[] {
+  if (!entry.fixture_script) return [];
+  const onCamera = calls.filter(
+    (c) =>
+      (inputNames.has(c.name) || webInputNames.has(c.name)) &&
+      spans.some(([from, to]) => index(c) > from && index(c) < to),
+  );
+  const fumbled = onCamera.filter((c) => !c.result || c.result.error);
+  const seconds: number[] = clips.map((c) => c.result.duration_seconds);
+  return [
+    {
+      name: "No failed input on camera",
+      passed: fumbled.length === 0,
+      details: fumbled.map((c) => c.name),
+    },
+    {
+      name: "Each clip at most 15 s, so it holds no long pauses",
+      passed: seconds.every((s) => s <= 15),
+      details: seconds,
+    },
+    {
+      name: "At most 2 takes per clip kept",
+      passed: clips.length <= entry.min_clips * 2 + 1,
+      details: { recorded: clips.length, inputs_on_camera: onCamera.length },
+    },
+  ];
+}
+
 export function gradeDemoCapture(
   entry: DemoCase,
   evidence: Pick<EvalEvidence, "status" | "calls" | "artifacts">,
@@ -194,7 +256,7 @@ export function gradeDemoCapture(
   const clipFiles = new Set(clipAttachments.map((a: any) => a.file));
   const clipRefs = new Set(clipAttachments.map(refOf));
   const typed = ok
-    .filter((c) => c.name === "computer_type")
+    .filter((c) => ["computer_type", "browser_type"].includes(c.name))
     .map((c) => String(c.args.text ?? ""));
   const firstStart = starts.length ? index(starts[0]) : -1;
   const appWindows = (c: any) =>
@@ -269,6 +331,7 @@ export function gradeDemoCapture(
       name: `Typed "${pattern}" in the app`,
       passed: typed.some((text) => new RegExp(pattern, "i").test(text)),
     })),
+    ...recordingChecks(entry, evidence.calls, spans, index, clips),
   ];
   if (entry.level === 2)
     checks.push({
