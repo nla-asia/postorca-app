@@ -107,3 +107,19 @@ test("a demo from the founder's work needs the git history read and the local ap
     "Read the recent work in the project's git history",
   ]);
 });
+
+test("an app that is already running counts as opened once its window is used", () => {
+  const entry = demo("demo-sim-maps-place");
+  const simulator = { name: "Simulator", path: "/Applications/Xcode.app/Contents/Developer/Applications/Simulator.app", windows: [{ id: "77" }] };
+  const listed = { name: "computer_list_apps", args: {}, result: { apps: [simulator] } };
+  const opened = (window: string) =>
+    failed(
+      gradeDemoCapture(entry, {
+        status: "completed",
+        calls: [listed, { name: "computer_observe", args: { window }, result: {} }],
+        artifacts: [],
+      }),
+    ).includes("Opened the app being demonstrated");
+  assert.equal(opened("77"), false);
+  assert.equal(opened("12"), true);
+});
