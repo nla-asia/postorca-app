@@ -53,11 +53,11 @@ Go as high as the change honestly supports: a small setting can show a big promi
 
 **Say it plainly.** A product demo post says what was added and why, the way a product page announces a feature. No abstract angle, marketing concept or clever line:
 
-- **"People kept asking for this"**: when the notes say users asked. "Testers said adding a task took too many clicks, so we added quick add."
-- **What it solves**: "Add a task by typing one sentence."
+- **"People kept asking for this"**: when the notes say users asked. "You kept asking for dark mode. It's here."
+- **What it solves**: "Export your invoices to PDF in one click."
 - **"Introducing X"**: when it is a whole product or a major launch.
 
-Name the feature in the title, in words a user would use: "Quick add: type a sentence to add a task", not a slogan about it. The rules above about transforming a moment and avoiding the obvious are for story posts, not demos.
+Name the feature in the title, in words a user would use: "Bulk edit: change many rows at once", not a slogan about it. The rules above about transforming a moment and avoiding the obvious are for story posts, not demos.
 
 You only plan the demo; you don't capture it. Work out the steps from the code: read the changed screens and components with `read_file` to find where the feature lives, how to get there, and what the user does and sees. Then give:
 
