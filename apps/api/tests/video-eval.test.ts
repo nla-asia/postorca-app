@@ -298,6 +298,7 @@ test("clip scenes are graded from the tool's pacing, and can open on a hook", ()
   const cuts = (checks: any[]) =>
     checks.find((check) => check.name.includes("cuts every"))!;
   assert.equal(cuts(pacing({})).ok, true);
+  assert.equal(cuts(pacing({ pacing: "Shots average 4.1 s" })).ok, true);
   const slow = cuts(pacing({ pacing: "Shots average 6.9 s" }));
   assert.equal(slow.ok, false);
   assert.equal(slow.detail, "Shots average 6.9 s");

@@ -555,8 +555,10 @@ async function prepare(context: PluginContext, clip: Clip) {
       ...(extension > 0 && {
         note: `The last scene was extended by ${(extension / 1000).toFixed(1)} s to cover the voiceover.`,
       }),
-      ...(totalMs / shots > 3000 && {
-        pacing: `Shots average ${(totalMs / shots / 1000).toFixed(1)} s; consecutive scenes on the same image are one shot; each clip scene is a shot. UGC usually changes shot every 2–3 s. Alternate images, or trim and speed up clips, for faster cuts.`,
+      // Viewers need longer to read a screen recording than to take in a photo.
+      ...(totalMs / shots >
+        (clip.scenes.some((scene) => scene.video_file) ? 5000 : 3000) && {
+        pacing: `Shots average ${(totalMs / shots / 1000).toFixed(1)} s; consecutive scenes on the same image are one shot; each clip scene is a shot. UGC usually changes shot every 2–3 s, and a screen recording at most every 5 s. Alternate images, or trim and speed up clips, for faster cuts.`,
       }),
     },
   };
