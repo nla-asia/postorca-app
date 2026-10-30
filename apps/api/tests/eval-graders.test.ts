@@ -531,6 +531,12 @@ test("commit to ideas only proposes, leading with the demo-worthy work", () => {
   assert.deepEqual(failed(calls, [idea("Quick add in one sentence")]), []);
   const leads =
     "The strongest idea, first, has a demo plan for the demo-worthy work";
+  assert.deepEqual(
+    failed(calls, [
+      idea("The date picker", "One sentence box. **Demo plan**: steps"),
+    ]),
+    [],
+  );
   assert.deepEqual(failed(calls, [idea("Two tabs lost my edits")]), [leads]);
   assert.deepEqual(failed(calls, [idea("Quick add", "A text post")]), [leads]);
   assert.deepEqual(

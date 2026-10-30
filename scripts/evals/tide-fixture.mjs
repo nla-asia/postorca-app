@@ -92,7 +92,7 @@ const dayLabel = (day) => {
 };
 `;
 // One app, grown commit by commit.
-const app = ({ views, tags, completed, keys, sync, quick }) => `const key = "tide-" + window.TIDE_BUILD;
+const app = ({ views, tags, completed, keys, sync, quick, chips: showChips }) => `const key = "tide-" + window.TIDE_BUILD;
 if (location.search === "?reset") { localStorage.removeItem(key); history.replaceState(null, "", "/"); }
 const seed = () => [
   { id: 1, name: "Send the investor update", day: plusDays(0), time: "11:00", tag: "work" },
@@ -142,7 +142,7 @@ function parse(text) {
 function addForm() {
   const input = el("input", { type: "text", placeholder: "Call Sam tomorrow 3pm #work", "ariaLabel": "Quick add a task", autocomplete: "off" });
   const chips = el("div", { id: "chips" });
-  input.oninput = () => {
+${showChips ? `  input.oninput = () => {
     const p = parse(input.value);
     const show = [p.day && dayLabel(p.day), p.time && clock(p.time), p.tag && "#" + p.tag].filter(Boolean);
     if (chips.dataset.shown !== show.join()) {
@@ -150,7 +150,7 @@ function addForm() {
       chips.replaceChildren(...show.map((c) => el("span", { className: "chip", textContent: c })));
     }
   };
-  const form = el("form", { className: "add", onsubmit: (e) => {
+` : ""}  const form = el("form", { className: "add", onsubmit: (e) => {
     e.preventDefault();
     const p = parse(input.value);
     if (!p.name) return;
@@ -191,13 +191,14 @@ document.addEventListener("keydown", (e) => {
 ` : ""}render();
 `;
 const v = (flags) => ({ "app.js": app(flags) });
-const base0 = { views: false, tags: false, completed: false, keys: false, sync: false, quick: false };
+const base0 = { views: false, tags: false, completed: false, keys: false, sync: false, quick: false, chips: false };
 const f1 = { ...base0, views: true };
 const f2 = { ...f1, tags: true };
 const f3 = { ...f2, completed: true };
 const f4 = { ...f3, keys: true };
 const f5 = { ...f4, sync: true };
 const f6 = { ...f5, quick: true };
+const f7 = { ...f6, chips: true };
 
 // Each commit: when (hours ago), message and the files it writes.
 const commits = [
@@ -210,11 +211,11 @@ const commits = [
   [216, "Add sample tasks and /?reset for trying it out", {}],
   [168, "Write up the first beta feedback", { "notes/beta.md": earlyNotes }],
   [120, "Tighten spacing in the task list", {}],
-  [72, "Bump dev dependencies", { "CHANGELOG.md": "Dev dependencies bumped. Nothing user-visible.\n" }],
-  [30, "Fix edits lost when Tide is open in two tabs", { "notes/beta.md": syncNotes, ...v(f5) }],
-  [20, "Refactor: move date helpers into dates.js", {}],
+  [15, "Fix edits lost when Tide is open in two tabs", { "notes/beta.md": syncNotes, ...v(f5) }],
+  [12, "Refactor: move date helpers into dates.js", { "dates.js": `${dates}// Shared by every view.\n` }],
+  [10, "Bump dev dependencies", { "CHANGELOG.md": "Dev dependencies bumped. Nothing user-visible.\n" }],
   [5, "Add quick add: type a sentence, get a dated task", { "notes/beta.md": allNotes, ...v(f6) }],
-  [2, "Quick add: show date, time and project as chips while typing", {}],
+  [2, "Quick add: show date, time and project as chips while typing", v(f7)],
 ];
 
 async function prepare(attempt) {

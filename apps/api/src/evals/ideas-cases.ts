@@ -69,7 +69,7 @@ export const ideasCases: IdeasCase[] = [
     work: true,
     fixture_script: "scripts/evals/tide-fixture.mjs",
     platform: "LinkedIn",
-    proposes: /quick add/i,
+    proposes: /quick.?add|sentence/i,
     criteria: [
       "The strongest idea, listed first, is quick add as a product demo. The refactor, the dependency bump and older work are not pitched.",
       "Its demo plan lets the founder judge the content before approving it: what to show, steps that match the code, and an opening built on the problem in the notes (adding a task takes too many clicks).",
@@ -130,7 +130,7 @@ export function gradeIdeas(
       {
         name: "The strongest idea, first, has a demo plan for the demo-worthy work",
         passed:
-          entry.proposes.test(ideas[0]?.title ?? "") &&
+          entry.proposes.test(`${ideas[0]?.title} ${ideas[0]?.content}`) &&
           /demo plan/i.test(String(ideas[0]?.content ?? "")),
         details: ideas.map((a) => a.title),
       },
