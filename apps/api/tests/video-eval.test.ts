@@ -262,6 +262,25 @@ test("consecutive scenes on one image are one shot for pacing", () => {
   );
 });
 
+test("a demo of a web app may click in the browser; other creation tasks may not", () => {
+  const messages = [
+    ...call("browser_click", { ref: "e1" }, {}),
+    ...call(
+      "video_export",
+      { scenes },
+      {
+        attachments: [{ file: video, mime_type: "video/mp4" }],
+      },
+    ),
+  ];
+  const inputs = (options?: { demoOfWebApp?: boolean }) =>
+    gradeVideo(b5, messages, [artifact], 1, options).checks.find((check) =>
+      check.name.includes("No browser inputs"),
+    );
+  assert.equal(inputs()?.ok, false);
+  assert.equal(inputs({ demoOfWebApp: true }), undefined);
+});
+
 test("clip scenes are graded from the tool's pacing, and can open on a hook", () => {
   const exported = (timing: object) =>
     call(

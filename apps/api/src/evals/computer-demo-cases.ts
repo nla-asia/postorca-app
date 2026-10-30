@@ -144,6 +144,12 @@ const inputNames = new Set([
   "computer_press",
   "computer_scroll",
 ]);
+const webInputNames = new Set([
+  "browser_click",
+  "browser_type",
+  "browser_press",
+  "browser_scroll",
+]);
 const refOf = (attachment: any) =>
   attachment.ref ?? String(attachment.file).split("/").at(-1)?.slice(0, 8);
 const fileOf = (artifact: any) => {
@@ -182,8 +188,7 @@ export function gradeDemoCapture(
   const recording = (call: any) =>
     spans.some(([from, to]) => index(call) > from && index(call) < to);
   const clips = stops.filter(
-    (c) =>
-      c.result.duration_seconds > 0 && c.result.stopped_by !== "founder",
+    (c) => c.result.duration_seconds > 0 && c.result.stopped_by !== "founder",
   );
   const clipAttachments = clips.flatMap((c) => c.result.attachments ?? []);
   const clipFiles = new Set(clipAttachments.map((a: any) => a.file));
@@ -198,7 +203,9 @@ export function gradeDemoCapture(
         .filter((app: any) =>
           opensApp(entry.app as "maps" | "clock" | "simulator", app),
         )
-        .flatMap((app: any) => (app.windows ?? []).map((w: any) => String(w.id))),
+        .flatMap((app: any) =>
+          (app.windows ?? []).map((w: any) => String(w.id)),
+        ),
     );
   const windowsOfApp = new Set<string>(
     ok
@@ -251,7 +258,12 @@ export function gradeDemoCapture(
     },
     {
       name: "Used the app while recording",
-      passed: ok.some((c) => inputNames.has(c.name) && recording(c)),
+      passed: ok.some(
+        (c) =>
+          (inputNames.has(c.name) ||
+            (entry.app === "web" && webInputNames.has(c.name))) &&
+          recording(c),
+      ),
     },
     ...entry.typed.map((pattern) => ({
       name: `Typed "${pattern}" in the app`,

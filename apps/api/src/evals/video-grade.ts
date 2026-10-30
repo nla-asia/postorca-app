@@ -43,6 +43,7 @@ export function gradeVideo(
   messages: EvalMessage[],
   artifacts: EvalArtifact[],
   expectedExports: number,
+  options: { demoOfWebApp?: boolean } = {},
 ) {
   const calls = toolEvidence(messages);
   const named = (name: string) => calls.filter((call) => call.name === name);
@@ -83,7 +84,8 @@ export function gradeVideo(
     );
   // Retain the original conservative rule. Navigation is reported for review, not proof of
   // publishing. Finding music on the web needs browser input, so that case is exempt.
-  if (entry.expect.music?.source !== "web") {
+  // Demoing a web app means clicking in it too.
+  if (entry.expect.music?.source !== "web" && !options.demoOfWebApp) {
     const browserInputs = calls.filter((call) =>
       ["browser_click", "browser_type", "browser_press"].includes(call.name),
     );
