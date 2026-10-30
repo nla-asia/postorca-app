@@ -6,9 +6,16 @@ const { BrowserRelay } = require("./relay.cjs");
 const { EXTENSION_ID, writePairing, removePairing } = require("./pairing.cjs");
 const { TabObservations, linkTarget } = require("./observations.cjs");
 const { clickElement } = require("./click.cjs");
+const { pointerGlide } = require("./pointer.cjs");
+const { isRecording } = require("../../tools/screen.cjs");
 const { settle, trackRequests } = require("./settle.cjs");
 const { pressKey } = require("./keyboard.cjs");
 const { fetchBrowserFile } = require("./fetch-file.cjs");
+
+const onCamera = pointerGlide({
+  isRecording,
+  loadRobot: () => require("robotjs"),
+});
 
 /**
  * The founder's own browser (Chrome, Edge, or Brave), with their real profile and
@@ -292,13 +299,13 @@ class FounderBrowser {
   }
   async click(id, ref) {
     const { page, element } = this.locator(id, ref);
-    await clickElement(page, element);
+    await clickElement(page, element, onCamera);
     await settle(page);
     return this.afterAction(id);
   }
   async type(id, ref, text, submit, replace = false) {
     const { page, element } = this.locator(id, ref);
-    await clickElement(page, element);
+    await clickElement(page, element, onCamera);
     // Typing replaces a selection: select the field's whole content first.
     if (replace) await element.locator.selectText();
     await page.keyboard.insertText(text);

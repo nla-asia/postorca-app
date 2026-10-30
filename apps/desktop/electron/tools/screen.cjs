@@ -206,6 +206,10 @@ function menuBarIndicator() {
  * The capture tools. Dependencies are parameters so tests can run them without
  * macOS, Electron or a screen.
  */
+let recordingNow = false;
+/** Whether a screen recording is running, for tools that act differently on camera. */
+const isRecording = () => recordingNow;
+
 function createScreenTools({
   platform = process.platform,
   access = screenAccess,
@@ -238,6 +242,7 @@ function createScreenTools({
       recording.seconds = (Date.now() - recording.startedAt) / 1000;
       if (active === recording) {
         active = null;
+        recordingNow = false;
         indicator.hide();
       }
       recording.child.kill("SIGINT");
@@ -364,6 +369,7 @@ function createScreenTools({
     exited.then(() => recording.saved ?? finish(recording, "ended"));
     recordings.set(recording.id, recording);
     active = recording;
+    recordingNow = true;
     indicator.show({ startedAt: recording.startedAt, stop: () => finish(recording, "founder") });
     return { id: recording.id, target, max_seconds: maxSeconds };
   };
@@ -416,6 +422,7 @@ module.exports = {
   screen_record_start: lazy("screen_record_start"),
   screen_record_stop: lazy("screen_record_stop"),
   createScreenTools,
+  isRecording,
   parseTarget,
   parseWindows,
   toMp4,

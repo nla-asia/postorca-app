@@ -666,7 +666,10 @@ export function VerticalClip({
         offset: range.from - ranges[first].from,
         frames: ranges[last].to - ranges[first].from,
         index,
-        stickered: scenes.slice(first, last + 1).some((item) => !!item.text),
+        // Clips keep one layout across cuts, so the recording doesn't jump between them.
+        stickered: (scene.clip ? scenes : scenes.slice(first, last + 1)).some(
+          (item) => !!item.text,
+        ),
       };
       return { ...range, shot };
     });
@@ -691,7 +694,11 @@ export function VerticalClip({
               previousFocus={
                 continues(scenes[index - 1], scene)
                   ? (scenes[index - 1].focus ?? null)
-                  : null
+                  : // A clip cuts straight to its focus: zooming in from the whole recording
+                    // at every cut looks like the page reloading.
+                    scene.clip
+                    ? (scene.focus ?? null)
+                    : null
               }
             />
           </Sequence>
