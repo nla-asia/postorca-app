@@ -54,7 +54,7 @@ func axWindow(_ pid: pid_t, _ target: [String: Any]) throws -> AXUIElement {
         AXValueGetValue(p as! AXValue, .cgPoint, &point); AXValueGetValue(s as! AXValue, .cgSize, &size)
         return (CGRect(origin: point, size: size), axValue(element, kAXTitleAttribute) as? String)
     }
-    guard let index = uniqueWindowMatch(described, rect, target["title"] as? String ?? "") else { try fail("Cannot uniquely match the selected window. Check Accessibility permission and observe again.") }
+    guard let index = uniqueWindowMatch(described, rect, target["title"] as? String ?? "") else { try fail("Window is no longer available or cannot be told apart from another window; list apps again.") }
     return candidates[index]
 }
 // Match the AX window to the CG window by position and size; never pick an arbitrary

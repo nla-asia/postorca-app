@@ -511,6 +511,62 @@ test("a sheet in front of the selected window is named and can be observed and c
     ["click", "left", false],
   ]);
 });
+test("a click that closes its window succeeds and asks for a new observation", async () => {
+  const f = fixture(),
+    shot = await f.ready();
+  const original = f.controller.native;
+  let clicked = false;
+  f.controller.native = async (request) => {
+    if (request.action === "focus" && f.sent.length) {
+      clicked = true;
+      throw new Error("Window is no longer available; list apps again.");
+    }
+    return original(request);
+  };
+  const result = await f.controller.run(
+    "computer_click",
+    { window: "7", observation: shot.observation, x: 400, y: 300 },
+    f.context,
+  );
+  assert.equal(clicked, true);
+  assert.equal(result.input_sent, true);
+  assert.equal(result.window_closed, true);
+  assert.equal(result.needs_observation, true);
+  assert.ok(result.apps.length);
+});
+test("a click that opens a sheet succeeds and names the sheet", async () => {
+  const f = fixture(),
+    shot = await f.ready();
+  const sheet = {
+    id: "8",
+    pid: 55,
+    title: "Untitled",
+    bounds: { x: 0, y: 40, width: 200, height: 150 },
+  };
+  const original = f.controller.native;
+  f.controller.native = async (request) => {
+    if (request.action === "focus" && request.window === "7" && f.sent.length)
+      return { window: f.window, foreground: false, front: sheet };
+    if (request.action === "focus" && request.window === "8")
+      return { window: sheet, foreground: true };
+    return original(request);
+  };
+  const result = await f.controller.run(
+    "computer_click",
+    { window: "7", observation: shot.observation, x: 400, y: 300 },
+    f.context,
+  );
+  assert.equal(result.window_closed, false);
+  assert.equal(result.front_window, "8");
+  assert.equal(result.needs_observation, true);
+  // The sheet is usable straight away.
+  const next = await f.controller.run(
+    "computer_observe",
+    { window: "8" },
+    f.context,
+  );
+  assert.deepEqual(next.capture_bounds, sheet.bounds);
+});
 test("a covering window of another process is not offered as a target", async () => {
   const f = fixture();
   await f.ready();
