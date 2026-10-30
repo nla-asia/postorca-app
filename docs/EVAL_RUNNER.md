@@ -415,6 +415,12 @@ npm run eval -- benchmark --out .data/benchmark.html   # or .md; JSON goes to st
 npm run eval -- benchmark --plan luna-writing --out .data/luna-writing.md
 ```
 
+It scores where each model stands now: for each model and case, only the latest
+batch counts, meaning the newest attempt plus that model's other attempts of the case
+on the same commit (repeats from one run). Older attempts stay stored; pass
+`--all true` to score every attempt to date, or `--plan <name>` for one plan's
+attempts.
+
 The scoreboard is pass rates only: one row per category (over all its levels), one
 column per model, and the stronger model's cell in green. Click a category for its
 levels and cases. The Markdown version puts those in collapsed `<details>` blocks.
