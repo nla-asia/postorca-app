@@ -522,6 +522,33 @@ test("accepted music settles by duration; a rejected generation has no accepted-
   assert.ok(!JSON.stringify(rows).includes("PRIVATE"));
 });
 
+test("transcription is charged for the audio length the response states", async (t) => {
+  const s = await scope();
+  t.mock.method(globalThis, "fetch", async () =>
+    Response.json({
+      language_code: "en",
+      text: "Hello",
+      audio_duration_secs: 3600,
+      words: [{ text: "Hello", type: "word", start: 2, end: 3 }],
+    }),
+  );
+  await withApiUsage(s, () =>
+    new ElevenLabsProvider("test-key").transcribe({
+      modelId: "scribe_v2",
+      sourceUrl: "https://example.test/audio.mp3",
+    }),
+  );
+  const {
+    rows: [row],
+  } = await s.db.query("SELECT * FROM api_requests WHERE turn_id=$1", [
+    s.turnId,
+  ]);
+  assert.equal(row.usage_data.meters.billed_audio_seconds, 3600);
+  assert.equal(Number(row.estimated_cost), 0.22);
+  assert.equal(row.credit_state, "settled");
+  assert.equal(Number(row.credit_reserved), 0);
+});
+
 test("transcription saves its price but keeps the hold without full audio duration", async (t) => {
   const s = await scope();
   t.mock.method(globalThis, "fetch", async () =>

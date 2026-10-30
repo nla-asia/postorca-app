@@ -335,6 +335,13 @@ export const usageFetch: typeof fetch = async (input, init) => {
             : "provider-character-cost";
         usage.meters.billed_characters ??= usage.meters.accepted_characters;
       }
+      // Billed by the audio's length, which the response states; words omit silence.
+      if (
+        operation === "transcription" &&
+        typeof data?.audio_duration_secs === "number" &&
+        Number.isFinite(data.audio_duration_secs)
+      )
+        usage.meters.billed_audio_seconds = data.audio_duration_secs;
       if (
         operation === "sound_effect" &&
         typeof args.duration_seconds === "number"

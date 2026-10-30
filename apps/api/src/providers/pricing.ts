@@ -138,7 +138,7 @@ export const PROVIDER_PRICING = [
     operation: "transcription",
     currency: "USD",
     effectiveFrom: "2026-10-27T00:00:00Z",
-    // Requires known billed audio duration; word timestamps omit silence.
+    // Billed on the response's audio_duration_secs; word timestamps omit silence.
     // Current requests do not enable paid editing/keyterm/multichannel add-ons.
     prices: [{ meter: "billed_audio_seconds", amount: "0.22", perUnits: 3600 }],
   },
