@@ -39,7 +39,7 @@ export const computerPlugin: PluginDefinition = {
     ),
     tool(
       "computer_observe",
-      "Focus a returned window and capture its visible screen region. Returns an observation ID, screenshot pixel dimensions, and optional bounded accessibility text. Occluded/offscreen content is not captured. Coordinates for clicks and scrolls refer to this screenshot. Optional wait_ms (0–10000) waits before focusing and capturing, for slow boot, rendering, and native export previews.",
+      "Focus a returned window and capture its visible screen region. Returns an observation ID, screenshot pixel dimensions, and optional bounded accessibility text. With accessibility=true, nodes the app exposes with a position carry bounds in this screenshot's pixels, and visible actionable controls carry an element number for computer_click. Occluded/offscreen content is not captured. Coordinates for clicks and scrolls refer to this screenshot. Optional wait_ms (0–10000) waits before focusing and capturing, for slow boot, rendering, and native export previews.",
       z
         .object({
           ...windowArgs,
@@ -50,11 +50,12 @@ export const computerPlugin: PluginDefinition = {
     ),
     tool(
       "computer_click",
-      "Click screenshot coordinates and return a fresh screenshot. On macOS, alternatively pass menu_path from the latest accessibility observation to press an app menu item, e.g. [File, Record Screen]; returns fresh app/window discovery and requires another observation. Do not combine menu_path with coordinates/button/clicks. Rejects stale observations and unknown or disabled menus.",
+      "Click a control and return a fresh screenshot. Prefer element, a number from the latest computer_observe with accessibility=true; it clicks that control's centre. Otherwise pass x/y screenshot coordinates. Do not combine element with x/y. On macOS, alternatively pass menu_path from the latest accessibility observation to press an app menu item, e.g. [File, Record Screen]; returns fresh app/window discovery and requires another observation. Do not combine menu_path with coordinates/button/clicks. Rejects stale observations, unknown elements and unknown or disabled menus.",
       z
         .object({
           ...windowArgs,
           observation,
+          element: z.number().int().min(1).max(1000).optional(),
           x: coordinate.optional(),
           y: coordinate.optional(),
           menu_path: z

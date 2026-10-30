@@ -22,6 +22,91 @@ const keys = new Set([
 const modifiers = new Set(["control", "command", "alt", "shift"]);
 const sameBounds = (a, b) =>
   ["x", "y", "width", "height"].every((key) => a[key] === b[key]);
+// Controls worth targeting even when the helper reports no press action
+// (macOS AX roles and Windows UI Automation control types).
+const actionableRoles = new Set([
+  "AXButton",
+  "AXCheckBox",
+  "AXRadioButton",
+  "AXPopUpButton",
+  "AXMenuButton",
+  "AXMenuItem",
+  "AXLink",
+  "AXTextField",
+  "AXTextArea",
+  "AXSearchField",
+  "AXComboBox",
+  "AXSlider",
+  "AXIncrementor",
+  "AXDisclosureTriangle",
+  "AXTab",
+  "AXCell",
+  ..."Button CheckBox RadioButton ComboBox Edit Hyperlink ListItem MenuItem TabItem TreeItem Slider SplitButton DataItem Spinner"
+    .split(" ")
+    .map((type) => `ControlType.${type}`),
+]);
+
+// Desktop rectangle (the window/capture coordinate space) → its visible part in
+// screenshot pixels, plus the desktop centre of that visible part.
+function elementRegion(rect, shot) {
+  if (
+    !rect ||
+    ![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) ||
+    rect.width <= 0 ||
+    rect.height <= 0
+  )
+    return null;
+  const c = shot.bounds,
+    sx = shot.width / c.width,
+    sy = shot.height / c.height;
+  const left = Math.max(rect.x, c.x),
+    top = Math.max(rect.y, c.y),
+    right = Math.min(rect.x + rect.width, c.x + c.width),
+    bottom = Math.min(rect.y + rect.height, c.y + c.height);
+  if (right - left < 1 || bottom - top < 1) return null;
+  const x = Math.floor((left - c.x) * sx),
+    y = Math.floor((top - c.y) * sy);
+  return {
+    bounds: {
+      x,
+      y,
+      width: Math.ceil((right - c.x) * sx) - x,
+      height: Math.ceil((bottom - c.y) * sy) - y,
+    },
+    center: {
+      x: Math.floor((left + right) / 2),
+      y: Math.floor((top + bottom) / 2),
+    },
+  };
+}
+
+// Rewrite helper bounds into this screenshot's pixels and index the visible
+// actionable controls so a click can target one instead of guessing pixels.
+function indexElements(accessibility, shot) {
+  const elements = new Map();
+  if (!Array.isArray(accessibility?.nodes)) return elements;
+  accessibility.nodes = accessibility.nodes.map(
+    ({ bounds, actionable, ...node }) => {
+      const region = elementRegion(bounds, shot);
+      if (!region) return node;
+      if (
+        (actionable || actionableRoles.has(node.role)) &&
+        elements.size < 300
+      ) {
+        const element = elements.size + 1;
+        elements.set(element, {
+          center: region.center,
+          role: node.role,
+          text: (node.text ?? "").slice(0, 80),
+        });
+        return { element, ...node, bounds: region.bounds };
+      }
+      return { ...node, bounds: region.bounds };
+    },
+  );
+  accessibility.bounds_space = "screenshot";
+  return elements;
+}
 
 function matchingApps(apps, wanted) {
   return apps.flatMap((a) => {
@@ -251,6 +336,11 @@ class ComputerController {
     }
     if (result.accessibility?.menus)
       this.observations.get(window).menus = result.accessibility.menus;
+    if (result.accessibility && !result.accessibility.unavailable)
+      this.observations.get(window).elements = indexElements(
+        result.accessibility,
+        this.observations.get(window),
+      );
     this.check(context);
     const file = await context.upload(image, "image/png");
     return {
@@ -374,11 +464,12 @@ class ComputerController {
         if (
           args.x !== undefined ||
           args.y !== undefined ||
+          args.element !== undefined ||
           args.button !== undefined ||
           args.clicks !== undefined
         )
           throw new Error(
-            "Use a menu_path or screenshot coordinates, not both.",
+            "Use a menu_path or an element/screenshot coordinates, not both.",
           );
         if (
           !Array.isArray(args.menu_path) ||
@@ -423,7 +514,24 @@ class ComputerController {
           needs_observation: true,
         };
       } else if (name === "computer_click") {
-        const p = this.point(args, shot);
+        let p;
+        if (args.element !== undefined) {
+          if (args.x !== undefined || args.y !== undefined)
+            throw new Error(
+              "Use an element or screenshot coordinates, not both.",
+            );
+          const element = shot.elements?.get(args.element);
+          if (!Number.isInteger(args.element) || !element)
+            throw new Error(
+              "Unknown element. Observe with accessibility=true and use an element number from that observation.",
+            );
+          p = element.center;
+          outcome.element = {
+            element: args.element,
+            role: element.role,
+            text: element.text,
+          };
+        } else p = this.point(args, shot);
         if (
           ![undefined, "left", "right"].includes(args.button) ||
           ![undefined, 1, 2].includes(args.clicks)
@@ -552,4 +660,4 @@ class ComputerController {
     }
   }
 }
-module.exports = { ComputerController, captureBounds };
+module.exports = { ComputerController, captureBounds, elementRegion };

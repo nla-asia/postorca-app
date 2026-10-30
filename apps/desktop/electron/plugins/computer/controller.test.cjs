@@ -1,6 +1,10 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { ComputerController, captureBounds } = require("./controller.cjs");
+const {
+  ComputerController,
+  captureBounds,
+  elementRegion,
+} = require("./controller.cjs");
 
 function fixture() {
   let time = 1000;
@@ -196,6 +200,204 @@ test("a lost post-input screenshot reports uncertainty and invalidates the old o
     /Stale/,
   );
 });
+test("element bounds convert desktop points to Retina screenshot pixels with the window offset", () => {
+  // Window at (-100, 10) points captured as a 2x Retina bitmap.
+  const shot = {
+    bounds: { x: -100, y: 10, width: 400, height: 300 },
+    width: 800,
+    height: 600,
+  };
+  assert.deepEqual(
+    elementRegion({ x: 100, y: 60, width: 40, height: 20 }, shot),
+    {
+      bounds: { x: 400, y: 100, width: 80, height: 40 },
+      center: { x: 120, y: 70 },
+    },
+  );
+  // Only the visible part counts, and the click lands in its centre.
+  assert.deepEqual(
+    elementRegion({ x: -120, y: 0, width: 40, height: 30 }, shot),
+    {
+      bounds: { x: 0, y: 0, width: 40, height: 40 },
+      center: { x: -90, y: 20 },
+    },
+  );
+  assert.equal(
+    elementRegion({ x: 400, y: 60, width: 40, height: 20 }, shot),
+    null,
+  );
+  assert.equal(
+    elementRegion({ x: Infinity, y: 0, width: 1, height: 1 }, shot),
+    null,
+  );
+  assert.equal(elementRegion(undefined, shot), null);
+  // Windows: physical pixels at 1:1 on a second monitor.
+  assert.deepEqual(
+    elementRegion(
+      { x: 2020, y: 100, width: 50, height: 30 },
+      {
+        bounds: { x: 1920, y: 0, width: 1000, height: 800 },
+        width: 1000,
+        height: 800,
+      },
+    ),
+    {
+      bounds: { x: 100, y: 100, width: 50, height: 30 },
+      center: { x: 2045, y: 115 },
+    },
+  );
+});
+
+function elementFixture() {
+  const f = fixture();
+  const original = f.controller.native;
+  f.controller.native = async (request) =>
+    request.action === "accessibility"
+      ? {
+          source: "macOS Accessibility",
+          nodes: [
+            {
+              role: "AXWindow",
+              text: "Probe",
+              depth: 0,
+              bounds: { ...f.window.bounds },
+            },
+            {
+              role: "AXStaticText",
+              text: "Allow notifications?",
+              depth: 1,
+              bounds: { x: 0, y: 40, width: 100, height: 20 },
+            },
+            {
+              role: "AXGroup",
+              text: "Don't Allow",
+              depth: 1,
+              actionable: true,
+              bounds: { x: 100, y: 60, width: 40, height: 20 },
+            },
+            {
+              role: "AXButton",
+              text: "Allow",
+              depth: 1,
+              bounds: { x: 150, y: 60, width: 40, height: 20 },
+            },
+            {
+              role: "AXButton",
+              text: "Offscreen",
+              depth: 1,
+              bounds: { x: 900, y: 60, width: 40, height: 20 },
+            },
+            { role: "AXButton", text: "No frame", depth: 1 },
+          ],
+        }
+      : original(request);
+  return f;
+}
+const observeElements = (f) =>
+  f.controller.run(
+    "computer_observe",
+    { window: "7", accessibility: true },
+    f.context,
+  );
+
+test("accessibility observations index visible actionable controls in screenshot pixels", async () => {
+  const f = elementFixture();
+  await f.ready();
+  const shot = await observeElements(f);
+  assert.equal(shot.accessibility.bounds_space, "screenshot");
+  assert.deepEqual(
+    shot.accessibility.nodes.map(({ element, text, bounds }) => [
+      element,
+      text,
+      bounds,
+    ]),
+    [
+      [undefined, "Probe", { x: 0, y: 0, width: 800, height: 600 }],
+      [
+        undefined,
+        "Allow notifications?",
+        { x: 200, y: 60, width: 200, height: 40 },
+      ],
+      [1, "Don't Allow", { x: 400, y: 100, width: 80, height: 40 }],
+      [2, "Allow", { x: 500, y: 100, width: 80, height: 40 }],
+      [undefined, "Offscreen", undefined],
+      [undefined, "No frame", undefined],
+    ],
+  );
+  assert.equal(shot.accessibility.nodes[2].actionable, undefined);
+});
+
+test("element clicks press the element centre and consume the observation", async () => {
+  const f = elementFixture();
+  await f.ready();
+  const shot = await observeElements(f);
+  const args = { window: "7", observation: shot.observation, element: 1 };
+  const result = await f.controller.run("computer_click", args, f.context);
+  assert.deepEqual(f.sent, [
+    ["move", 120, 70],
+    ["click", "left", false],
+  ]);
+  assert.deepEqual(result.element, {
+    element: 1,
+    role: "AXGroup",
+    text: "Don't Allow",
+  });
+  // The post-click screenshot has no accessibility, so no elements to reuse.
+  await assert.rejects(
+    f.controller.run("computer_click", args, f.context),
+    /Stale/,
+  );
+  await assert.rejects(
+    f.controller.run(
+      "computer_click",
+      { ...args, observation: result.observation },
+      f.context,
+    ),
+    /Unknown element/,
+  );
+  assert.equal(f.sent.length, 2);
+});
+
+test("element clicks reject stale observations, moved windows and missing elements without input", async () => {
+  const f = elementFixture();
+  await f.ready();
+  const old = await observeElements(f);
+  const fresh = await observeElements(f);
+  await assert.rejects(
+    f.controller.run(
+      "computer_click",
+      { window: "7", observation: old.observation, element: 1 },
+      f.context,
+    ),
+    /Stale/,
+  );
+  f.window.bounds.y += 5;
+  await assert.rejects(
+    f.controller.run(
+      "computer_click",
+      { window: "7", observation: fresh.observation, element: 1 },
+      f.context,
+    ),
+    /moved/,
+  );
+  f.window.bounds.y -= 5;
+  for (const [extra, error] of [
+    [{ element: 9 }, /Unknown element/],
+    [{ element: 1, x: 10, y: 10 }, /not both/],
+  ]) {
+    const shot = await observeElements(f);
+    await assert.rejects(
+      f.controller.run(
+        "computer_click",
+        { window: "7", observation: shot.observation, ...extra },
+        f.context,
+      ),
+      error,
+    );
+  }
+  assert.deepEqual(f.sent, []);
+});
+
 test("spanning windows capture only the largest visible display intersection", () => {
   assert.deepEqual(
     captureBounds({ x: -100, y: -10, width: 500, height: 300 }, [
@@ -377,6 +579,7 @@ test(
       { menu_path: ["File", "Stop Recording"] },
       { menu_path: ["Apple", "Restart"] },
       { menu_path: ["File", "Record Screen"], x: 1, y: 1 },
+      { menu_path: ["File", "Record Screen"], element: 1 },
     ]) {
       const f = fixture();
       const original = f.controller.native;
