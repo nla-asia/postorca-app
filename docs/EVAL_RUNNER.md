@@ -415,9 +415,12 @@ npm run eval -- benchmark --out .data/benchmark.html   # or .md; JSON goes to st
 npm run eval -- benchmark --plan luna-writing --out .data/luna-writing.md
 ```
 
-Rows are category × level, plus each category over all levels; columns are models.
-Each cell gives the pass rate, the current passing streak, and the median time and
-tool calls over graded attempts. The case table shows the same per case.
+The scoreboard opens with one row per category (over all its levels) and one
+column per model, showing the pass rate. Click a category (or "Expand all") for its
+levels and cases, each with the current passing streak, the median time and tool
+calls over graded attempts, and what wasn't counted. The Markdown version puts the
+same details in collapsed `<details>` blocks. The JSON keeps every category, level
+and case.
 
 - **Pass rate** = passes / (passes + agent failures + untriaged failures). A failure
   is the agent's when any triage finding on the agent side covers a failed or

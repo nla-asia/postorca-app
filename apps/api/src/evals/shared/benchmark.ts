@@ -259,10 +259,22 @@ export function benchmark(attempts: BenchmarkAttempt[]) {
         ),
       };
     });
+  // Category first: every category over all its levels, with its levels and cases.
+  const byCategory = [...new Set(keys.map((k) => k.category))].map(
+    (category) => {
+      const all = row(category, null, true);
+      return {
+        ...all,
+        levels: rows.filter((r) => r.category === category && r.level),
+        cases: cases.filter((c) => c.category === category),
+      };
+    },
+  );
   return {
     grading_policy_version: gradingPolicyVersion,
     minimum_scored: minimumScored,
     models,
+    categories: byCategory,
     overall: models.map((m) =>
       cell(
         m,
@@ -283,8 +295,10 @@ export function benchmark(attempts: BenchmarkAttempt[]) {
 }
 export type Benchmark = ReturnType<typeof benchmark>;
 
+const title = (category: string) =>
+  `${category[0].toUpperCase()}${category.slice(1)}`;
 export const label = (category: string, level: number | null) =>
-  `${category[0].toUpperCase()}${category.slice(1)}${level ? ` L${level}` : " (all levels)"}`;
+  `${title(category)}${level ? ` L${level}` : " (all levels)"}`;
 const percent = (c: Cell) =>
   c.pass_rate == null
     ? "–"
@@ -310,46 +324,56 @@ const summary = (c: Cell) =>
 export function markdown(b: Benchmark) {
   const head = (first: string) =>
     `| ${first} | ${b.models.join(" | ")} |\n|---|${b.models.map(() => "---|").join("")}`;
+  const rate = (c: Cell, lead: boolean) =>
+    !c.attempts ? "–" : lead ? `**${percent(c)}**` : percent(c);
+  const detail = (c: Cell) =>
+    c.attempts ? `${summary(c)}; not counted: ${excluded(c)}` : "–";
   const lines = [
     "# Model benchmark",
     "",
-    `Pass rate counts passes, agent failures and untriaged failures. Eval-defect and infrastructure failures, blocked, unreviewed and stale attempts are listed but not counted. A model leads a row with at least ${b.minimum_scored} scored attempts and a strictly higher pass rate (**bold**). Cells: pass rate · current streak · median time · median tool calls.`,
+    `Pass rate counts passes, agent failures and untriaged failures; eval-defect and infrastructure failures, blocked, unreviewed and stale attempts are not counted. **Bold** leads its row: at least ${b.minimum_scored} scored attempts and a strictly higher pass rate.`,
     "",
     head("Category"),
-    ...b.rows.map(
+    ...b.categories.map(
       (r) =>
-        `| ${label(r.category, r.level)} | ${r.cells
-          .map((c) => (r.leader === c.model ? `**${summary(c)}**` : summary(c)))
-          .join(" | ")} |`,
+        `| ${title(r.category)} | ${r.cells.map((c) => rate(c, r.leader === c.model)).join(" | ")} |`,
     ),
-    `| Overall | ${b.overall.map(summary).join(" | ")} |`,
-    "",
-    "## Failures by root cause",
-    "",
-    head("Model"),
-    ...["agent", "untriaged", "infrastructure", "eval"].map(
-      (cause) =>
-        `| ${cause} | ${b.overall.map((c) => c.failed[cause as Cause]).join(" | ")} |`,
-    ),
-    "",
-    "## Where each model is stronger",
+    `| Overall | ${b.overall.map((c) => rate(c, false)).join(" | ")} |`,
     "",
     ...b.strengths.map(
       (s) =>
-        `- **${s.model}**: ${s.leads.length ? s.leads.join(", ") : "no clear lead yet"}`,
+        `- **${s.model}** is stronger in: ${s.leads.length ? s.leads.join(", ") : "no clear lead yet"}`,
     ),
     "",
-    "## Cases",
+    "## Details",
     "",
-    head("Case"),
-    ...b.cases.map(
-      (c) =>
-        `| ${c.case_id} (${label(c.category, c.level)}) | ${c.cells
-          .map((x) =>
-            x.attempts ? `${percent(x)}; not counted: ${excluded(x)}` : "–",
-          )
-          .join(" | ")} |`,
+    "Cells: pass rate · current streak · median time · median tool calls; not counted.",
+    "",
+    ...b.categories.flatMap((r) => [
+      `<details><summary>${title(r.category)}</summary>`,
+      "",
+      head("Level / case"),
+      ...r.levels.map(
+        (l) =>
+          `| ${label(l.category, l.level)} | ${l.cells.map(detail).join(" | ")} |`,
+      ),
+      ...r.cases.map(
+        (c) =>
+          `| ${c.case_id} (L${c.level ?? "?"}) | ${c.cells.map(detail).join(" | ")} |`,
+      ),
+      "",
+      "</details>",
+      "",
+    ]),
+    "<details><summary>Failures by root cause</summary>",
+    "",
+    head("Cause"),
+    ...(["agent", "untriaged", "infrastructure", "eval"] as Cause[]).map(
+      (cause) =>
+        `| ${cause} | ${b.overall.map((c) => c.failed[cause]).join(" | ")} |`,
     ),
+    "",
+    "</details>",
     "",
   ];
   return lines.join("\n");
@@ -361,42 +385,68 @@ const escape = (s: string) =>
     (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]!,
   );
 export function html(b: Benchmark, generatedAt = new Date().toISOString()) {
+  // Collapsed, a cell is the pass rate; expanded, it adds streak, medians and exclusions.
   const td = (c: Cell, lead: boolean) =>
     c.attempts
-      ? `<td class="${lead ? "lead" : ""}"><b>${escape(percent(c))}</b><small>streak ${c.streak} · ${minutes(c.median_elapsed_ms)} · ${number(c.median_tool_calls)} calls</small><small class="muted">not counted: ${escape(excluded(c))}</small></td>`
+      ? `<td class="${lead ? "lead" : ""}"><b>${c.pass_rate == null ? "–" : `${Math.round(c.pass_rate * 100)}%`}</b> <span class="muted">${c.passed}/${c.scored}</span><small class="more">streak ${c.streak} · ${minutes(c.median_elapsed_ms)} · ${number(c.median_tool_calls)} calls</small><small class="more muted">not counted: ${escape(excluded(c))}</small></td>`
       : `<td class="muted">–</td>`;
   const header = (first: string) =>
-    `<tr><th>${first}</th>${b.models.map((m) => `<th>${escape(m)}</th>`).join("")}</tr>`;
+    `<thead><tr><th>${first}</th>${b.models.map((m) => `<th>${escape(m)}</th>`).join("")}</tr></thead>`;
+  const category = (r: Benchmark["categories"][number]) => `<tbody>
+<tr class="head"><th><button type="button" aria-expanded="false">${escape(title(r.category))}</button></th>${r.cells.map((c) => td(c, r.leader === c.model)).join("")}</tr>
+${r.levels.map((l) => `<tr class="sub"><th class="level">Level ${l.level}</th>${l.cells.map((c) => td(c, l.leader === c.model)).join("")}</tr>`).join("\n")}
+${r.cases.map((c) => `<tr class="sub"><th class="case">${escape(c.case_id)} <span class="muted">L${c.level ?? "?"}</span></th>${c.cells.map((x) => td(x, false)).join("")}</tr>`).join("\n")}
+</tbody>`;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Model benchmark</title>
 <style>
-:root{--bg:#fff;--fg:#1d1d1f;--muted:#6e6e73;--line:#e5e5ea;--lead:#e7f6ec;--leadfg:#0b6b2b}
-@media (prefers-color-scheme:dark){:root{--bg:#161618;--fg:#f2f2f7;--muted:#98989f;--line:#2c2c2e;--lead:#12301d;--leadfg:#7ee2a0}}
+:root{--bg:#fff;--fg:#1d1d1f;--muted:#6e6e73;--line:#e5e5ea;--sub:#f7f7f9;--lead:#e7f6ec;--leadfg:#0b6b2b}
+@media (prefers-color-scheme:dark){:root{--bg:#161618;--fg:#f2f2f7;--muted:#98989f;--line:#2c2c2e;--sub:#1e1e21;--lead:#12301d;--leadfg:#7ee2a0}}
 body{margin:0;padding:24px 16px;background:var(--bg);color:var(--fg);font:14px/1.45 -apple-system,system-ui,sans-serif}
-main{max-width:1100px;margin:0 auto}h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:28px 0 8px}
+main{max-width:1000px;margin:0 auto}h1{font-size:22px;margin:0 0 4px}
 p{color:var(--muted);max-width:760px}.wrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;min-width:480px}th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
-th{font-weight:600}td small{display:block;font-size:12px}.muted{color:var(--muted)}
-td.lead{background:var(--lead)}td.lead b{color:var(--leadfg)}tr.all th{font-style:italic}
+table{border-collapse:collapse;width:100%;min-width:420px}th,td{border-bottom:1px solid var(--line);padding:10px;text-align:left;vertical-align:top}
+thead th{font-weight:600;color:var(--muted);font-size:12px}td b{font-size:16px}
+small{display:block;font-size:12px}.muted{color:var(--muted)}
+td.lead{background:var(--lead)}td.lead b{color:var(--leadfg)}
+button{all:unset;cursor:pointer;font-weight:600}button::before{content:"▸";display:inline-block;width:1.2em;color:var(--muted);transition:transform .15s}
+tbody.open button::before{transform:rotate(90deg)}button:focus-visible{outline:2px solid var(--leadfg);outline-offset:2px}
+tr.sub{background:var(--sub)}tr.sub th{font-weight:500;padding-left:2em}tr.sub th.case{font-size:13px}
+tbody:not(.open) tr.sub,tbody:not(.open) .more{display:none}
+tr.total th{font-weight:600;padding-left:calc(10px + 1.2em)}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0 8px}
+.toolbar button{font-weight:500;color:var(--muted)}.toolbar button::before{content:none}
+ul{padding-left:18px}details{margin-top:20px}summary{cursor:pointer;font-weight:600}
 </style></head><body><main>
 <h1>Model benchmark</h1>
-<p>Generated ${escape(generatedAt)} from stored eval attempts (grading policy ${b.grading_policy_version}). Pass rate counts passes, agent failures and untriaged failures; eval-defect and infrastructure failures, blocked, unreviewed and stale attempts are shown but not counted. A highlighted cell leads its row: at least ${b.minimum_scored} scored attempts and a strictly higher pass rate. Times and tool calls are medians over graded attempts.</p>
+<p>Pass rate per category. Eval-defect and infrastructure failures, blocked, unreviewed and stale attempts are not counted. Green leads its row (at least ${b.minimum_scored} scored attempts and a strictly higher pass rate). Click a category for levels, cases and details.</p>
+<div class="toolbar"><ul>${b.strengths.map((s) => `<li><b>${escape(s.model)}</b> is stronger in: ${s.leads.length ? escape(s.leads.join(", ")) : "no clear lead yet"}</li>`).join("")}</ul><button type="button" id="all">Expand all</button></div>
 <div class="wrap"><table>${header("Category")}
-${b.rows.map((r) => `<tr class="${r.level ? "" : "all"}"><th>${escape(label(r.category, r.level))}</th>${r.cells.map((c) => td(c, r.leader === c.model)).join("")}</tr>`).join("\n")}
-<tr class="all"><th>Overall</th>${b.overall.map((c) => td(c, false)).join("")}</tr>
+${b.categories.map(category).join("\n")}
+<tbody><tr class="total"><th>Overall</th>${b.overall.map((c) => td(c, false)).join("")}</tr></tbody>
 </table></div>
-<h2>Where each model is stronger</h2>
-<ul>${b.strengths.map((s) => `<li><b>${escape(s.model)}</b>: ${s.leads.length ? escape(s.leads.join(", ")) : "no clear lead yet"}</li>`).join("")}</ul>
-<h2>Failures by root cause</h2>
+<details><summary>Failures by root cause</summary>
 <div class="wrap"><table>${header("Cause")}
-${(["agent", "untriaged", "infrastructure", "eval"] as Cause[]).map((cause) => `<tr><th>${cause}</th>${b.overall.map((c) => `<td>${c.failed[cause]}</td>`).join("")}</tr>`).join("\n")}
-</table></div>
-<h2>Cases</h2>
-<div class="wrap"><table>${header("Case")}
-${b.cases.map((c) => `<tr><th>${escape(c.case_id)}<small class="muted">${escape(label(c.category, c.level))}</small></th>${c.cells.map((x) => td(x, false)).join("")}</tr>`).join("\n")}
-</table></div>
-</main></body></html>
+<tbody>${(["agent", "untriaged", "infrastructure", "eval"] as Cause[]).map((cause) => `<tr><th>${cause}</th>${b.overall.map((c) => `<td>${c.failed[cause]}</td>`).join("")}</tr>`).join("\n")}</tbody>
+</table></div></details>
+<p><small>Generated ${escape(generatedAt)} from stored eval attempts (grading policy ${b.grading_policy_version}). Times and tool calls are medians over graded attempts.</small></p>
+</main>
+<script>
+const toggle = (body, open) => {
+  body.classList.toggle("open", open);
+  body.querySelector("tr.head button").setAttribute("aria-expanded", String(open));
+};
+const bodies = [...document.querySelectorAll("tbody")].filter((t) => t.querySelector("tr.head"));
+for (const body of bodies)
+  body.querySelector("tr.head").addEventListener("click", () => toggle(body, !body.classList.contains("open")));
+document.getElementById("all").addEventListener("click", (e) => {
+  const open = !bodies.every((t) => t.classList.contains("open"));
+  bodies.forEach((t) => toggle(t, open));
+  e.target.textContent = open ? "Collapse all" : "Expand all";
+});
+</script>
+</body></html>
 `;
 }
 
