@@ -51,7 +51,8 @@ export function createApp(
 
   app.get("/api/health", async (_req, res) => {
     await ping(db);
-    res.json({ ok: true });
+    // The eval runner checks the model it records against the one actually serving.
+    res.json({ ok: true, orca: config.orca?.model ?? null });
   });
   app.use("/api/auth", authRoutes(db, config.jwtSecret));
   // Desktop routes authenticate themselves (most take a device token).

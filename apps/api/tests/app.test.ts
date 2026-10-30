@@ -35,7 +35,8 @@ after(async () => {
 test("health checks PostgreSQL without exposing Express", async () => {
   const response = await fetch(`${baseUrl}/api/health`);
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { ok: true });
+  // No model key in this config, so Orca is off.
+  assert.deepEqual(await response.json(), { ok: true, orca: null });
   assert.equal(response.headers.get("x-powered-by"), null);
 });
 

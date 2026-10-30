@@ -206,7 +206,11 @@ export class EvalRunner {
         if (sha(await readFile(file.path)) !== file.sha256)
           throw new Error(`Fixture checksum changed: ${file.path}`);
       }
-    await this.api(run, "/health");
+    const health = await this.api(run, "/health");
+    if (health.orca !== run.model)
+      throw new Error(
+        `The API runs Orca on ${health.orca ?? "no model"}, but this attempt declares ${run.model}; change settings.orca and restart the API, or prepare with the serving model`,
+      );
     const tasks = await this.api(run, "/tasks");
     if (!Array.isArray(tasks)) throw new Error("Unexpected task list");
     if (
