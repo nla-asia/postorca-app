@@ -457,6 +457,8 @@ function Scene({
     : null;
   const rect = placed ? { ...placed, top: placed.top + top } : null;
   const shownWhole = !!rect && framed;
+  // A focused clip shows only that part, between the text bands: never the browser's bars.
+  const croppedClip = !!scene.clip && framed && !!scene.focus;
   const focus = scene.focus ?? null;
   // A clip has its own motion: only image shots get the handheld drift.
   const amount = scene.clip
@@ -489,13 +491,21 @@ function Scene({
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            filter: "blur(40px) brightness(0.45)",
+            // A focused clip's surround matches its own page, light or dark.
+            filter: croppedClip ? "blur(40px)" : "blur(40px) brightness(0.45)",
             transform: "scale(1.15)",
           }}
         />
       )}
       {src && (
-        <AbsoluteFill style={{ transform: camera(frame, fps, shot, amount) }}>
+        <AbsoluteFill
+          style={{
+            transform: camera(frame, fps, shot, amount),
+            ...(croppedClip && {
+              clipPath: `inset(${top}px 0 ${height - top - viewport.height}px 0)`,
+            }),
+          }}
+        >
           <AbsoluteFill
             style={{
               transformOrigin: "0 0",
