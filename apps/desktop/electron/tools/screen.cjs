@@ -218,6 +218,11 @@ function createScreenTools({
   indicator = menuBarIndicator(),
   maxSeconds = MAX_RECORD_SECONDS,
   startupMs = 1000,
+  raiseWindow = (id) =>
+    require("../plugins/computer/native.cjs").native({
+      action: "focus",
+      window: String(id),
+    }),
 } = {}) {
   // Recordings by id, from start until screen_record_stop collects the clip.
   const recordings = new Map();
@@ -323,6 +328,16 @@ function createScreenTools({
     if (active)
       throw new Error(`Recording ${active.id} is still running. Stop it with screen_record_stop first.`);
     await requireAccess(target);
+    // screencapture records a window even behind others, which looks fine in the clip
+    // while the founder sees nothing and a moving pointer misses it. Bring it forward.
+    let inFront;
+    if (target.type === "window") {
+      inFront = await raiseWindow(target.window_id).then(
+        (result) => result?.foreground === true,
+        () => false,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "postorca-recording-"));
     const raw = path.join(dir, target.type === "simulator" ? "raw.mp4" : "raw.mov");
     const [command, args] = recordCommand(target, raw);
@@ -371,7 +386,15 @@ function createScreenTools({
     active = recording;
     recordingNow = true;
     indicator.show({ startedAt: recording.startedAt, stop: () => finish(recording, "founder") });
-    return { id: recording.id, target, max_seconds: maxSeconds };
+    return {
+      id: recording.id,
+      target,
+      max_seconds: maxSeconds,
+      ...(inFront === false && {
+        warning:
+          "The window could not be brought to the front, so the founder can't see it and the pointer won't land on it. Stop, close what covers it, and record again.",
+      }),
+    };
   };
 
   const stop = async ({ id }, context) => {

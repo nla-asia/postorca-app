@@ -185,3 +185,42 @@ test("window list keeps app windows only", () => {
     ],
   );
 });
+
+test("recording a window brings it to the front first, and warns if it can't", async () => {
+  const order = [];
+  const { spawnProcess } = fakeSpawn();
+  const spawned = (...args) => {
+    order.push("record");
+    return spawnProcess(...args);
+  };
+  const tools = (raiseWindow) =>
+    createScreenTools({
+      platform: "darwin",
+      access: () => "granted",
+      spawnProcess: spawned,
+      indicator: fakeIndicator(),
+      startupMs: 1,
+      raiseWindow,
+    });
+  const front = tools(async (id) => {
+    order.push(`raise ${id}`);
+    return { foreground: true };
+  });
+  const target = { type: "window", window_id: 42 };
+  const started = await front.screen_record_start.run({ target });
+  assert.deepEqual(order, ["raise 42", "record"]);
+  assert.equal(started.warning, undefined);
+  await front.screen_record_stop.run({ id: started.id }, context);
+
+  const covered = tools(async () => ({ foreground: false }));
+  const behind = await covered.screen_record_start.run({ target });
+  assert.match(behind.warning, /could not be brought to the front/);
+  await covered.screen_record_stop.run({ id: behind.id }, context);
+
+  // The Simulator and whole screens are not windows to raise.
+  order.length = 0;
+  const other = tools(async () => order.push("raise"));
+  const screen = await other.screen_record_start.run({ target: { type: "screen" } });
+  assert.deepEqual(order, ["record"]);
+  await other.screen_record_stop.run({ id: screen.id }, context);
+});
