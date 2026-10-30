@@ -144,6 +144,8 @@ function captureBounds(bounds, displays) {
   return visible[0];
 }
 
+const terminalApps =
+  /(^|[\\/])(Terminal|iTerm2?|Warp|Ghostty|kitty|Alacritty|WezTerm|Hyper|Tabby|WindowsTerminal|wt|cmd|powershell|pwsh|conhost)(\.app|\.exe)?$/i;
 class ComputerController {
   constructor({
     native,
@@ -471,8 +473,13 @@ class ComputerController {
       this.check(context);
       return this.observe(args.window, args.accessibility ?? false, context);
     }
-    const shot = await this.observed(args, context);
     const known = this.windows.get(args.window);
+    // Input to a terminal would run commands on the founder's computer.
+    if (name !== "computer_scroll" && terminalApps.test(known?.app_id ?? ""))
+      throw new Error(
+        "Input to a terminal is not allowed: it could run commands on the founder's computer. No task input was sent. Ask the founder to run the command instead.",
+      );
+    const shot = await this.observed(args, context);
     const outcome = { action: name, input_sent: false };
     try {
       // Invalidate before the first side effect, including partial failures.

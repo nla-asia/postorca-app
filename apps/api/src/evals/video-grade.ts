@@ -162,8 +162,8 @@ export function gradeVideo(
       earlierPreviews.length > 0,
     );
     check(
-      `Export ${index + 1} opens on a hook sticker over an image`,
-      !!(scenes[0]?.image_file && scenes[0]?.text),
+      `Export ${index + 1} opens on a hook sticker${scenes[0]?.video_file ? "" : " over an image"}`,
+      !!((scenes[0]?.image_file || scenes[0]?.video_file) && scenes[0]?.text),
       scenes[0]?.text ?? "",
     );
     const shots: number[] = [];
@@ -181,10 +181,14 @@ export function gradeVideo(
     });
     const average =
       shots.reduce((sum, value) => sum + value, 0) / Math.max(1, shots.length);
+    // A clip scene's length is only known to the tool, which reports slow pacing.
+    const clips = scenes.some((scene) => scene.video_file);
     check(
       `Export ${index + 1} cuts every 2–3 s on average`,
-      average <= 3,
-      `${shots.length} shots, mean ${average.toFixed(1)} s, longest ${Math.max(0, ...shots).toFixed(1)} s`,
+      clips ? !call.result?.pacing : average <= 3,
+      clips
+        ? (call.result?.pacing ?? "Tool reported no slow pacing")
+        : `${shots.length} shots, mean ${average.toFixed(1)} s, longest ${Math.max(0, ...shots).toFixed(1)} s`,
     );
     check(
       entry.expect.brandOverride

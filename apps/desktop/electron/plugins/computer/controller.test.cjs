@@ -511,6 +511,31 @@ test("a sheet in front of the selected window is named and can be observed and c
     ["click", "left", false],
   ]);
 });
+test("input to a terminal is refused before anything is sent", async () => {
+  for (const app_id of [
+    "/System/Applications/Utilities/Terminal.app",
+    "/Applications/iTerm.app",
+    "C:\\Windows\\System32\\cmd.exe",
+  ]) {
+    const f = fixture(),
+      shot = await f.ready();
+    f.controller.windows.get("7").app_id = app_id;
+    for (const [tool, extra] of [
+      ["computer_type", { text: "rm -rf x" }],
+      ["computer_press", { key: "enter" }],
+      ["computer_click", { x: 10, y: 10 }],
+    ])
+      await assert.rejects(
+        f.controller.run(
+          tool,
+          { window: "7", observation: shot.observation, ...extra },
+          f.context,
+        ),
+        /Input to a terminal is not allowed/,
+      );
+    assert.deepEqual(f.sent, []);
+  }
+});
 test("a click that closes its window succeeds and asks for a new observation", async () => {
   const f = fixture(),
     shot = await f.ready();
