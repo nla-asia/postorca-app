@@ -12,6 +12,7 @@ import { EvalRunner } from "../evals/shared/runner.js";
 import {
   benchmark,
   html,
+  latestBatch,
   loadAttempts,
   markdown,
   nextCase,
@@ -48,6 +49,7 @@ for (const key of Object.keys(flags))
       "--model",
       "--cases",
       "--repeats",
+      "--all",
     ].includes(key)
   )
     throw new Error(`Unknown option ${key}`);
@@ -220,8 +222,13 @@ if (mode === "list") {
 } else if (mode === "benchmark") {
   const { attempts, skipped } = await loadAttempts(root);
   const plan = flags["--plan"] ? await readPlan(root, flags["--plan"]) : null;
+  // Default: each case's latest batch per model; --all scores every attempt to date.
   const report = benchmark(
-    plan ? attempts.filter((a) => plan.attempts.includes(a.id)) : attempts,
+    plan
+      ? attempts.filter((a) => plan.attempts.includes(a.id))
+      : flags["--all"] === "true"
+        ? attempts
+        : latestBatch(attempts),
   );
   if (flags["--out"]) {
     const out = path(flags["--out"]);
@@ -301,5 +308,5 @@ if (mode === "list") {
   console.log(JSON.stringify(await runner.retryCleanup(selected), null, 2));
 } else
   throw new Error(
-    "Use list [plugin] | prepare <case> --config <file> | run <attempt> | collect <attempt> | inspect <attempt> | review <attempt> --review <file> | regrade <attempt> --reason <reason> | triage <attempt> --triage <file> | report | benchmark [--plan <name>] [--out <file.html|.md>] | benchmark-plan <name> --model <m> --cases <list> [--repeats N] | benchmark-next <plan> --config <file> | reconcile-task <attempt> --task <id>",
+    "Use list [plugin] | prepare <case> --config <file> | run <attempt> | collect <attempt> | inspect <attempt> | review <attempt> --review <file> | regrade <attempt> --reason <reason> | triage <attempt> --triage <file> | report | benchmark [--plan <name> | --all true] [--out <file.html|.md>] | benchmark-plan <name> --model <m> --cases <list> [--repeats N] | benchmark-next <plan> --config <file> | reconcile-task <attempt> --task <id>",
   );

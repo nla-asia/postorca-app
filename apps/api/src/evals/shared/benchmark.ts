@@ -28,6 +28,8 @@ export type BenchmarkAttempt = {
   level: 1 | 2 | 3 | null;
   model: string;
   created_at: string;
+  /** Git commit the attempt ran on; repeats on one commit form a batch. */
+  commit: string;
   outcome: Outcome;
   /** Failed attempts only: who the failure is on. */
   cause: Cause | null;
@@ -113,6 +115,7 @@ export async function loadAttempts(root: string) {
         level: entry.level ?? null,
         model: run.model,
         created_at: run.created_at,
+        commit: run.commit,
         outcome,
         cause: outcome === "failed" ? failureCause(result) : null,
         elapsed_ms: result?.metrics?.elapsed_ms ?? null,
@@ -126,6 +129,23 @@ export async function loadAttempts(root: string) {
   }
   attempts.sort((a, b) => a.created_at.localeCompare(b.created_at));
   return { attempts, skipped };
+}
+
+/**
+ * Where each model stands now: per model and case, only the latest batch, i.e.
+ * the newest attempt and the others on the same commit. Older code's results
+ * would otherwise keep counting after fixes land.
+ */
+export function latestBatch(attempts: BenchmarkAttempt[]) {
+  const newest = new Map<string, BenchmarkAttempt>();
+  for (const a of attempts) {
+    const key = `${a.model}\0${a.case_id}`;
+    const seen = newest.get(key);
+    if (!seen || a.created_at > seen.created_at) newest.set(key, a);
+  }
+  return attempts.filter(
+    (a) => newest.get(`${a.model}\0${a.case_id}`)!.commit === a.commit,
+  );
 }
 
 export function median(values: (number | null)[]) {

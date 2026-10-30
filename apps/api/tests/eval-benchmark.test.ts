@@ -8,6 +8,7 @@ import {
   cell,
   failureCause,
   html,
+  latestBatch,
   loadAttempts,
   markdown,
   median,
@@ -31,6 +32,7 @@ function attempt(overrides: Partial<BenchmarkAttempt> = {}): BenchmarkAttempt {
     level: 2,
     model: "muse-spark-1.3",
     created_at: new Date(Date.UTC(2026, 9, 1, 0, n)).toISOString(),
+    commit: "c1",
     outcome: "passed",
     cause: null,
     elapsed_ms: 60_000,
@@ -148,6 +150,28 @@ test("streak counts the newest scored passes; medians use graded attempts", () =
   assert.equal(c.median_cost, null);
   assert.equal(median([4, null, 1, 3, 2]), 2.5);
   assert.equal(median([]), null);
+});
+
+test("latest batch keeps each model's newest run of a case and its repeats", () => {
+  const old = failed("agent", { case_id: "x", commit: "c1" });
+  const oldOther = attempt({ case_id: "y", commit: "c1" });
+  const repeatA = attempt({ case_id: "x", commit: "c2" });
+  const repeatB = failed("agent", { case_id: "x", commit: "c2" });
+  const luna = attempt({ case_id: "x", model: "gpt-6-luna", commit: "c1" });
+  const kept = latestBatch([old, oldOther, repeatA, repeatB, luna]);
+  // Case x: the c2 batch replaces the c1 run; case y keeps its only run;
+  // another model's batch is chosen on its own.
+  assert.deepEqual(
+    kept.map((a) => a.id),
+    [oldOther.id, repeatA.id, repeatB.id, luna.id],
+  );
+  const c = cell(
+    "muse-spark-1.3",
+    "writing",
+    2,
+    kept.filter((a) => a.model === "muse-spark-1.3"),
+  );
+  assert.equal(c.pass_rate, 2 / 3);
 });
 
 test("rows by category and level, with a lead only on a clear, sufficient gap", () => {
