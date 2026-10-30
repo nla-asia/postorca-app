@@ -222,15 +222,18 @@ test("rows by category and level, with a lead only on a clear, sufficient gap", 
   const md = markdown(report);
   assert.match(md, /\| Category \| gpt-6-luna \| muse-spark-1\.3 \|/);
   assert.match(md, /\| Writing \| 60% \(3\/5\) \| 60% \(3\/5\) \|/);
-  assert.match(md, /- \*\*gpt-6-luna\*\* is stronger in: Writing L2/);
-  assert.match(md, /<details><summary>Browser<\/summary>/);
-  assert.match(md, /\| browser-x \(L2\) \| – · streak 0 · 1\.0 min · 10 calls; not counted: 3 eval \|/);
-  const page = html(report, "2026-10-30T00:00:00Z");
+  assert.match(md, /<details><summary>Writing<\/summary>/);
+  assert.match(md, /\| Level 2 \| \*\*100% \(3\/3\)\*\* \| 33% \(1\/3\) \|/);
+  // Only an unscored dash for b's eval-defect failures; no detail report.
+  assert.match(md, /\| browser-x \| – \| 100% \(3\/3\) \|/);
+  assert.doesNotMatch(md, /streak|not counted|root cause/i);
+  const page = html(report);
   assert.match(page, /<title>Model benchmark<\/title>/);
   // Only the Writing L2 level row has a leader; it is hidden until expanded.
   assert.equal((page.match(/class="lead"/g) ?? []).length, 1);
   assert.equal((page.match(/<tr class="head">/g) ?? []).length, 3);
   assert.match(page, /aria-expanded="false">Writing<\/button>/);
+  assert.doesNotMatch(page, /streak|not counted|root cause/i);
 });
 
 async function sandbox(t: any) {

@@ -415,24 +415,22 @@ npm run eval -- benchmark --out .data/benchmark.html   # or .md; JSON goes to st
 npm run eval -- benchmark --plan luna-writing --out .data/luna-writing.md
 ```
 
-The scoreboard opens with one row per category (over all its levels) and one
-column per model, showing the pass rate. Click a category (or "Expand all") for its
-levels and cases, each with the current passing streak, the median time and tool
-calls over graded attempts, and what wasn't counted. The Markdown version puts the
-same details in collapsed `<details>` blocks. The JSON keeps every category, level
-and case.
+The scoreboard is pass rates only: one row per category (over all its levels), one
+column per model, and the stronger model's cell in green. Click a category for its
+levels and cases. The Markdown version puts those in collapsed `<details>` blocks.
+Streaks, median time and tool calls, and failures by root cause are in the JSON,
+not in the scoreboard.
 
 - **Pass rate** = passes / (passes + agent failures + untriaged failures). A failure
   is the agent's when any triage finding on the agent side covers a failed or
   blocked check. Recovered tool errors alone don't make it the agent's.
 - Eval-defect and infrastructure failures, blocked, unreviewed and stale attempts
-  are shown in the cell ("not counted") but left out of the pass rate and streak:
+  are left out of the pass rate and streak (the JSON lists them):
   they say nothing about the model. An untriaged failure counts against it until
   it is triaged.
 - **Stale**: the result's grading policy, case or evidence changed since grading.
   Run `inspect`/`regrade` on the attempt to count it again.
-- A model **leads** a row (highlighted, and listed under "Where each model is
-  stronger") when it and at least one other model have 3 or more scored attempts
+- A model **leads** a row (green) when it and at least one other model have 3 or more scored attempts
   there and its pass rate is strictly the highest.
 - Cost stays empty until the runner records it (see Evidence and review).
 
