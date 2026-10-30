@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { before, after, test, mock } from "node:test";
+import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { once } from "node:events";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -33,7 +34,9 @@ const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aB9sAAAAASUVORK5CYII=",
   "base64",
 );
-const mp3 = Buffer.from("ID3fixture");
+const mp3 = readFileSync(
+  new URL("./fixtures/media/silence.mp3", import.meta.url),
+);
 const mp4 = Buffer.from("\0\0\0\x18ftypmp42fixture");
 /** An MP4 with just a movie header saying it lasts `seconds`, after a media box. */
 function clipMp4(seconds: number) {
@@ -90,6 +93,21 @@ before(async () => {
         { detail: { status: "quota_exceeded", message: "private content" } },
         { status: 401 },
       );
+    if (String(url).endsWith("/asr/transcribe"))
+      return Response.json({
+        sessionId: "test-session",
+        transcript: "Ship it.",
+        audioDurationMs: 2200,
+        turns: [
+          {
+            turnId: 1,
+            startMs: 200,
+            endMs: 2200,
+            transcript: "Ship it.",
+            speaker: "A",
+          },
+        ],
+      });
     if (/openai\.com|meta\.ai/.test(String(url)))
       return Response.json({ data: [{ b64_json: png.toString("base64") }] });
     if (String(url).includes("/voices"))
@@ -242,6 +260,19 @@ test("audio tools discover voices and preserve the original tool models, duratio
     diarize: true,
   });
   assert.equal(transcript.text, "Ship it.");
+  assert.equal(transcript.timestamp_granularity, "turn");
+  assert.equal(transcript.words, undefined);
+  const transcriptionRequest = requests.at(-1)!;
+  assert.equal(
+    transcriptionRequest.url,
+    "https://api.meta.ai/v1/asr/transcribe",
+  );
+  const form = transcriptionRequest.init.body as FormData;
+  assert.equal(
+    JSON.parse(await (form.get("request") as Blob).text()).mode,
+    "DIARIZATION",
+  );
+  assert.equal((form.get("audio") as Blob).type, "audio/wav");
   const speechRequest = [...requests]
     .reverse()
     .find((request) => request.url.includes("/text-to-speech"))!;
@@ -276,6 +307,11 @@ test("audio tools discover voices and preserve the original tool models, duratio
       prompt: "Blue",
     }),
     /saved image/,
+  );
+  const other = await founder("media");
+  await assert.rejects(
+    other.call("media_transcribe", { file: speech.ref }),
+    /File not found/,
   );
   assert.equal(requests.length, before);
 });

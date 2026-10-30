@@ -551,3 +551,62 @@ test("transcription saves its price but keeps the hold without full audio durati
   assert.ok(!JSON.stringify(row).includes("PRIVATE"));
   assert.ok(!JSON.stringify(row).includes("private-audio"));
 });
+
+test("Meta transcription reads multipart model metadata, reserves credits and settles whole processed seconds without saving audio or text", async (t) => {
+  const s = await scope();
+  const { MetaTranscriptionProvider } = await import(
+    "../src/providers/meta-transcription.js"
+  );
+  const { readFile } = await import("node:fs/promises");
+  let dispatches = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    dispatches++;
+    const {
+      rows: [pending],
+    } = await s.db.query("SELECT * FROM api_requests WHERE turn_id=$1", [
+      s.turnId,
+    ]);
+    assert.equal(pending.operation, "transcription");
+    assert.equal(pending.model, "muse-voice-transcribe-1.0");
+    assert.equal(pending.credit_state, "reserved");
+    return Response.json({
+      sessionId: "session-test",
+      transcript: "PRIVATE TRANSCRIPT",
+      audioDurationMs: 8240,
+      turns: [
+        {
+          turnId: 1,
+          startMs: 1000,
+          endMs: 8240,
+          transcript: "PRIVATE WORDS",
+          speaker: "A",
+        },
+      ],
+    });
+  });
+  const file = new Blob(
+    [
+      new Uint8Array(
+        await readFile(
+          new URL("./fixtures/media/silence.mp3", import.meta.url),
+        ),
+      ),
+    ],
+    { type: "audio/mpeg" },
+  );
+  await withApiUsage(s, () =>
+    new MetaTranscriptionProvider("PRIVATE_KEY").transcribe({ file }),
+  );
+  const {
+    rows: [row],
+  } = await s.db.query("SELECT * FROM api_requests WHERE turn_id=$1", [
+    s.turnId,
+  ]);
+  assert.equal(dispatches, 1);
+  assert.equal(row.provider, "meta");
+  assert.equal(row.usage_data.meters.billed_audio_seconds, 8);
+  assert.equal(row.estimated_cost, "0.000400000000");
+  assert.equal(row.credit_state, "settled");
+  assert.equal(row.pricing_snapshot.prices[0].amount, "0.18");
+  assert.ok(!JSON.stringify(row).includes("PRIVATE"));
+});

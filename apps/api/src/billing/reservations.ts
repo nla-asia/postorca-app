@@ -64,6 +64,13 @@ export function requestReservation(
     ["image.generate", "image.edit"].includes(operation)
   )
     usd = 0.01 * Math.max(1, number("n", 1));
+  // Meta's file endpoint accepts at most 10 minutes ($0.03 at $0.18/hour).
+  if (
+    provider === "meta" &&
+    model === "muse-voice-transcribe-1.0" &&
+    operation === "transcription"
+  )
+    usd = 0.03;
   if (provider === "elevenlabs") {
     if (
       ["eleven_v3", "eleven_multilingual_v2"].includes(model) &&

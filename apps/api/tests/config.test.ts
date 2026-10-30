@@ -14,6 +14,7 @@ test("configuration has local defaults and accepts trimmed origins", () => {
       origins: ["http://127.0.0.1:5173", "http://localhost:5173"],
       orca: null,
       images: null,
+      transcription: null,
     },
   );
   assert.deepEqual(
@@ -30,6 +31,7 @@ test("configuration has local defaults and accepts trimmed origins", () => {
       origins: ["https://app.example.com", "http://localhost:5173"],
       orca: null,
       images: null,
+      transcription: null,
     },
   );
 });

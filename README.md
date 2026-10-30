@@ -42,7 +42,9 @@ npm install
 cp apps/api/.env.example apps/api/.env
 ```
 
-In `apps/api/.env`, set `JWT_SECRET` to a random string of at least 32 characters, and add `META_MODEL_API_KEY` to turn Orca and image generation on. The models themselves (Meta's `muse-spark-1.3` for Orca and `muse-image-1.0` for images) are chosen in `apps/api/src/settings.ts`; keys never choose a model. `ELEVENLABS_API_KEY` adds audio. `.env` holds secrets and values that differ between environments (URLs, client IDs, price IDs); settings that are the same everywhere, like the models and welcome credits, live in `apps/api/src/settings.ts`.
+In `apps/api/.env`, set `JWT_SECRET` to a random string of at least 32 characters, and add `META_MODEL_API_KEY` to turn Orca, image generation and transcription on. Models are chosen in `apps/api/src/settings.ts`; keys never choose a model. `ELEVENLABS_API_KEY` provides speech, music, sound effects and the video's separate word-timed caption transcription. `.env` holds secrets and values that differ between environments (URLs, client IDs, price IDs); settings that are the same everywhere, like models and welcome credits, live in `apps/api/src/settings.ts`.
+
+`media_transcribe` defaults to Meta (`muse-voice-transcribe-1.0`). To switch it back to ElevenLabs, set `transcription: { provider: "elevenlabs", model: "scribe_v2" }` in that same settings file and provide `ELEVENLABS_API_KEY`. Failed paid requests do not automatically fall back to another provider. Meta transcription converts saved audio or public HTTPS audio to temporary mono PCM WAV and supports recordings up to 10 minutes / 32 MB. Its results contain turn timings rather than word timings.
 
 Then start each of these in its own terminal:
 
