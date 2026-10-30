@@ -302,8 +302,11 @@ class ComputerController {
       // A sheet or panel of the same app covers the window; let the caller observe
       // it directly instead of failing until it is closed.
       this.windows.set(front.id, { ...front, app_id: known.app_id });
-      throw new Error(
-        `Window ${front.id}${front.title ? ` ("${front.title}")` : ""} of this app is in front of the selected window, such as a sheet or panel. Observe window ${front.id} to use it, or close it first. No task input was sent.`,
+      throw Object.assign(
+        new Error(
+          `Window ${front.id}${front.title ? ` ("${front.title}")` : ""} of this app is in front of the selected window, such as a sheet or panel. Observe window ${front.id} to use it, or close it first. No task input was sent.`,
+        ),
+        { front },
       );
     }
     if (!result.window || (focus && !result.foreground))
@@ -469,6 +472,7 @@ class ComputerController {
       return this.observe(args.window, args.accessibility ?? false, context);
     }
     const shot = await this.observed(args, context);
+    const known = this.windows.get(args.window);
     const outcome = { action: name, input_sent: false };
     try {
       // Invalidate before the first side effect, including partial failures.
@@ -665,7 +669,30 @@ class ComputerController {
         outcome.bottom_verified = false;
       } else throw new Error("Unknown computer tool.");
       await delay(200, undefined, { signal: context.signal });
-      return await this.observe(args.window, false, context, outcome);
+      try {
+        return await this.observe(args.window, false, context, outcome);
+      } catch (error) {
+        // The input itself can close the window or open a sheet over it. That is its
+        // outcome, not a failure: return fresh discovery, as a menu command does.
+        const closed = /Window is no longer (visible|available)/.test(
+          error.message,
+        );
+        if (!closed && !error.front) throw error;
+        const discovery = await this.list(context);
+        if (error.front)
+          this.windows.set(error.front.id, {
+            ...error.front,
+            app_id: known.app_id,
+          });
+        return {
+          ...outcome,
+          window: args.window,
+          window_closed: closed,
+          ...(error.front ? { front_window: error.front.id } : {}),
+          ...discovery,
+          needs_observation: true,
+        };
+      }
     } catch (error) {
       if (outcome.input_sent)
         throw new Error(
