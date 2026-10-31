@@ -261,8 +261,8 @@ over merely asserting that a tool was invoked.
 
 ## Existing case migration
 
-All 29 agent cases are registered: Browser 5, Computer 8, Media 5, Writing 4,
-Ideas 3, Content 4.
+All 31 agent cases are registered: Browser 5, Computer 8, Media 5, Writing 4,
+Ideas 4, Content 5.
 
 ### Categories
 
@@ -318,6 +318,29 @@ Before the first run, add `~/PostOrca Evals/streaks` to the founder's Brand Prof
 projects (`work_fixture_project_added`). The work-ideas routine remembers moments it
 already used, so clear those from its `work-ideas.md` memory before each attempt
 (`work_ideas_memory_cleared`).
+
+### Tide fixture
+
+`scripts/evals/tide-fixture.mjs` rebuilds Tide, a good-looking web todo app, as a git
+repository at `~/PostOrca Evals/tide` with three weeks of commits, and serves it at
+`http://127.0.0.1:4120`. The recent work is deliberately mixed: quick add (the demo), a
+two-tab sync fix (a text post), and a refactor and dependency bump (not content).
+`notes/beta.md` says what testers asked for. Each rebuild restarts from the sample tasks;
+`/?reset` restores them within an attempt.
+
+Two separate evals use it, matching the product:
+
+- `ideas-tide-from-commits`: the routine reads the work and proposes content for the
+  founder to approve. It only proposes: no browsing, recording or video. Supply `account`
+  and `account url` for a non-X account, and clear Tide from its `work-ideas.md` memory
+  before repeat attempts.
+- `content-demo-tide-from-idea`: starts where "Create content from this idea" does, with
+  a fixed approved idea in the words `queueIdeaContent` sends, so recording runs can be
+  compared. It records and edits the video. How it records is left to the agent; the
+  founder judges the outcome by reviewing the finished video.
+
+Add `~/PostOrca Evals/tide` to the founder's Brand Profile projects once. Web comes first,
+then a desktop app, then a mobile app.
 
 ### Product-demo cases (Computer level 2, Content level 3)
 

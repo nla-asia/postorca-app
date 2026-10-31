@@ -6,7 +6,7 @@ const { BrowserRelay } = require("./relay.cjs");
 const { EXTENSION_ID, writePairing, removePairing } = require("./pairing.cjs");
 const { TabObservations, linkTarget } = require("./observations.cjs");
 const { clickElement } = require("./click.cjs");
-const { pointerGlide } = require("./pointer.cjs");
+const { pointerGlide, typeText } = require("./pointer.cjs");
 const { isRecording } = require("../../tools/screen.cjs");
 const { settle, trackRequests } = require("./settle.cjs");
 const { pressKey } = require("./keyboard.cjs");
@@ -308,7 +308,7 @@ class FounderBrowser {
     await clickElement(page, element, onCamera);
     // Typing replaces a selection: select the field's whole content first.
     if (replace) await element.locator.selectText();
-    await page.keyboard.insertText(text);
+    await typeText(page, text, { isRecording });
     if (submit) await page.keyboard.press("Enter");
     await settle(page);
     return this.afterAction(id);

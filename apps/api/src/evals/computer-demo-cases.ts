@@ -16,6 +16,8 @@ export type DemoCase = {
   url?: string;
   /** Finds what to demo in the founder's recent work (the work fixture). */
   read_work?: boolean;
+  /** The work fixture's script, when it isn't the Streaks one. */
+  fixture_script?: string;
   brief: string;
   /** Text the demo has to type into the app, as regexes. product-demo-capture sets
    * the stage before recording, so this may happen on or off camera. */
@@ -114,6 +116,45 @@ export const demoCases: DemoCase[] = [
       ...videoReview,
     ],
   },
+  // Starts where "Create content from this idea" does: an approved idea, in the words
+  // queueIdeaContent sends. The idea is fixed, so recording runs can be compared.
+  {
+    id: "demo-tide-from-idea",
+    level: 3,
+    name: "From an approved idea to a product demo video (Tide web app)",
+    app: "web",
+    url: "http://127.0.0.1:4120",
+    fixture_script: "scripts/evals/tide-fixture.mjs",
+    brief: `Read the create-content skill with read_skill, then follow it for this idea.
+
+Idea: Quick add: type a sentence to add a task
+
+**From your work**: Tide, commits "Add quick add: type a sentence, get a dated task" and "Quick add: show date, time and project as chips while typing". Beta notes: 6 of 9 testers said adding a task takes too many clicks.
+
+**What happened**: Adding a task used to mean a title, then a date picker, then a project. Now you type one sentence and Tide reads the date, time and project from it as you type.
+
+**Why people would care**: Anyone who drops a todo app because capturing a task is slower than forgetting it.
+
+**Content type**: A video demo, because the value is in watching the sentence turn into a task.
+
+**Demo plan**: Short video, on the Today view at the top. The app runs at http://127.0.0.1:4120 (see the project's README).
+1. Click the quick add box and type "Call Sam tomorrow 3pm #work". The chips for Tomorrow, 3 pm and #work appear while typing.
+2. Press Enter. The task lands in Upcoming with its date, time and tag.
+Say plainly what was added and why.
+
+**Sample opening**: Testers said adding a task took too many clicks, so we added quick add.
+
+Founder's note: Make it a ~20 sec landscape video with voiceover and captions. Record it yourself from the running app. ${noPublish}`,
+    typed: ["tomorrow"],
+    min_clips: 1,
+    video: { seconds: [15, 35] },
+    criteria: [
+      "The video follows the approved idea: it shows the sentence being typed, the chips appearing, and the task landing with its date, time and tag.",
+      "It says plainly what was added and why (adding a task took too many clicks), like a product page, with no slogans, and claims nothing the idea, commits and notes don't support.",
+      "The recording looks like a person using the app: window in view, pointer moving, text typed key by key, no fumbling, repeated steps or long pauses.",
+      ...videoReview,
+    ],
+  },
   {
     id: "demo-mac-maps-video",
     level: 3,
@@ -194,7 +235,7 @@ export function gradeDemoCapture(
   const clipFiles = new Set(clipAttachments.map((a: any) => a.file));
   const clipRefs = new Set(clipAttachments.map(refOf));
   const typed = ok
-    .filter((c) => c.name === "computer_type")
+    .filter((c) => ["computer_type", "browser_type"].includes(c.name))
     .map((c) => String(c.args.text ?? ""));
   const firstStart = starts.length ? index(starts[0]) : -1;
   const appWindows = (c: any) =>

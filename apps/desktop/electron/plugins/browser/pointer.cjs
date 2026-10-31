@@ -50,4 +50,10 @@ function pointerGlide({ isRecording, loadRobot, options }) {
   };
 }
 
-module.exports = { glide, pointerGlide, screenPoint };
+/** Text appears key by key on camera; off camera it goes in at once. */
+async function typeText(page, text, { isRecording, delay = 55 }) {
+  if (isRecording()) await page.keyboard.type(text, { delay });
+  else await page.keyboard.insertText(text);
+}
+
+module.exports = { glide, pointerGlide, screenPoint, typeText };

@@ -106,7 +106,7 @@ test("without the Screen Recording permission, says how to grant it", async () =
 test("a recording shows in the menu bar and stops itself at the max duration", async () => {
   const { calls, spawnProcess } = fakeSpawn();
   const indicator = fakeIndicator();
-  const tools = createScreenTools({ platform: "darwin", access: () => "granted", spawnProcess, indicator, maxSeconds: 0.2, startupMs: 20 });
+  const tools = createScreenTools({ raiseWindow: async () => ({ foreground: true }), platform: "darwin", access: () => "granted", spawnProcess, indicator, maxSeconds: 0.2, startupMs: 20 });
   const started = await tools.screen_record_start.run({ target: { type: "window", window_id: 42 } });
   assert.match(started.id, /^rec_/);
   assert.equal(started.max_seconds, 0.2);
@@ -142,7 +142,7 @@ test("the founder can stop a recording from the menu bar", async () => {
 test("a window that can't be recorded fails the start with a clear message", async () => {
   const { spawnProcess } = fakeSpawn({ failWith: "could not create image from window\n" });
   const indicator = fakeIndicator();
-  const tools = createScreenTools({ platform: "darwin", access: () => "granted", spawnProcess, indicator, startupMs: 200 });
+  const tools = createScreenTools({ raiseWindow: async () => ({ foreground: true }), platform: "darwin", access: () => "granted", spawnProcess, indicator, startupMs: 200 });
   await assert.rejects(tools.screen_record_start.run({ target: { type: "window", window_id: 9 } }), /closed, or is minimized/);
   assert.equal(indicator.shown, 0);
 });
@@ -184,4 +184,52 @@ test("window list keeps app windows only", () => {
       { window_id: 2, app: "Safari", title: "", width: 800, height: 600 },
     ],
   );
+});
+
+test("recording a window brings it to the front first, and refuses if it can't", async () => {
+  const order = [];
+  const { spawnProcess } = fakeSpawn();
+  const spawned = (...args) => {
+    order.push("record");
+    return spawnProcess(...args);
+  };
+  const tools = (raiseWindow) =>
+    createScreenTools({
+      platform: "darwin",
+      access: () => "granted",
+      spawnProcess: spawned,
+      indicator: fakeIndicator(),
+      startupMs: 1,
+      raiseWindow,
+    });
+  const front = tools(async (id) => {
+    order.push(`raise ${id}`);
+    return { foreground: true };
+  });
+  const target = { type: "window", window_id: 42 };
+  const started = await front.screen_record_start.run({ target });
+  assert.deepEqual(order, ["raise 42", "record"]);
+  await front.screen_record_stop.run({ id: started.id }, context);
+
+  order.length = 0;
+  const covered = tools(async () => ({ foreground: false }));
+  await assert.rejects(
+    covered.screen_record_start.run({ target }),
+    /could not be brought to the front, so nothing was recorded/,
+  );
+  const failing = tools(async () => {
+    throw new Error("cannot be told apart");
+  });
+  await assert.rejects(
+    failing.screen_record_start.run({ target }),
+    /could not be brought to the front/,
+  );
+  assert.deepEqual(order, []);
+
+  // The Simulator and whole screens are not windows to raise.
+  order.length = 0;
+  const other = tools(async () => order.push("raise"));
+  const screen = await other.screen_record_start.run({ target: { type: "screen" } });
+  assert.deepEqual(order, ["record"]);
+  await other.screen_record_stop.run({ id: screen.id }, context);
 });

@@ -14,6 +14,13 @@ export type IdeasCase = {
   document?: RegExp;
   /** Reads the founder's project folders (needs the work fixture). */
   work?: boolean;
+  /** The work fixture's script, when it isn't the Streaks one. */
+  fixture_script?: string;
+  /** The routine's platform, X unless set. */
+  platform?: string;
+  /** Finding ideas in work needs no browsing, and an idea is a proposal: nothing is
+   * recorded or made yet. The idea this regex matches must come first, with a demo plan. */
+  proposes?: RegExp;
   criteria: string[];
 };
 
@@ -54,6 +61,24 @@ export const ideasCases: IdeasCase[] = [
       grounded,
     ],
   },
+  {
+    id: "tide-from-commits",
+    name: "Commit to ideas (Tide web app)",
+    skill: "work-content-ideas",
+    ideas: [1, 3],
+    work: true,
+    fixture_script: "scripts/evals/tide-fixture.mjs",
+    platform: "LinkedIn",
+    proposes: /quick.?add|sentence/i,
+    criteria: [
+      "The strongest idea, listed first, is quick add as a product demo. The refactor, the dependency bump and older work are not pitched.",
+      "The demo's title plainly names the feature, and its opening says what was added and why, the way a product page announces a feature: no slogan or abstract concept.",
+      "Its demo plan lets the founder judge the content before approving it: what to show, steps that match the code, and an opening built on the problem in the notes (adding a task takes too many clicks).",
+      "The two-tab fix, if used, is a different kind of content such as a text post, not a second demo of the same thing.",
+      "No code is quoted and nothing beyond the commits, changes and notes is claimed, including about the founder. " +
+        grounded,
+    ],
+  },
 ];
 
 export const routineInstructions = (skill: string) =>
@@ -90,6 +115,28 @@ export function gradeIdeas(
           (a) => a.kind === "document" && entry.document!.test(a.title ?? ""),
         ).length === 1,
     });
+  if (entry.proposes) {
+    checks.push(
+      {
+        name: "Only proposed: no browsing, recording or video",
+        passed: !evidence.calls.some((c) =>
+          /^(browser_|screen_record|video_|computer_)/.test(c.name),
+        ),
+        details: evidence.calls
+          .filter((c) =>
+            /^(browser_|screen_record|video_|computer_)/.test(c.name),
+          )
+          .map((c) => c.name),
+      },
+      {
+        name: "The strongest idea, first, has a demo plan for the demo-worthy work",
+        passed:
+          entry.proposes.test(`${ideas[0]?.title} ${ideas[0]?.content}`) &&
+          /demo plan/i.test(String(ideas[0]?.content ?? "")),
+        details: ideas.map((a) => a.title),
+      },
+    );
+  }
   if (entry.work)
     checks.push({
       name: "Read the recent work in the project's git history",
