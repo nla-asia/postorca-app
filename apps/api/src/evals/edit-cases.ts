@@ -92,9 +92,10 @@ export function gradeEdit(
     },
     { name: "Video narrated", passed: !!last?.args.voiceover_file },
     {
+      // Looking at the app (or searching for music) is fine; recording it again isn't.
       name: "Edited, not re-recorded",
-      passed: !evidence.calls.some((c) => /^(screen_record_|computer_|browser_)/.test(c.name)),
-      details: evidence.calls.filter((c) => /^(screen_record_|computer_|browser_)/.test(c.name)).map((c) => c.name),
+      passed: !evidence.calls.some((c) => /^(screen_record_|computer_)/.test(c.name)),
+      details: evidence.calls.filter((c) => /^(screen_record_|computer_)/.test(c.name)).map((c) => c.name),
     },
   ];
 }
