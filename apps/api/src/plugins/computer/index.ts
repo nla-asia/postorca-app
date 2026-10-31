@@ -110,6 +110,20 @@ export const computerPlugin: PluginDefinition = {
         .strict(),
     ),
     tool(
+      "computer_drag",
+      "Press at a point in the latest screenshot, move to another point at a person's pace and release, then return a fresh screenshot. On a touch screen, such as an app in the iOS Simulator, this is a swipe: drag upward to scroll content down (the wheel of computer_scroll doesn't scroll there). On the desktop it drags: sliders, moving items, resizing.",
+      z
+        .object({
+          ...windowArgs,
+          observation,
+          x: coordinate,
+          y: coordinate,
+          to_x: coordinate,
+          to_y: coordinate,
+        })
+        .strict(),
+    ),
+    tool(
       "computer_scroll",
       "Scroll at a point in the latest screenshot, then return a fresh screenshot. mode=bottom repeats downward scrolling at most max_steps (default 12, maximum 20), stopping after three unchanged captures. This is a bounded attempt, not proof that all content was loaded or read; inspect the result.",
       z

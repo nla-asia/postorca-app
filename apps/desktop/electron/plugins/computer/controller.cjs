@@ -633,6 +633,29 @@ class ComputerController {
         this.check(context);
         this.robot.keyTap(args.key, args.modifiers ?? []);
         outcome.input_sent = true;
+      } else if (name === "computer_drag") {
+        const from = this.point(args, shot),
+          to = this.point({ x: args.to_x, y: args.to_y }, shot);
+        this.check(context);
+        this.robot.moveMouse(from.x, from.y);
+        this.robot.mouseToggle("down");
+        outcome.input_sent = true;
+        try {
+          // A person's pace: a quick flick would throw a touch list far past the target.
+          // Moves with the button down must be drag events: the Simulator turns those,
+          // not plain moves, into a touch swipe.
+          const steps = 24;
+          for (let i = 1; i <= steps; i++) {
+            await delay(16, undefined, { signal: context.signal });
+            this.robot.dragMouse(
+              Math.round(from.x + ((to.x - from.x) * i) / steps),
+              Math.round(from.y + ((to.y - from.y) * i) / steps),
+            );
+          }
+          await delay(120, undefined, { signal: context.signal });
+        } finally {
+          this.robot.mouseToggle("up");
+        }
       } else if (name === "computer_scroll") {
         const p = this.point(args, shot);
         if (

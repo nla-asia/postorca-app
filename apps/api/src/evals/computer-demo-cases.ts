@@ -355,6 +355,7 @@ const inputNames = new Set([
   "computer_type",
   "computer_press",
   "computer_scroll",
+  "computer_drag",
 ]);
 const webInputNames = new Set([
   "browser_click",

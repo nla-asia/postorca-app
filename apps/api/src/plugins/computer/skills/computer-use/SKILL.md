@@ -19,7 +19,7 @@ When a tap or click should select an item (a list row, a reminder, a cell), obse
 
 Copy the short observation ID exactly from the latest result (for example `o12_abc123`). Do not reconstruct it from an earlier screenshot or predict the next ID.
 
-computer_type pastes literal text into the already focused control; it does not submit. Use computer_press for shortcuts or Enter. It shares the real mouse and keyboard with the founder. If focus is stolen or a permission check fails, stop and explain the blocker rather than repeating uncertain input.
+computer_type pastes literal text into the already focused control; it does not submit. Use computer_press for shortcuts or Enter. To scroll a touch screen, such as an app in the iOS Simulator, use computer_drag: wheel scrolling does nothing there. Drag upward from the lower part of the list to see what is below, and observe before the next drag. It shares the real mouse and keyboard with the founder. If focus is stolen or a permission check fails, stop and explain the blocker rather than repeating uncertain input.
 
 computer_observe with accessibility=true includes bounded UI text and control bounds when the app exposes them. Empty or truncated accessibility output does not mean the app or conversation is empty. Prefer the browser plugin for structured reading of web apps when suitable.
 
