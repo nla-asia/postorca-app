@@ -180,6 +180,28 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
       ...videoReview,
     ],
   },
+  // The same request on a second app, with no prompt changes: checks the skill isn't
+  // fitted to Tide.
+  {
+    id: "demo-streaks-intro",
+    level: 3,
+    name: "Product introduction video from the code repo, script first (Streaks web app)",
+    app: "web",
+    url: "http://127.0.0.1:4110",
+    fixture_script: "scripts/evals/work-fixture.mjs",
+    brief: `I haven't posted anything about Streaks yet. Can you make a launch video introducing the whole product for LinkedIn? Around 45 sec, landscape, voiceover and captions. The code is in my projects and the app is running locally; record it yourself. ${noPublish}`,
+    follow_up: "Looks good. Keep it under 40 seconds, then go ahead and make it.",
+    typed: [],
+    min_clips: 2,
+    video: { seconds: [20, 42] },
+    criteria: [
+      "The script turn is easy to review: what Streaks is and who it's for, numbered shots with what's on screen and the voiceover line, the format, and what was assumed or left out.",
+      "The script introduces the whole product, not only the latest commit: its core flows in the order a new user meets them (such as adding a habit, checking in, the streak count, the weekly recap), each true to the code.",
+      "The video follows the approved script, under 40 seconds as the founder asked: it names Streaks and what it does, then shows the core flows working.",
+      "It is a straightforward product demo, like a product page introducing it: the product is the subject, with no tester feedback, the timezone bug or backstory, no slogans, and nothing the code doesn't support.",
+      ...videoReview,
+    ],
+  },
   {
     id: "demo-mac-maps-video",
     level: 3,
