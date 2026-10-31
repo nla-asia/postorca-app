@@ -114,15 +114,14 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       platform: "darwin",
       level: c.level,
       turns: [
-        ...(c.follow_up ? [{ brief: c.brief }] : []),
         c.video
           ? {
-              brief: c.follow_up ?? c.brief,
+              brief: c.brief,
               video_case: c.id,
               video_expect: { exports: 1, seconds: c.video.seconds },
               exports: 1,
             }
-          : { brief: c.follow_up ?? c.brief },
+          : { brief: c.brief },
       ],
       criteria: criteria(c.criteria),
       demo: c,
@@ -133,7 +132,7 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
           : {}),
       prerequisites: [
         "desktop_connected",
-        "screen_recording_permission",
+        ...(c.script_only ? [] : ["screen_recording_permission"]),
         ...(c.app === "simulator" ? ["simulator_iphone_booted"] : []),
         ...(c.app === "web" ? ["browser_connected"] : []),
         ...(c.read_work || c.fixture_script

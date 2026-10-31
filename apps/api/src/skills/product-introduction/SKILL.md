@@ -35,7 +35,7 @@ One message, short enough to review without scrolling back and forth:
 
 - **What it is** and **who it's for**, one line each.
 - **Format:** length, shape (16:9 for X, LinkedIn, YouTube; 9:16 for Reels, TikTok, Shorts), voiceover and captions. Follow the founder's request; otherwise around 30–45 seconds for the platform.
-- **Shots**, numbered, one per beat. For each: what's on screen (which screen and what happens) and the voiceover line for it. The voiceover read in order is the whole script, about 2.5 words per second of video.
+- **Shots**, numbered, one per beat. For each: what's on screen (which screen and what happens), its on-screen text if it has any, and the voiceover line for it. The opening shot always has a short on-screen line naming the product, because many people watch with the sound off. The voiceover read in order is the whole script, about 2.5 words per second of video.
 - **Assumptions:** what you chose and left out and why, in a line or two, so the founder can correct it quickly.
 
 End by asking the founder to approve it or say what to change.
@@ -48,5 +48,5 @@ When the founder replies:
 
 - **Apply every change** they asked for. If they rewrite the story, show the new script and wait for approval again; otherwise go ahead.
 - **Capture:** read the `product-demo-capture` skill with `read_skill` and follow it, with the approved shots as its demo plan: one clip per flow, each starting from a clean, ready screen.
-- **Edit:** activate the video plugin, read its `video-product-demo` skill and build the video from the clips, with the approved voiceover as `voiceover_script` and each scene starting on its line. The founder's requested length and format win over that skill's defaults.
+- **Edit:** activate the video plugin, read its `video-product-demo` skill and build the video from the clips, with the approved voiceover as `voiceover_script`, each scene starting on its line and showing its on-screen text. The founder's requested length and format win over that skill's defaults.
 - **Check and deliver** as those skills say. In the final message, say in a line what changed from the approved script, if anything had to.

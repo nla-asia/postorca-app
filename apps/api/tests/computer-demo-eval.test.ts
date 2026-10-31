@@ -251,48 +251,31 @@ test("the idea-to-demo case carries its fixture and prerequisites", async () => 
   assert.ok(entry.prerequisites.includes("fixture_ready"));
 });
 
-test("the product introduction case asks for a script, then the video after the founder's reply", async () => {
+test("code to script and script to video are separate cases", async () => {
   const { builtinCases } = await import("../src/evals/shared/catalog.js");
-  const entry = builtinCases().find((c) => c.id === "content-demo-tide-intro")!;
-  assert.equal(entry.turns.length, 2);
-  assert.equal(entry.turns[0].video_case, undefined);
-  assert.equal(entry.turns[1].exports, 1);
-  assert.ok(entry.prerequisites.includes("fixture_ready"));
+  const cases = builtinCases();
+  for (const id of ["content-script-tide-intro", "content-script-streaks-intro"]) {
+    const entry = cases.find((c) => c.id === id)!;
+    assert.equal(entry.turns.length, 1);
+    assert.equal(entry.turns[0].video_case, undefined);
+    assert.ok(!entry.prerequisites.includes("media_providers_ready"));
+  }
+  const video = cases.find((c) => c.id === "content-demo-tide-from-script")!;
+  assert.equal(video.turns[0].exports, 1);
+  assert.match(video.turns[0].brief, /approved/);
 });
 
-test("the script turn reads the project and records nothing", () => {
-  const entry = demo("demo-tide-intro");
-  const call = (turn_id: string, name: string, result: any = {}) => ({
-    turn_id,
-    name,
-    args: {},
-    result,
-  });
-  const script = [
-    call("t1", "read_file"),
-    call("t1", "browser_open", { tab: "t1" }),
-  ];
-  const named = /script|Read the project/;
+test("code to script reads the project and records nothing", () => {
+  const entry = demo("script-tide-intro");
+  const call = (name: string, result: any = {}) => ({ name, args: {}, result });
+  const script = [call("read_file"), call("browser_open", { tab: "t1" })];
   const names = (calls: any[]) =>
-    failed(
-      gradeDemoCapture(
-        entry,
-        { status: "completed", calls, artifacts: [] },
-        ["t1", "t2"],
-      ),
-    ).filter((n) => named.test(n));
+    failed(gradeDemoCapture(entry, { status: "completed", calls, artifacts: [] }));
   assert.deepEqual(names(script), []);
-  assert.deepEqual(
-    names([...script, call("t1", "screen_record_start", { id: "a" })]),
-    ["The script turn recorded and made nothing"],
-  );
-  assert.deepEqual(
-    names([call("t1", "browser_open", { tab: "t1" })]),
-    ["Read the project before writing the script"],
-  );
-  // Recording in the second turn is the point.
-  assert.deepEqual(
-    names([...script, call("t2", "screen_record_start", { id: "a" })]),
-    [],
-  );
+  assert.deepEqual(names([...script, call("screen_record_start", { id: "a" })]), [
+    "Recorded and made nothing: the script comes first",
+  ]);
+  assert.deepEqual(names([call("browser_open", { tab: "t1" })]), [
+    "Read the project before writing the script",
+  ]);
 });

@@ -141,9 +141,9 @@ export const caseSchema = z
         read_work: z.boolean().optional(),
         fixture_script: z.string().optional(),
         brief: z.string(),
-        follow_up: z.string().optional(),
+        script_only: z.boolean().optional(),
         typed: z.array(z.string()),
-        min_clips: z.number().int().positive(),
+        min_clips: z.number().int().nonnegative(),
         video: z
           .object({ seconds: z.tuple([z.number(), z.number()]) })
           .strict()
