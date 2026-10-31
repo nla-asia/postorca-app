@@ -166,6 +166,12 @@ test("correcting locally rejected arguments is not counted as a repeated paid re
     ...call(
       "video_export",
       { scenes },
+      { error: "The video runs 6.8 s after the voiceover ends. Fix it, preview, then export." },
+      "refused",
+    ),
+    ...call(
+      "video_export",
+      { scenes },
       { attachments: [{ file: video, mime_type: "video/mp4" }] },
       "corrected",
     ),

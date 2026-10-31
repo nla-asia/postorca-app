@@ -115,11 +115,13 @@ export function gradeVideo(
   for (const call of calls) {
     if (!paid.has(call.name)) continue;
     if (providerFailures.has(call.name)) retries++;
+    const error = String(call.result?.error ?? "");
     if (
       call.failed &&
-      !/^(File not found|Invalid arguments|Choose a saved|Provide exactly one)/.test(
-        String(call.result?.error ?? ""),
-      )
+      !/^(File not found|Invalid arguments|Choose a saved|Provide exactly one)/.test(error) &&
+      // An export the tool refused before rendering (no focus, a silent tail) cost
+      // nothing; only a render that ran and failed did.
+      (call.name !== "video_export" || error.startsWith("Desktop tool"))
     )
       providerFailures.add(call.name);
   }

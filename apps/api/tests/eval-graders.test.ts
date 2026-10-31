@@ -547,3 +547,42 @@ test("commit to ideas only proposes, leading with the demo-worthy work", () => {
     ["Only proposed: no browsing, recording or video"],
   );
 });
+
+test("an editing eval needs the founder's recordings edited, not re-recorded", async () => {
+  const { editCases, gradeEdit } = await import("../src/evals/edit-cases.js");
+  const entry = editCases[0];
+  const upload = (clip: string, ref: string) => ({
+    name: "upload_file",
+    args: { path: `eval-fixtures/ledgerly-recordings/${clip}` },
+    result: { ref, file: `users/u/media/${ref}abcd.mp4` },
+  });
+  const calls: any[] = [
+    ...entry.clips.map((clip, i) => upload(clip, `r${i}000000`)),
+    upload("music.mp3", "m0000000"),
+    {
+      name: "video_export",
+      args: {
+        voiceover_file: "v1",
+        music: { file: "m0000000" },
+        scenes: entry.clips.map((_, i) => ({ video_file: `r${i}000000` })),
+      },
+      result: { ref: "out" },
+    },
+  ];
+  const failed = (cs: any[]) =>
+    gradeEdit(entry, { status: "completed", calls: cs, artifacts: [] })
+      .filter((c) => !c.passed)
+      .map((c) => c.name);
+  assert.deepEqual(failed(calls), []);
+  assert.deepEqual(failed([...calls, { name: "screen_record_start", args: {}, result: {} }]), [
+    "Edited, not re-recorded",
+  ]);
+  assert.deepEqual(failed([...calls, { name: "browser_open", args: {}, result: {} }]), []);
+  assert.ok(failed(calls.slice(1)).includes("Brought in the founder's recordings"));
+  // Reading the track in (to listen to its length) brings it in too.
+  const read = { ...upload("music.mp3", "m0000000"), name: "read_file" };
+  assert.deepEqual(failed(calls.map((c) => (c.args.path?.endsWith("music.mp3") ? read : c))), []);
+  assert.deepEqual(failed(calls.filter((c) => !c.args.path?.endsWith("music.mp3"))), [
+    "Used the founder's track under the voice",
+  ]);
+});

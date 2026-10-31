@@ -366,6 +366,21 @@ Two separate evals use it, matching the product:
 Add `~/PostOrca Evals/tide` to the founder's Brand Profile projects once. Web comes first,
 then a desktop app, then a mobile app.
 
+### Editing cases (Content level 3)
+
+`apps/api/src/evals/edit-cases.ts`: the founder's screen recordings are given, so the
+agent edits rather than records. `scripts/evals/recordings-fixture.mjs <set>` copies a
+pinned set from `fixtures/evals/recordings/` into the working folder's `eval-fixtures/`
+(set `POSTORCA_WORKING_FOLDER` if it isn't `~/Documents/PostOrca`) and removes it after.
+
+- `content-edit-ledgerly-launch`: four raw Ledgerly recordings (browser chrome and all),
+  a music track the founder picked and an approved voiceover, to a polished LinkedIn
+  launch video. Automatic checks: the
+  recordings were brought in and used, the video is narrated with the founder's track
+  under it, nothing was re-recorded.
+  The review holds it to a professional bar: structure with an intro and end card,
+  framing, guiding the eye at each key moment, pacing, text, sound, and overall.
+
 ### Product-demo cases (Computer level 2, Content level 3)
 
 `apps/api/src/evals/computer-demo-cases.ts` uses built-in apps as the founder's
