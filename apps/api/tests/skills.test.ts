@@ -29,6 +29,7 @@ test("a skill is a folder whose SKILL.md frontmatter gives its name and descript
       "work-content-ideas",
       "publish-post",
       "product-demo-capture",
+      "product-introduction",
       "sync-my-posts",
       "review-voice-feedback",
     ],

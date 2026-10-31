@@ -132,7 +132,7 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
           : {}),
       prerequisites: [
         "desktop_connected",
-        "screen_recording_permission",
+        ...(c.script_only ? [] : ["screen_recording_permission"]),
         ...(c.app === "simulator" ? ["simulator_iphone_booted"] : []),
         ...(c.app === "web" ? ["browser_connected"] : []),
         ...(c.read_work || c.fixture_script

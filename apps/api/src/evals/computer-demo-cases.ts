@@ -19,6 +19,9 @@ export type DemoCase = {
   /** The work fixture's script, when it isn't the Streaks one. */
   fixture_script?: string;
   brief: string;
+  /** Code to script: the task ends at the script for the founder to approve, so nothing
+   * is recorded or made, and the script is reviewed. */
+  script_only?: boolean;
   /** Text the demo has to type into the app, as regexes. product-demo-capture sets
    * the stage before recording, so this may happen on or off camera. */
   typed: string[];
@@ -43,6 +46,15 @@ const videoReview = [
   "The finished video is built from the real recordings, not stills or generated images of the app, and shows the feature working.",
   "The narration explains the feature the way a founder would to their audience: the problem, the payoff, how little it takes. It matches what is on screen at each moment.",
   "Format, length and captions fit the requested platform; the video is delivered as an MP4.",
+];
+
+const introRequest = (product: string) =>
+  `I haven't posted anything about ${product} yet. Can you make a launch video introducing the whole product for LinkedIn? Around 30 sec, landscape, voiceover and captions. The code is in my projects and the app is running locally; record it yourself. ${noPublish}`;
+const scriptReview = (product: string, flows: string) => [
+  `The script is easy to review: what ${product} is and who it's for, numbered shots with what's on screen, on-screen text and the voiceover line, the format, and what was assumed or left out.`,
+  `It introduces the whole product, not only the latest commit: its core flows in the order a new user meets them (${flows}), each true to the code.`,
+  "It is a straightforward product demo, like a product page introducing it: the product is the subject, with no tester feedback, bug fixes or backstory, no slogans, and nothing the code doesn't support.",
+  "The opening shot has a short on-screen line naming the product, so it reads with the sound off.",
 ];
 
 export const demoCases: DemoCase[] = [
@@ -155,6 +167,66 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
       ...videoReview,
     ],
   },
+  // Code to script: the product introduction from its code alone, as a founder with
+  // nothing posted yet asks for it. It ends at the script, so it runs on two apps cheaply
+  // and checks the skill isn't fitted to one.
+  {
+    id: "script-tide-intro",
+    level: 3,
+    name: "Product introduction script from the code repo (Tide web app)",
+    app: "web",
+    url: "http://127.0.0.1:4120",
+    fixture_script: "scripts/evals/tide-fixture.mjs",
+    script_only: true,
+    brief: introRequest("Tide"),
+    typed: [],
+    min_clips: 0,
+    criteria: scriptReview("Tide", "such as adding a dated task, Today and Upcoming, quick add, checking off"),
+  },
+  {
+    id: "script-streaks-intro",
+    level: 3,
+    name: "Product introduction script from the code repo (Streaks web app)",
+    app: "web",
+    url: "http://127.0.0.1:4110",
+    fixture_script: "scripts/evals/work-fixture.mjs",
+    script_only: true,
+    brief: introRequest("Streaks"),
+    typed: [],
+    min_clips: 0,
+    criteria: scriptReview("Streaks", "such as adding a habit, checking in, the streak count, the weekly recap"),
+  },
+  // Script to video: starts from an approved script, fixed so recording runs compare.
+  {
+    id: "demo-tide-from-script",
+    level: 3,
+    name: "From an approved product introduction script to the video (Tide web app)",
+    app: "web",
+    url: "http://127.0.0.1:4120",
+    fixture_script: "scripts/evals/tide-fixture.mjs",
+    brief: `${introRequest("Tide")}
+
+You sent me this script and I approved it, go ahead and make the video:
+
+**What it is:** Tide, a calm todo app.
+**Who it's for:** people with too many tabs open.
+**Format:** about 30 sec, landscape 16:9 for LinkedIn, voiceover and captions.
+
+**Shots:**
+1. On screen: the Today view with its tasks. On-screen text: "Introducing Tide". Voiceover: "Introducing Tide, a calm todo app for people with too many tabs open."
+2. On screen: Today, with the overdue task flagged in orange. Voiceover: "Open it and you get Today: just what's due, with what's late flagged."
+3. On screen: click the quick add box and type "Call Sam tomorrow 3pm #work"; the Tomorrow, 3 pm and #work chips appear while typing. Voiceover: "To add anything, type one line. Tide pulls out the date, time and project as you type."
+4. On screen: press Enter; the task lands in Upcoming, dated and tagged. Voiceover: "Hit Enter and it's filed, dated and tagged."
+5. On screen: tick a task off and it moves to Completed. On-screen text: "Tide". Voiceover: "See what's next in Upcoming, and tick things off into Completed. That's Tide."`,
+    typed: ["tomorrow"],
+    min_clips: 2,
+    video: { seconds: [20, 40] },
+    criteria: [
+      "The video follows the approved script: each shot in order with its voiceover line and on-screen text, the core flows shown working.",
+      "It stays a straightforward product demo, like a product page introducing Tide, and claims nothing the script doesn't.",
+      ...videoReview,
+    ],
+  },
   {
     id: "demo-mac-maps-video",
     level: 3,
@@ -210,11 +282,36 @@ const opensApp = (app: "maps" | "clock" | "simulator", opened: any) =>
       /\/Simulator\.app$/.test(opened?.path ?? "")
     : opened?.path === appPaths[app];
 
+/** Code to script reads the project and makes nothing: no recording, video or media. */
+function scriptChecks(calls: any[]): EvalCheck[] {
+  const made = calls.filter((c) =>
+    /^(screen_record_|video_|media_(generate|edit)_)/.test(c.name),
+  );
+  return [
+    {
+      name: "Read the project before writing the script",
+      passed: calls.some((c) =>
+        ["read_file", "list_dir", "git_activity"].includes(c.name),
+      ),
+    },
+    {
+      name: "Recorded and made nothing: the script comes first",
+      passed: made.length === 0,
+      details: made.map((c) => c.name),
+    },
+  ];
+}
+
 /** Checks from the product task alone; app state and clip quality are reviewed. */
 export function gradeDemoCapture(
   entry: DemoCase,
   evidence: Pick<EvalEvidence, "status" | "calls" | "artifacts">,
 ): EvalCheck[] {
+  if (entry.script_only)
+    return [
+      { name: "Turn completed", passed: evidence.status === "completed" },
+      ...scriptChecks(evidence.calls),
+    ];
   const ok = evidence.calls.filter((c) => c.result && !c.result.error);
   const index = (call: any) => evidence.calls.indexOf(call);
   const starts = ok.filter((c) => c.name === "screen_record_start");

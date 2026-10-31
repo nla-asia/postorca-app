@@ -250,3 +250,32 @@ test("the idea-to-demo case carries its fixture and prerequisites", async () => 
   assert.ok(entry.fixture.prepare.args[0].endsWith("tide-fixture.mjs"));
   assert.ok(entry.prerequisites.includes("fixture_ready"));
 });
+
+test("code to script and script to video are separate cases", async () => {
+  const { builtinCases } = await import("../src/evals/shared/catalog.js");
+  const cases = builtinCases();
+  for (const id of ["content-script-tide-intro", "content-script-streaks-intro"]) {
+    const entry = cases.find((c) => c.id === id)!;
+    assert.equal(entry.turns.length, 1);
+    assert.equal(entry.turns[0].video_case, undefined);
+    assert.ok(!entry.prerequisites.includes("media_providers_ready"));
+  }
+  const video = cases.find((c) => c.id === "content-demo-tide-from-script")!;
+  assert.equal(video.turns[0].exports, 1);
+  assert.match(video.turns[0].brief, /approved/);
+});
+
+test("code to script reads the project and records nothing", () => {
+  const entry = demo("script-tide-intro");
+  const call = (name: string, result: any = {}) => ({ name, args: {}, result });
+  const script = [call("read_file"), call("browser_open", { tab: "t1" })];
+  const names = (calls: any[]) =>
+    failed(gradeDemoCapture(entry, { status: "completed", calls, artifacts: [] }));
+  assert.deepEqual(names(script), []);
+  assert.deepEqual(names([...script, call("screen_record_start", { id: "a" })]), [
+    "Recorded and made nothing: the script comes first",
+  ]);
+  assert.deepEqual(names([call("browser_open", { tab: "t1" })]), [
+    "Read the project before writing the script",
+  ]);
+});
