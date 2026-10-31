@@ -341,8 +341,9 @@ Two separate evals use it, matching the product:
 - `content-demo-tide-intro`: a product introduction from the code alone, as a founder
   with nothing posted yet asks for it. Two turns: the agent replies with a script
   (what Tide is, who it's for, numbered shots with voiceover lines) and makes nothing;
-  the founder approves it with one change; then it records and edits the video. The
-  observer judges the script; the founder reviews the video.
+  the founder approves it with one change (under 40 seconds); then it records and edits
+  a straightforward product demo. The observer judges the script; the founder reviews
+  the video.
 
 Add `~/PostOrca Evals/tide` to the founder's Brand Profile projects once. Web comes first,
 then a desktop app, then a mobile app.

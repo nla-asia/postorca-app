@@ -19,12 +19,12 @@ Read the project in the founder's Brand Profile projects (`list_dir`, `read_file
 - **README and docs:** what the product says it is, who it's for, how it runs and where (its local address).
 - **The app's screens:** the pages, routes and main components show what a user can actually do. Name the flows in the app's own words.
 - **The history:** the commit history shows what the product is made of over time, not only what changed last. A long-built core flow matters more than a recent tweak.
-- **Notes:** user feedback, beta notes or plans say who uses it and the problem in their words.
+- **Notes:** user feedback, beta notes or plans can confirm what matters to users. They are background for choosing flows, not material for the video.
 
 From these, work out:
 
 - **What it is**, in one plain line a stranger would understand.
-- **Who it's for** and **the problem it removes**, from the notes or README; if none says, use what the product plainly does and don't invent users, numbers or quotes.
+- **Who it's for**, when the README or docs say; otherwise leave it out rather than guess.
 - **The core flows:** the 3–4 things a new user does, in the order they meet them, ending on the payoff, the moment the product does its job.
 
 Then open the running app in the browser (the README's address) and look at those screens, without recording, so the script matches what is really there. If it isn't running, say which command starts it (from the README or scripts) and ask the founder to start it.
@@ -40,7 +40,7 @@ One message, short enough to review without scrolling back and forth:
 
 End by asking the founder to approve it or say what to change.
 
-**The story:** open on who it's for and the problem, or on the payoff when no problem is stated; then the core flows, each shown working; close on the product's name. Say plainly what the product is and does, the way a product page introduces it ("Introducing [product]…" fits a launch). No slogans, abstract concepts or features it doesn't have, and no tour of every button: three or four flows done well.
+**The story is a straightforward product demo:** name the product and say in one line what it does, then show the core flows working, each with a plain line on what the viewer sees, and close on the product's name. Say it the way a product page introduces a product ("Introducing [product]…" fits a launch). The product is the subject, not how it came about: no user research, feedback numbers, complaints or backstory; those belong in posts about one feature or moment. No slogans, abstract concepts or features it doesn't have, and no tour of every button: three or four flows done well.
 
 ## 3. The video
 
