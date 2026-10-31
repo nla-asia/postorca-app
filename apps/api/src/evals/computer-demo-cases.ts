@@ -4,9 +4,10 @@
  * clips; level 3 also edits them into a narrated demo video.
  * Writes happen only in the Simulator: Mac Notes, Reminders and Calendar sync to iCloud.
  */
+import { homedir } from "node:os";
 import type { EvalCheck, EvalEvidence } from "./computer-eval-types.js";
 
-export type DemoApp = "maps" | "clock" | "simulator" | "web";
+export type DemoApp = "maps" | "clock" | "simulator" | "web" | "desktop";
 export type DemoCase = {
   id: string;
   level: 2 | 3;
@@ -14,6 +15,8 @@ export type DemoCase = {
   app: DemoApp;
   /** web: the local app's address, opened in the founder's browser. */
   url?: string;
+  /** desktop: the app bundle the fixture opens, ~ for the home folder. */
+  app_path?: string;
   /** Finds what to demo in the founder's recent work (the work fixture). */
   read_work?: boolean;
   /** The work fixture's script, when it isn't the Streaks one. */
@@ -243,6 +246,21 @@ You sent me this script and I approved it, go ahead and make the video:
       ...videoReview,
     ],
   },
+  // A desktop app with no web way in: looking at it, and later recording it, takes
+  // computer use.
+  {
+    id: "script-quill-intro",
+    level: 3,
+    name: "Product introduction script from the code repo (Quill desktop notes app)",
+    app: "desktop",
+    app_path: "~/PostOrca Evals/.quill-runtime/Quill.app",
+    fixture_script: "scripts/evals/quill-fixture.mjs",
+    script_only: true,
+    brief: introRequest("Quill"),
+    typed: [],
+    min_clips: 0,
+    criteria: scriptReview("Quill", "such as writing a note with the live preview, finding one with search, a new note from the File menu, pinning, Settings with the dark theme"),
+  },
   // Script to video on a richer app: sign in off camera, a dropdown, line items added and
   // typed into, live totals and status buttons, all on camera.
   {
@@ -327,11 +345,13 @@ const fileOf = (artifact: any) => {
     return undefined;
   }
 };
-const opensApp = (app: "maps" | "clock" | "simulator", opened: any) =>
-  app === "simulator"
+const opensApp = (entry: DemoCase, opened: any) =>
+  entry.app === "simulator"
     ? opened?.name === "Simulator" &&
       /\/Simulator\.app$/.test(opened?.path ?? "")
-    : opened?.path === appPaths[app];
+    : entry.app === "desktop"
+      ? opened?.path === entry.app_path?.replace(/^~/, homedir())
+      : opened?.path === appPaths[entry.app as "maps" | "clock"];
 
 /** Code to script reads the project and makes nothing: no recording, video or media. */
 function scriptChecks(calls: any[]): EvalCheck[] {
@@ -390,7 +410,7 @@ export function gradeDemoCapture(
     new Set<string>(
       (c.result?.apps ?? [])
         .filter((app: any) =>
-          opensApp(entry.app as "maps" | "clock" | "simulator", app),
+          opensApp(entry, app),
         )
         .flatMap((app: any) =>
           (app.windows ?? []).map((w: any) => String(w.id)),
@@ -417,7 +437,7 @@ export function gradeDemoCapture(
               (c) =>
                 c.name === "computer_open" &&
                 (c.result.apps ?? []).some((app: any) =>
-                  opensApp(entry.app as "maps" | "clock" | "simulator", app),
+                  opensApp(entry, app),
                 ),
             ) ||
             ok.some(
