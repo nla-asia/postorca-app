@@ -633,6 +633,8 @@ async function prepare(context: PluginContext, clip: Clip) {
       transcript: (clip.captions ?? true) ? transcript : undefined,
       brand,
     },
+    // Seconds of picture after the last word, for export to hold to.
+    tail: transcript ? (totalMs - speechMs) / 1000 : 0,
     timing: {
       duration_seconds: totalMs / 1000,
       brand_colors: Object.keys(colors).length
@@ -702,7 +704,11 @@ function videoTool(
             400,
             `Scene${unframed.length > 1 ? "s" : ""} ${unframed.join(", ")} show${unframed.length > 1 ? "" : "s"} a recording with no focus. Give every clip scene a focus: the app inside whatever was captured around it (browser bars, banners, the desktop) for an overview, the whole frame (0, 0, 1, 1) if the recording is only the app, or focus_on the part in action. Preview, then export.`,
           );
-        const { render, timing } = await prepare(context, clip);
+        const { render, timing, tail } = await prepare(context, clip);
+        // A preview shows the silence; an export with seconds of it after the last word
+        // (beyond an end card) would ship it.
+        if (!preview && tail > 5)
+          throw new HttpError(400, `${silentTail(tail * 1000, 0)} Fix it, preview, then export.`);
         const times: number[] = preview ? times_seconds.slice(0, 8) : [];
         const result = await callDesktop(
           context,
