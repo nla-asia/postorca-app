@@ -7,7 +7,7 @@ const { promisify } = require("node:util");
 const { app, nativeImage } = require("electron");
 const { mediaBinary, allowed } = require("../../tools/files.cjs");
 const render = require("./render.cjs");
-const { snapRegion, textBox, closeUp, wholeWords, appTop } = require("./framing.cjs");
+const { snapRegion, textBox, closeUp, wholeWords, appTop, notTooTight } = require("./framing.cjs");
 const { native } = require("../computer/native.cjs");
 
 const run = promisify(execFile);
@@ -273,7 +273,20 @@ function withAssets(args, context, run) {
               info.width,
               context.signal,
             );
-            focus = snapRegion(gray, width, height, focus);
+            focus = snapRegion(gray, width, height, notTooTight(focus));
+            // Snapping can move a drawn box's top edge up into the browser's bars; keep it
+            // below them, as a close-up built from text is.
+            if (process.platform === "darwin") {
+              const lines = await readText(
+                file,
+                startMs,
+                path.join(temporary, `scene-${index}-text.png`),
+                context.signal,
+              ).catch(() => []);
+              const top = appTop(lines, gray, width, height);
+              if (focus.y < top)
+                focus = { ...focus, y: top, height: Math.max(0.05, focus.height - (top - focus.y)) };
+            }
           }
         } else if (src)
           size = nativeImage

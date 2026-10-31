@@ -73,3 +73,14 @@ test("a close-up's edges never cut a word", () => {
   const box = { x: 0.6, y: 0.2, width: 0.3, height: 0.2 };
   assert.deepEqual(wholeWords(box, [sent]), box);
 });
+
+test("a close-up never zooms in past about twice the whole app", () => {
+  const { closeUp, notTooTight } = require("./framing.cjs");
+  const button = closeUp({ x: 0.83, y: 0.19, width: 0.09, height: 0.03 }, 1.6, 2.35, 0.14);
+  assert.ok(button.width >= 0.55 - 1e-9 && button.height >= 0.35 - 1e-9);
+  assert.ok(button.x <= 0.83 && button.x + button.width >= 0.92 && button.y >= 0.14);
+  const drawn = notTooTight({ x: 0.4, y: 0.4, width: 0.2, height: 0.1 });
+  assert.ok(drawn.width >= 0.55 - 1e-9 && drawn.height >= 0.35 - 1e-9);
+  const wide = { x: 0, y: 0.1, width: 0.9, height: 0.8 };
+  assert.deepEqual(notTooTight(wide), wide);
+});
