@@ -12,6 +12,60 @@ const { settle, trackRequests } = require("./settle.cjs");
 const { pressKey } = require("./keyboard.cjs");
 const { fetchBrowserFile } = require("./fetch-file.cjs");
 
+const DATE_FORMATS = {
+  date: "YYYY-MM-DD, e.g. 2026-11-14",
+  time: "HH:MM in 24 hours, e.g. 15:30",
+  "datetime-local": "YYYY-MM-DDTHH:MM, e.g. 2026-11-14T15:30",
+  month: "YYYY-MM, e.g. 2026-11",
+  week: "YYYY-Www, e.g. 2026-W46",
+};
+
+/** In the page: marks the area to scroll and returns its visible center. */
+function findScrollArea(node) {
+  const page = document.scrollingElement;
+  const scrolls = (n) =>
+    n === page
+      ? n.scrollHeight > innerHeight + 1
+      : n instanceof Element && /(auto|scroll|overlay)/.test(getComputedStyle(n).overflowY) && n.scrollHeight > n.clientHeight + 1;
+  const visible = (n) => {
+    const r = n.getBoundingClientRect();
+    return Math.max(0, Math.min(r.right, innerWidth) - Math.max(r.left, 0)) * Math.max(0, Math.min(r.bottom, innerHeight) - Math.max(r.top, 0));
+  };
+  let target = null;
+  if (node) for (let n = node; n && !target; n = n.parentElement) if (n !== document.body && scrolls(n)) target = n;
+  if (!target && scrolls(page)) target = page;
+  if (!target && !node) {
+    let best = 0;
+    for (const n of document.querySelectorAll("*")) if (n !== page && scrolls(n) && visible(n) > best) [best, target] = [visible(n), n];
+  }
+  document.querySelectorAll("[data-orca-scroll]").forEach((n) => n.removeAttribute("data-orca-scroll"));
+  if (!target) return null;
+  target.setAttribute("data-orca-scroll", "");
+  if (target === page) return { x: innerWidth / 2, y: innerHeight / 2 };
+  const r = target.getBoundingClientRect();
+  return { x: (Math.max(r.left, 0) + Math.min(r.right, innerWidth)) / 2, y: (Math.max(r.top, 0) + Math.min(r.bottom, innerHeight)) / 2 };
+}
+
+/** In the page: scrolls the marked area by most of what it shows. */
+async function scrollArea({ down, smooth }) {
+  const target = document.querySelector("[data-orca-scroll]");
+  target.removeAttribute("data-orca-scroll");
+  const isPage = target === document.scrollingElement;
+  const view = isPage ? innerHeight : target.clientHeight;
+  target.scrollBy({ top: (down ? 0.85 : -0.85) * view, behavior: smooth ? "smooth" : "instant" });
+  // A smooth scroll takes a moment; report where it settles.
+  for (let last = -1, i = 0; smooth && i < 40 && target.scrollTop !== last; i++) {
+    last = target.scrollTop;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  return {
+    area: isPage ? "page" : "panel",
+    top: Math.round(target.scrollTop),
+    height: target.scrollHeight,
+    at_end: down ? target.scrollTop + view >= target.scrollHeight - 2 : target.scrollTop <= 0,
+  };
+}
+
 const onCamera = pointerGlide({
   isRecording,
   loadRobot: () => require("robotjs"),
@@ -305,6 +359,20 @@ class FounderBrowser {
   }
   async type(id, ref, text, submit, replace = false) {
     const { page, element } = this.locator(id, ref);
+    const kind = await element.locator.evaluate((node) => (node instanceof HTMLInputElement ? node.type : null)).catch(() => null);
+    // Date and time fields take a value, not keystrokes: inserted text never reaches them.
+    if (kind in DATE_FORMATS) {
+      const box = await element.locator.boundingBox().catch(() => null);
+      if (box) await onCamera(page, box.x + box.width / 2, box.y + box.height / 2);
+      try {
+        await element.locator.fill(text);
+      } catch {
+        throw new Error(`That is a ${kind} field: give the value as ${DATE_FORMATS[kind]}.`);
+      }
+      if (submit) await page.keyboard.press("Enter");
+      await settle(page);
+      return this.afterAction(id);
+    }
     await clickElement(page, element, onCamera);
     // Typing replaces a selection: select the field's whole content first.
     if (replace) await element.locator.selectText();
@@ -352,15 +420,31 @@ class FounderBrowser {
       directory: path.join(app.getPath("downloads"), "PostOrca"),
     });
   }
-  async scroll(id, direction) {
+  async hover(id, ref) {
+    const { page, element } = this.locator(id, ref);
+    await element.locator.scrollIntoViewIfNeeded({ timeout: 5_000 }).catch(() => {});
+    const box = await element.locator.boundingBox().catch(() => null);
+    if (!box) throw new Error("That element is not visible on the page. Take a new snapshot or a screenshot.");
+    const x = box.x + box.width / 2, y = box.y + box.height / 2;
+    await onCamera(page, x, y);
+    await page.mouse.move(x, y);
+    await settle(page);
+    return this.afterAction(id);
+  }
+  /**
+   * Scrolls what actually scrolls: the page, or, in apps that keep the page fixed, the
+   * panel that does (the ref's, or the largest visible one). On camera the pointer moves
+   * over it first and it scrolls smoothly, like a wheel; off camera it jumps.
+   */
+  async scroll(id, direction, ref) {
     const { page } = this.tab(id);
-    const position = await page.evaluate((down) => {
-      window.scrollBy(0, (down ? 0.85 : -0.85) * window.innerHeight);
-      return {
-        top: Math.round(window.scrollY),
-        height: document.documentElement.scrollHeight,
-      };
-    }, direction !== "up");
+    const node = ref ? await this.locator(id, ref).element.locator.elementHandle({ timeout: 5_000 }).catch(() => null) : null;
+    if (ref && !node) throw new Error("That element is no longer on the page as observed (it was removed or changed). Take a new snapshot.");
+    const area = await page.evaluate(findScrollArea, node);
+    if (!area) return { scrolled: false, note: "Nothing on this page scrolls.", ...(await this.afterAction(id)) };
+    const smooth = isRecording();
+    if (smooth) await onCamera(page, area.x, area.y);
+    const position = await page.evaluate(scrollArea, { down: direction !== "up", smooth });
     await settle(page);
     return { ...position, ...(await this.afterAction(id)) };
   }

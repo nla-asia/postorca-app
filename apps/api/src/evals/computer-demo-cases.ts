@@ -312,6 +312,7 @@ const webInputNames = new Set([
   "browser_select",
   "browser_press",
   "browser_scroll",
+  "browser_hover",
 ]);
 const refOf = (attachment: any) =>
   attachment.ref ?? String(attachment.file).split("/").at(-1)?.slice(0, 8);

@@ -118,7 +118,7 @@ export const browserTools: PluginToolDefinition[] = [
   ),
   tool(
     "browser_type",
-    "Click a text field by ref and type text at the cursor. replace=true replaces what is already in the field (text the browser autofilled, or an earlier value) instead of adding to it: use it whenever the field may not be empty. submit=true presses Enter afterwards: use it for search boxes, never to send or publish. Returns the page afterwards like browser_snapshot (in the mode of your last snapshot of this tab): usually only what changed, so you rarely need a separate snapshot.",
+    "Click a text field by ref and type text at the cursor. replace=true replaces what is already in the field (text the browser autofilled, or an earlier value) instead of adding to it: use it whenever the field may not be empty. submit=true presses Enter afterwards: use it for search boxes, never to send or publish. Date and time fields take their value as YYYY-MM-DD (date), HH:MM (time) or YYYY-MM-DDTHH:MM (date and time). Returns the page afterwards like browser_snapshot (in the mode of your last snapshot of this tab): usually only what changed, so you rarely need a separate snapshot.",
     {
       tab,
       ref,
@@ -157,10 +157,23 @@ export const browserTools: PluginToolDefinition[] = [
   ),
   tool(
     "browser_scroll",
-    "Scroll a tab by about one screen to load more of a feed or page. Returns the page afterwards like browser_snapshot (in the mode of your last snapshot of this tab): usually only what changed, so you rarely need a separate snapshot.",
-    { tab, direction: { type: "string", enum: ["down", "up"] } },
+    "Scroll by most of a screen to see more of a page, feed or list. It scrolls what actually scrolls: the page, or in apps that keep the page fixed, the largest panel that scrolls. To scroll a particular panel, list or dialog, pass ref: an element inside it. Returns where it is (area page or panel, at_end) and the page afterwards like browser_snapshot (in the mode of your last snapshot of this tab): usually only what changed, so you rarely need a separate snapshot.",
+    { tab, direction: { type: "string", enum: ["down", "up"] }, ref },
     ["tab", "direction"],
-    z.object({ tab: tabId, direction: z.enum(["down", "up"]) }).strict(),
+    z
+      .object({
+        tab: tabId,
+        direction: z.enum(["down", "up"]),
+        ref: refId.optional(),
+      })
+      .strict(),
+  ),
+  tool(
+    "browser_hover",
+    "Move the pointer over an element by ref, for what only shows on hover: tooltips, hover menus, row actions, chart values. Returns the page afterwards like browser_snapshot (in the mode of your last snapshot of this tab): usually only what changed, so you rarely need a separate snapshot.",
+    { tab, ref },
+    ["tab", "ref"],
+    z.object({ tab: tabId, ref: refId }).strict(),
   ),
   tool(
     "browser_close",

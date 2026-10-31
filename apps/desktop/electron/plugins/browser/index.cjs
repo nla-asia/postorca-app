@@ -47,8 +47,9 @@ module.exports = {
     browser_press: { run: ({ tab, key }) => founderBrowser.press(tab, key) },
     browser_fetch_file: { run: ({ tab, ...args }, context) => founderBrowser.fetchFile(tab, args, context) },
     browser_scroll: {
-      run: ({ tab, direction }) => founderBrowser.scroll(tab, direction),
+      run: ({ tab, direction, ref }) => founderBrowser.scroll(tab, direction, ref),
     },
+    browser_hover: { run: ({ tab, ref }) => founderBrowser.hover(tab, ref) },
     browser_close: { run: ({ tab }) => founderBrowser.close(tab) },
   },
 };
