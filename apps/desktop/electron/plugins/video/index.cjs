@@ -78,7 +78,7 @@ async function grayPixels(file, signal) {
   const width = 960;
   const { stdout } = await run(
     filename,
-    ["-v", "error", "-i", file, "-vf", `scale=${width}:-2,format=gray`, "-f", "rawvideo", "-"],
+    ["-v", "error", "-i", file, "-vf", `scale=${width}:-2,format=gray`, "-f", "image2pipe", "-c:v", "rawvideo", "-"],
     { cwd: directory, signal, encoding: "buffer", maxBuffer: 64 * 1024 * 1024 },
   );
   return { gray: stdout, width, height: stdout.length / width };
