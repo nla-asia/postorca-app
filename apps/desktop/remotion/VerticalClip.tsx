@@ -218,7 +218,13 @@ function focusTransform(
   const start = target(previous),
     end = target(focus);
   const mix = (a: number, b: number) => a + (b - a) * fraction;
-  const scale = mix(start.scale, end.scale),
+  // On the stage the box itself moves (focusBox), so blend its size on screen: blending
+  // the zoom on its own would swell the box past the frame halfway.
+  const span = (region: Region | null) => (region ? region.width : 1) * rect.width;
+  const scale = stage
+    ? mix(start.scale * span(previous), end.scale * span(focus)) /
+      mix(span(previous), span(focus))
+    : mix(start.scale, end.scale),
     x = mix(start.x, end.x),
     y = mix(start.y, end.y);
   const centre = { x: viewport.width / 2, y: viewport.top + viewport.height / 2 };
@@ -389,10 +395,13 @@ function ClipVideo({
 function Headline({
   text,
   image,
+  stage = false,
   brand,
 }: {
   text: string;
   image: boolean;
+  // Over the stage's clean background, beside the app: plain type, no backing.
+  stage?: boolean;
   brand: VerticalClipProps["brand"];
 }) {
   const { width, height } = useVideoConfig();
@@ -452,9 +461,13 @@ function Headline({
             fontFamily,
             fontWeight: 800,
             fontSize: textSize(text, available - 60, [72, 62, 54]),
-            color: "#111111",
-            backgroundColor: "rgba(255,255,255,0.96)",
-            padding: "8px 26px",
+            ...(stage
+              ? { color: brand.text, letterSpacing: "-0.01em" }
+              : {
+                  color: "#111111",
+                  backgroundColor: "rgba(255,255,255,0.96)",
+                  padding: "8px 26px",
+                }),
             borderRadius: 18,
             whiteSpace: "pre-line",
             overflowWrap: "anywhere",
@@ -473,6 +486,7 @@ function Scene({
   scene,
   shot,
   previousFocus,
+  previousTitled,
   captioned,
   brand,
   base,
@@ -480,6 +494,7 @@ function Scene({
   scene: SceneData;
   shot: Shot;
   previousFocus: Region | null;
+  previousTitled: boolean;
   captioned: boolean;
   brand: VerticalClipProps["brand"];
   base: string;
@@ -490,11 +505,20 @@ function Scene({
     device = scene.device ?? null;
   const bands = textBands(width, height);
   const framed = fit === "contain" || !!device;
-  // A screen recording fills the frame, focused or whole, so the app keeps its size from
-  // shot to shot: the title and captions sit over the recording. A focus is kept clear
-  // of the captions; a title has its own backing and may overlap the top of the app.
+  // A screen recording is laid out on the whole frame, so the app keeps its size from
+  // shot to shot; its focus sits on the stage clear of the captions (and of a title).
   const croppedClip = !!scene.clip && framed && !device;
-  const top = framed && shot.stickered && !croppedClip ? bands.top : 0;
+  // On the stage, a title gets the band above the app, which makes room for it as the
+  // shot opens and gives it back when the title goes.
+  const titleBand = (titled: boolean) => (titled ? bands.top : 0);
+  const top = croppedClip
+    ? interpolate(frame, [0, 18], [titleBand(previousTitled), titleBand(!!scene.text)], {
+        ...clamp,
+        easing: (t) => 1 - (1 - t) ** 3,
+      })
+    : framed && shot.stickered
+      ? bands.top
+      : 0;
   const viewport = {
     top,
     width,
@@ -619,7 +643,9 @@ function Scene({
           </AbsoluteFill>
         </AbsoluteFill>
       )}
-      {scene.text && <Headline text={scene.text} image={!!src} brand={brand} />}
+      {scene.text && (
+        <Headline text={scene.text} image={!!src} stage={croppedClip} brand={brand} />
+      )}
     </AbsoluteFill>
   );
 }
@@ -782,6 +808,9 @@ export function VerticalClip({
               base={assetBaseUrl}
               captioned={pages.length > 0}
               brand={brand}
+              previousTitled={
+                continues(scenes[index - 1], scene) && !!scenes[index - 1].text
+              }
               previousFocus={
                 continues(scenes[index - 1], scene)
                   ? (scenes[index - 1].focus ?? null)
