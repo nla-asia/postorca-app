@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { browserCases } from "../browser-cases.js";
 import { ideasCases, routineInstructions } from "../ideas-cases.js";
@@ -27,10 +27,31 @@ const pinned = (path: string) => ({
   path,
   sha256: createHash("sha256").update(readFileSync(path)).digest("hex"),
 });
+// Packlight is a real Expo source tree rather than one self-contained generator.
+// Pin its complete checked-in input, excluding build/dependency output.
+const packlightFiles = (dir = "scripts/evals/fixtures/packlight"): string[] =>
+  readdirSync(repoFile(dir), { withFileTypes: true })
+    .filter(
+      (entry) =>
+        !["node_modules", ".expo", "dist", "dist-ios", ".git"].includes(
+          entry.name,
+        ),
+    )
+    .flatMap((entry) =>
+      entry.isDirectory()
+        ? packlightFiles(`${dir}/${entry.name}`)
+        : [`${dir}/${entry.name}`],
+    )
+    .sort();
 const fixture = (script: string, files: string[] = []) => {
+  if (script === "scripts/evals/packlight-fixture.mjs")
+    files = [...files, ...packlightFiles()];
   const hook = (mode: string) => ({
     executable: process.execPath,
     args: [repoFile(script), mode],
+    ...(script === "scripts/evals/packlight-fixture.mjs"
+      ? { timeout_ms: 180_000 }
+      : {}),
   });
   return {
     files: [script, ...files].map((f) => pinned(repoFile(f))),

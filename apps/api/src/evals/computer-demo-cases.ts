@@ -62,6 +62,70 @@ const scriptReview = (product: string, flows: string) => [
 
 export const demoCases: DemoCase[] = [
   {
+    id: "script-packlight-intro",
+    level: 3,
+    name: "Product introduction script from the code repo (Packlight React Native app)",
+    app: "web",
+    url: "http://127.0.0.1:4140",
+    fixture_script: "scripts/evals/packlight-fixture.mjs",
+    script_only: true,
+    brief: `I haven't introduced Packlight yet. Read its project and write a 25–35 second portrait introduction script for Instagram, with numbered shots, on-screen text and voiceover, for me to approve first. Explain which shots work in its web version and which require the iPhone app. Don't record, generate media or publish anything.`,
+    typed: [],
+    min_clips: 0,
+    criteria: [
+      ...scriptReview(
+        "Packlight",
+        "choosing a trip, packing checkboxes and progress, adding an item, previewing the list",
+      ),
+      "The script distinguishes shared web/mobile features from the native Share packing list action. It does not invent backend storage, accounts, reminders or camera features.",
+    ],
+  },
+  {
+    id: "demo-packlight-web-from-script",
+    level: 3,
+    name: "Approved mobile product script to video through web (Packlight)",
+    app: "web",
+    url: "http://127.0.0.1:4140",
+    fixture_script: "scripts/evals/packlight-fixture.mjs",
+    brief: `Make this approved Packlight introduction as a 25–35 second portrait Instagram video, voiceover and captions. The React Native app's web version is running at http://127.0.0.1:4140. All of these shots work there; record them yourself.
+1. Show the sample trips, then open A weekend away. Text: "Introducing Packlight". Voice: "Packlight keeps the little things for your trip in one place."
+2. Show the Chiang Mai packing list and its 2 of 6 packed progress. Voice: "Pick a trip and see what is packed and what is still to go."
+3. Add Travel adapter, then tick Phone charger. The count becomes 3 of 7. Voice: "Add one more thing, tick off what is in your bag, and watch the list move toward ready."
+4. Open Preview packing list. Voice: "Check the whole list before you go. That's Packlight."
+Use Reset sample trips before starting. Keep the mobile layout readable and follow the approved shots. Don't demonstrate native sharing through a browser. ${noPublish}`,
+    typed: ["Travel adapter"],
+    min_clips: 2,
+    video: { seconds: [20, 40] },
+    criteria: [
+      "The video follows all four approved shots in order, using the real web app through the browser, with a readable portrait layout.",
+      "Travel adapter is added, Phone charger is checked and progress becomes 3 of 7; the preview contains the updated list.",
+      "The demo makes no claim of native sharing, accounts, cloud storage or features absent from the app.",
+      ...videoReview,
+    ],
+  },
+  {
+    id: "demo-packlight-sim-from-script",
+    level: 3,
+    name: "Approved mobile product script to video in Simulator (Packlight native sharing)",
+    app: "simulator",
+    fixture_script: "scripts/evals/packlight-fixture.mjs",
+    brief: `Make this approved Packlight introduction as a 25–35 second portrait Instagram video, voiceover and captions. Use Packlight in Expo Go on the booted iPhone Simulator. Its native share-sheet shot requires the iPhone app, so the web version is not suitable for this script. The fixture's README explains how to open it from the running Metro server.
+1. Show the sample trips, then open A weekend away. Text: "Introducing Packlight". Voice: "Packlight keeps the little things for your trip in one place."
+2. Add Travel adapter, then tick Phone charger. The count becomes 3 of 7. Voice: "Add what you need and tick things off as they go in your bag."
+3. Tap Share packing list to open the real iPhone share sheet with the current list. Voice: "On iPhone, open the share sheet with your packing list, ready to pass on."
+4. Cancel the sheet and hold on the updated packing list. Voice: "A little less to remember. That's Packlight."
+Use Reset sample trips before starting. Capture the device screen with the simulator target, not the Simulator window or the whole desktop. Open and cancel the share sheet only: don't choose a recipient, send a message or publish anything. ${noPublish}`,
+    typed: ["Travel adapter"],
+    min_clips: 2,
+    video: { seconds: [20, 40] },
+    criteria: [
+      "The video follows the approved shots in the actual iPhone app, including the native system share sheet showing the updated list, then its dismissal. No recipient is selected and nothing is sent.",
+      "Clips use the simulator device-screen target, with no Simulator window frame or desktop chrome. A web page or imitation share modal does not satisfy the native shot.",
+      "Travel adapter is added, Phone charger is checked and the final packing progress is 3 of 7.",
+      ...videoReview,
+    ],
+  },
+  {
     id: "demo-mac-maps-route",
     level: 2,
     name: "Record a route-planning demo in Maps",
