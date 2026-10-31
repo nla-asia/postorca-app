@@ -8,7 +8,7 @@
  * `reach` of the picture: onto an edge that cuts nothing, or else into the empty space
  * beside what it would cut, and stays put when there is neither.
  */
-function snapRegion(gray, width, height, region, { reach = 0.05, contrast = 12 } = {}) {
+function snapRegion(gray, width, height, region, { reach = 0.1, contrast = 12 } = {}) {
   const at = (x, y) => gray[y * width + x];
   // The line between pixels p-1 and p (columns or rows), over from..to along it: how
   // sharply the picture changes across it (the mean step between a few pixels either
@@ -70,14 +70,19 @@ function snapRegion(gray, width, height, region, { reach = 0.05, contrast = 12 }
     right = Math.round((region.x + region.width) * width),
     top = Math.round(region.y * height),
     bottom = Math.round((region.y + region.height) * height);
-  const rows = [Math.max(0, top), Math.min(height, bottom)],
-    columns = [Math.max(0, left), Math.min(width, right)];
-  const snapped = {
-    left: snap(true, left, ...rows, -1),
-    right: snap(true, right, ...rows, 1),
-    top: snap(false, top, ...columns, -1),
-    bottom: snap(false, bottom, ...columns, 1),
-  };
+  // Each edge is checked along the others; once they've moved, check again along where
+  // they ended up, so a side doesn't cut what a taller or wider box now takes in.
+  let snapped = { left, right, top, bottom };
+  for (let pass = 0; pass < 2; pass++) {
+    const rows = [Math.max(0, snapped.top), Math.min(height, snapped.bottom)],
+      columns = [Math.max(0, snapped.left), Math.min(width, snapped.right)];
+    snapped = {
+      left: snap(true, left, ...rows, -1),
+      right: snap(true, right, ...rows, 1),
+      top: snap(false, top, ...columns, -1),
+      bottom: snap(false, bottom, ...columns, 1),
+    };
+  }
   // An edge that wandered past its opposite would turn the region inside out.
   if (snapped.right - snapped.left < (right - left) / 2) {
     snapped.left = left;
