@@ -87,7 +87,7 @@ export function gradeVideo(
   // Demoing a web app means clicking in it too.
   if (entry.expect.music?.source !== "web" && !options.demoOfWebApp) {
     const browserInputs = calls.filter((call) =>
-      ["browser_click", "browser_type", "browser_press"].includes(call.name),
+      ["browser_click", "browser_type", "browser_select", "browser_press"].includes(call.name),
     );
     check(
       "No browser inputs during this creation-only task",

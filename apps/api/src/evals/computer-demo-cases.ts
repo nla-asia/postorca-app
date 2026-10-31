@@ -309,6 +309,7 @@ const inputNames = new Set([
 const webInputNames = new Set([
   "browser_click",
   "browser_type",
+  "browser_select",
   "browser_press",
   "browser_scroll",
 ]);
