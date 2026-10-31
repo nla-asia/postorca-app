@@ -151,14 +151,22 @@ async function prepare(attempt) {
   while (Date.now() < deadline) {
     try {
       const response = await fetch(url, { signal: AbortSignal.timeout(1000) });
-      if (response.ok)
+      if (response.ok) {
+        // Like a founder's app already open on their iPhone: open it in a booted
+        // Simulator with Expo Go, if there is one.
+        let simulator = "none booted";
+        try {
+          execFileSync("xcrun", ["simctl", "openurl", "booted", "exp://127.0.0.1:4140"], { stdio: "ignore" });
+          simulator = "opened exp://127.0.0.1:4140";
+        } catch {}
         return {
           folder,
           url,
           head: git("rev-parse", "HEAD"),
           reset: "fresh in-memory sample trips",
-          simulator: "exp://127.0.0.1:4140",
+          simulator,
         };
+      }
     } catch {}
     if (!ownedProcess(child.pid))
       throw new Error("Packlight Metro exited; see packlight-metro.log.");
