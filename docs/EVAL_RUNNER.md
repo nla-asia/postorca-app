@@ -373,9 +373,11 @@ agent edits rather than records. `scripts/evals/recordings-fixture.mjs <set>` co
 pinned set from `fixtures/evals/recordings/` into the working folder's `eval-fixtures/`
 (set `POSTORCA_WORKING_FOLDER` if it isn't `~/Documents/PostOrca`) and removes it after.
 
-- `content-edit-ledgerly-launch`: four raw Ledgerly recordings (browser chrome and all)
-  and an approved voiceover, to a polished LinkedIn launch video. Automatic checks: the
-  recordings were brought in and used, the video is narrated, nothing was re-recorded.
+- `content-edit-ledgerly-launch`: four raw Ledgerly recordings (browser chrome and all),
+  a music track the founder picked and an approved voiceover, to a polished LinkedIn
+  launch video. Automatic checks: the
+  recordings were brought in and used, the video is narrated with the founder's track
+  under it, nothing was re-recorded.
   The review holds it to a professional bar: structure with an intro and end card,
   framing, guiding the eye at each key moment, pacing, text, sound, and overall.
 

@@ -22,7 +22,8 @@ const source = fileURLToPath(new URL(`../../fixtures/evals/recordings/${set}/`, 
 const parent = join(process.env.POSTORCA_WORKING_FOLDER ?? join(homedir(), "Documents", "PostOrca"), "eval-fixtures");
 const folder = join(parent, `${set}-recordings`);
 const sha = async (file) => createHash("sha256").update(await readFile(file)).digest("hex");
-const clips = async () => (await readdir(source)).filter((name) => name.endsWith(".mp4")).sort();
+// The recordings, and any track the founder hands over with them.
+const clips = async () => (await readdir(source)).filter((name) => /\.(mp4|mp3)$/.test(name)).sort();
 
 async function prepare() {
   if (existsSync(folder)) throw new Error(`${folder} already exists; it was left unchanged.`);
