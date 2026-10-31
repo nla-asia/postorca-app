@@ -30,6 +30,9 @@ export type VerticalClipProps = {
       poster: string;
     } | null;
     text: string | null;
+    // A card (text, no media): a line under the title and a small one above it.
+    subtitle?: string | null;
+    label?: string | null;
     durationMs: number;
     fit?: "cover" | "contain";
     device?: Device | null;
@@ -392,6 +395,104 @@ function ClipVideo({
   );
 }
 
+/**
+ * A title, section or end card: the title rises in under a drawn accent bar, a small
+ * label above it and a subtitle below, on the brand background with a soft glow.
+ */
+function Card({
+  title,
+  subtitle,
+  label,
+  brand,
+}: {
+  title: string;
+  subtitle: string | null;
+  label: string | null;
+  brand: VerticalClipProps["brand"];
+}) {
+  const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
+  const ease = (from: number, to: number) =>
+    interpolate(frame, [from, to], [0, 1], { ...clamp, easing: (t) => 1 - (1 - t) ** 3 });
+  const portrait = height > width;
+  const available = width - (portrait ? 140 : 360);
+  const titleIn = ease(4, 20),
+    barIn = ease(0, 14),
+    sub = ease(12, 28),
+    lab = ease(0, 12);
+  const titleSize = textSize(title, available, portrait ? [116, 92, 72] : [132, 104, 80]);
+  return (
+    <AbsoluteFill
+      style={{
+        justifyContent: "center",
+        alignItems: portrait ? "center" : "flex-start",
+        padding: portrait ? "0 70px" : "0 180px",
+        background: `radial-gradient(ellipse at ${portrait ? "50% 30%" : "25% 40%"}, ${brand.highlight}26, transparent 60%), ${brand.background}`,
+      }}
+    >
+      <div style={{ textAlign: portrait ? "center" : "left", maxWidth: available }}>
+        {label && (
+          <div
+            style={{
+              fontFamily,
+              fontWeight: 700,
+              fontSize: portrait ? 36 : 34,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              color: brand.highlight,
+              opacity: lab,
+              marginBottom: 28,
+            }}
+          >
+            {label}
+          </div>
+        )}
+        <div
+          style={{
+            width: 120 * barIn,
+            height: 10,
+            borderRadius: 5,
+            backgroundColor: brand.highlight,
+            margin: portrait ? "0 auto 40px" : "0 0 40px",
+          }}
+        />
+        <div
+          style={{
+            fontFamily,
+            fontWeight: 800,
+            fontSize: titleSize,
+            lineHeight: 1.08,
+            letterSpacing: "-0.02em",
+            whiteSpace: "pre-line",
+            overflowWrap: "anywhere",
+            color: brand.text,
+            opacity: titleIn,
+            transform: `translateY(${(1 - titleIn) * 40}px)`,
+          }}
+        >
+          {title}
+        </div>
+        {subtitle && (
+          <div
+            style={{
+              fontFamily,
+              fontWeight: 500,
+              fontSize: Math.max(36, Math.round(titleSize * 0.42)),
+              lineHeight: 1.3,
+              color: brand.text,
+              opacity: 0.78 * sub,
+              transform: `translateY(${(1 - sub) * 24}px)`,
+              marginTop: 28,
+            }}
+          >
+            {subtitle}
+          </div>
+        )}
+      </div>
+    </AbsoluteFill>
+  );
+}
+
 function Headline({
   text,
   image,
@@ -408,37 +509,6 @@ function Headline({
   const safe = safeArea(width, height);
   const pop = usePop();
   const available = image ? width - safe.left - safe.right : width - 180;
-  if (!image)
-    return (
-      <AbsoluteFill
-        style={{ justifyContent: "center", alignItems: "center", padding: 90 }}
-      >
-        <div style={{ ...pop, textAlign: "center" }}>
-          <div
-            style={{
-              width: 120,
-              height: 12,
-              borderRadius: 6,
-              margin: "0 auto 56px",
-              backgroundColor: brand.highlight,
-            }}
-          />
-          <div
-            style={{
-              fontFamily,
-              fontWeight: 800,
-              fontSize: textSize(text, available, [120, 96, 76]),
-              lineHeight: 1.1,
-              whiteSpace: "pre-line",
-              overflowWrap: "anywhere",
-              color: brand.text,
-            }}
-          >
-            {text}
-          </div>
-        </div>
-      </AbsoluteFill>
-    );
   return (
     <AbsoluteFill
       style={{
@@ -643,9 +713,12 @@ function Scene({
           </AbsoluteFill>
         </AbsoluteFill>
       )}
-      {scene.text && (
-        <Headline text={scene.text} image={!!src} stage={croppedClip} brand={brand} />
-      )}
+      {scene.text &&
+        (src ? (
+          <Headline text={scene.text} image stage={croppedClip} brand={brand} />
+        ) : (
+          <Card title={scene.text} subtitle={scene.subtitle ?? null} label={scene.label ?? null} brand={brand} />
+        ))}
     </AbsoluteFill>
   );
 }
