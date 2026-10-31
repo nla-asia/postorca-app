@@ -314,9 +314,9 @@ You sent me this script and I approved it, go ahead and make the video:
 1. On screen: the Quill window with the sidebar, the editor and the preview. On-screen text: "Introducing Quill". Voiceover: "Introducing Quill, quiet notes for your desktop."
 2. On screen: in the Weekly plan note, type a new line "- Send the invites" at the end; it appears as a new list item in the preview as you type. Voiceover: "Write in Markdown on the left, and watch it turn into clean formatting on the right as you type."
 3. On screen: File, New Note, then type "# Launch checklist" as its title. Voiceover: "Start a new note from the File menu, or with Command N."
-4. On screen: type "chapter" in Search notes so the list narrows to Chapter 3 ideas, then click its star to pin it. Voiceover: "Find any note with search, and pin the ones you need to the top."
+4. On screen: type "ideas" in Search notes so the list narrows to Chapter 3 ideas, then click its star to pin it. Voiceover: "Find any note with search, and pin the ones you need to the top."
 5. On screen: Quill, Settings, switch Theme to Dark; the main window turns dark. On-screen text: "Quill". Voiceover: "Switch to the dark theme in Settings. That's Quill."`,
-    typed: ["send the invites", "launch checklist", "chapter"],
+    typed: ["send the invites", "launch checklist", "ideas"],
     min_clips: 3,
     video: { seconds: [20, 40] },
     criteria: [
