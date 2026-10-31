@@ -243,6 +243,39 @@ You sent me this script and I approved it, go ahead and make the video:
       ...videoReview,
     ],
   },
+  // Script to video on a richer app: sign in off camera, a dropdown, line items added and
+  // typed into, live totals and status buttons, all on camera.
+  {
+    id: "demo-ledgerly-from-script",
+    level: 3,
+    name: "From an approved product introduction script to the video (Ledgerly invoicing SaaS)",
+    app: "web",
+    url: "http://127.0.0.1:4130",
+    fixture_script: "scripts/evals/ledgerly-fixture.mjs",
+    brief: `${introRequest("Ledgerly")}
+
+You sent me this script and I approved it, go ahead and make the video:
+
+**What it is:** Ledgerly, invoicing for freelancers and small studios.
+**Who it's for:** freelancers and small studios.
+**Format:** about 30 sec, landscape 16:9 for LinkedIn, voiceover and captions.
+
+**Shots:**
+1. On screen: the Dashboard with the Outstanding, Paid and Overdue cards and the revenue chart. On-screen text: "Introducing Ledgerly". Voiceover: "Introducing Ledgerly, invoicing for freelancers and small studios."
+2. On screen: the same Dashboard, the three cards. Voiceover: "See what's outstanding, what's been paid and what's overdue at a glance."
+3. On screen: New invoice. Choose Juniper Studio, type "Website redesign" with a rate of 2400, click "+ Add line" and type "Copywriting", quantity 4, rate 150; the total updates to $3,000.00 while typing. Voiceover: "Pick a client, add what you did, and the total adds itself up as you type."
+4. On screen: Save draft, then Mark as sent; the badge turns to Sent. Voiceover: "Save it and mark it as sent."
+5. On screen: Record payment; the badge turns to Paid. On-screen text: "Ledgerly". Voiceover: "When the money lands, record the payment. That's Ledgerly."`,
+    typed: ["redesign", "copywriting"],
+    min_clips: 3,
+    video: { seconds: [20, 45] },
+    criteria: [
+      "The video follows the approved script: each shot in order with its voiceover line and on-screen text, the invoice built with both line items and the total updating, then sent and paid.",
+      "Sign-in happens before recording, never on camera, and the clips show no fumbling: no failed selections, wrong fields or retyped values.",
+      "It stays a straightforward product demo, like a product page introducing Ledgerly, and claims nothing the script doesn't.",
+      ...videoReview,
+    ],
+  },
   {
     id: "demo-mac-maps-video",
     level: 3,

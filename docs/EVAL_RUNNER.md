@@ -348,6 +348,9 @@ Two separate evals use it, matching the product:
   dashboard chart, invoices with line items and live totals, status changes, a status
   filter and an "Add client" modal. The script has to pick a few flows out of many. Add
   `~/PostOrca Evals/ledgerly` to the founder's Brand Profile projects once.
+- `content-demo-ledgerly-from-script`: script to video on Ledgerly, from an approved
+  script. Sign-in happens off camera; on camera it picks a client, adds and types line
+  items with a live total, and marks the invoice sent and paid.
 - `content-demo-tide-from-script` (script to video): starts from an approved script,
   fixed so recording runs compare, and records and edits the video. The founder reviews
   the video.
