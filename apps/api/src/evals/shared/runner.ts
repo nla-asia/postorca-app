@@ -20,6 +20,7 @@ import {
 import { gradeWriting, gradeWritingTools } from "../writing-cases.js";
 import { gradeBrowserTools } from "../browser-tools.js";
 import { gradeIdeas, ideasCases } from "../ideas-cases.js";
+import { editCases, gradeEdit } from "../edit-cases.js";
 import {
   caseSchema,
   checkSchema,
@@ -676,6 +677,18 @@ export class EvalRunner {
           reason: "The founder's project is read, never changed",
           evidence: ["evidence/fixture-observe.json#/unchanged"],
         });
+      const edit = editCases.find((c) => `content-${c.id}` === entry.id);
+      if (edit)
+        checks.push(
+          ...graded(
+            gradeEdit(edit, {
+              status: last?.status,
+              calls: evidence.calls,
+              artifacts,
+            }),
+            "edit",
+          ),
+        );
       const ideas = ideasCases.find((c) => `ideas-${c.id}` === entry.id);
       if (ideas)
         checks.push(
