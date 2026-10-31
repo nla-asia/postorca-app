@@ -210,6 +210,15 @@ let recordingNow = false;
 /** Whether a screen recording is running, for tools that act differently on camera. */
 const isRecording = () => recordingNow;
 
+// When each target was last looked at: a capture of it, or a computer-use observe of a
+// window. A recording starts only from a screen the agent has just checked.
+const LOOK_MS = 120_000;
+const looks = new Map();
+const lookKey = (target) =>
+  target.type === "window" ? `window:${target.window_id}` : target.type === "screen" ? `screen:${target.display}` : `simulator:${target.udid}`;
+/** Notes a look at a window, from computer use's observe. */
+const lookedAt = (windowId) => looks.set(`window:${Number(windowId)}`, Date.now());
+
 function createScreenTools({
   platform = process.platform,
   access = screenAccess,
@@ -218,6 +227,7 @@ function createScreenTools({
   indicator = menuBarIndicator(),
   maxSeconds = MAX_RECORD_SECONDS,
   startupMs = 1000,
+  requireLook = false,
   raiseWindow = (id) => require("../plugins/computer/native.cjs").native({ action: "focus", window: String(id) }),
 } = {}) {
   // Recordings by id, from start until screen_record_stop collects the clip.
@@ -296,6 +306,7 @@ function createScreenTools({
   const screenshot = async ({ target }, context) => {
     target = parseTarget(target);
     await requireAccess(target);
+    looks.set(lookKey(target), Date.now());
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "postorca-capture-"));
     try {
       const file = path.join(dir, "capture.png");
@@ -323,6 +334,10 @@ function createScreenTools({
     target = parseTarget(target);
     if (active)
       throw new Error(`Recording ${active.id} is still running. Stop it with screen_record_stop first.`);
+    if (requireLook && !(Date.now() - (looks.get(lookKey(target)) ?? 0) < LOOK_MS))
+      throw new Error(
+        "Look at what you are about to record first: take a screen_capture of this target (or observe the window with computer use) and check it shows the screen the clip starts from, ready and with nothing covering it. Then start the recording.",
+      );
     await requireAccess(target);
     // screencapture records a window even behind others, which looks fine in the clip
     // while the founder sees nothing and a moving pointer misses it. Bring it forward.
@@ -425,7 +440,7 @@ function createScreenTools({
 
 let tools;
 const lazy = (name) => ({
-  run: (args, context) => (tools ??= createScreenTools())[name].run(args, context),
+  run: (args, context) => (tools ??= createScreenTools({ requireLook: true }))[name].run(args, context),
 });
 module.exports = {
   list_capture_targets: lazy("list_capture_targets"),
@@ -434,6 +449,7 @@ module.exports = {
   screen_record_stop: lazy("screen_record_stop"),
   createScreenTools,
   isRecording,
+  lookedAt,
   parseTarget,
   parseWindows,
   toMp4,

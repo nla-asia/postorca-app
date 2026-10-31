@@ -490,7 +490,11 @@ export function gradeDemoCapture(
       name: "Looked at the screen before recording",
       passed:
         firstStart >= 0 &&
-        ok.some((c) => c.name === "screen_capture" && index(c) < firstStart),
+        ok.some(
+          (c) =>
+            ["screen_capture", "computer_observe"].includes(c.name) &&
+            index(c) < firstStart,
+        ),
     },
     {
       name: `Recorded at least ${entry.min_clips} clip(s)`,
