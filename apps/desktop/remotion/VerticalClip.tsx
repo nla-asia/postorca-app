@@ -208,9 +208,11 @@ function focusTransform(
     if (stage) {
       // Keep the frame inside the recording: what shows around the focus is the app.
       const anchorY = viewport.top + viewport.height / 2;
+      // A recording that fits the frame stays centred in it, not shifted to the anchor:
+      // otherwise a focus too big to zoom pushes the top of the app out of the frame.
       const within = (center: number, start: number, length: number, before: number, after: number) =>
         length * scale <= before + after
-          ? start + length / 2
+          ? start + length / 2 - ((before + after) / 2 - before) / scale
           : Math.min(start + length - after / scale, Math.max(start + before / scale, center));
       return {
         scale,
