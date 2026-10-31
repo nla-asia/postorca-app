@@ -14,3 +14,12 @@ recording.
 - `3-mark-sent.mp4` (13.4 s): Save draft, the invoice page, Mark as sent; the badge
   turns Sent.
 - `4-record-payment.mp4` (9.0 s): Record payment; the badge turns Paid.
+
+And the track the founder hands over with them:
+
+| File | Track | Source | License |
+| --- | --- | --- | --- |
+| `music.mp3` | "Motivating Mornings" by Ahjay Stelino, 1:36, upbeat corporate | https://mixkit.co/free-stock-music/discover/motivating-mornings/ | Mixkit Stock Music Free License: free for use in videos, no attribution required; not to be redistributed on its own |
+
+For testing only: keep these files in this private repository and out of any public
+release or package.

@@ -11,6 +11,8 @@ export type EditCase = {
   /** The recording set in fixtures/evals/recordings, copied to the working folder. */
   set: string;
   clips: string[];
+  /** A track the founder hands over with the recordings, in the same folder. */
+  music?: string;
   brief: string;
   video: { seconds: [number, number] };
   criteria: string[];
@@ -35,7 +37,8 @@ export const editCases: EditCase[] = [
     name: "Edit given recordings into a professional product demo (Ledgerly)",
     set: "ledgerly",
     clips: ["1-dashboard.mp4", "2-new-invoice.mp4", "3-mark-sent.mp4", "4-record-payment.mp4"],
-    brief: `I recorded my invoicing app Ledgerly for its launch video. The recordings are in my working folder, in eval-fixtures/ledgerly-recordings: 1-dashboard, 2-new-invoice, 3-mark-sent and 4-record-payment. Please edit them into a polished launch video for LinkedIn: landscape, around 30–40 sec, voiceover and captions. I want it to look like the product videos good SaaS companies post, not just my recordings played back.
+    music: "music.mp3",
+    brief: `I recorded my invoicing app Ledgerly for its launch video. The recordings are in my working folder, in eval-fixtures/ledgerly-recordings: 1-dashboard, 2-new-invoice, 3-mark-sent and 4-record-payment, with music.mp3, a track I picked for it. Please edit them into a polished launch video for LinkedIn: landscape, around 30–40 sec, voiceover and captions. I want it to look like the product videos good SaaS companies post, not just my recordings played back.
 
 The script I approved:
 1. The dashboard. Voiceover: "Introducing Ledgerly, invoicing for freelancers and small studios."
@@ -91,6 +94,16 @@ export function gradeEdit(
       details: { recordings_used: used.size, scenes: scenes.length },
     },
     { name: "Video narrated", passed: !!last?.args.voiceover_file },
+    ...(entry.music
+      ? [
+          {
+            name: "Used the founder's track under the voice",
+            passed:
+              uploads.some((c) => String(c.args.path ?? "").endsWith(entry.music!)) &&
+              fromUpload(last?.args.music?.file),
+          },
+        ]
+      : []),
     {
       // Looking at the app (or searching for music) is fine; recording it again isn't.
       name: "Edited, not re-recorded",

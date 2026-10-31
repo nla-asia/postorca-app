@@ -558,9 +558,14 @@ test("an editing eval needs the founder's recordings edited, not re-recorded", a
   });
   const calls: any[] = [
     ...entry.clips.map((clip, i) => upload(clip, `r${i}000000`)),
+    upload("music.mp3", "m0000000"),
     {
       name: "video_export",
-      args: { voiceover_file: "v1", scenes: entry.clips.map((_, i) => ({ video_file: `r${i}000000` })) },
+      args: {
+        voiceover_file: "v1",
+        music: { file: "m0000000" },
+        scenes: entry.clips.map((_, i) => ({ video_file: `r${i}000000` })),
+      },
       result: { ref: "out" },
     },
   ];

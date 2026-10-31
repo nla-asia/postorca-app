@@ -145,7 +145,9 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       criteria: criteria(c.criteria),
       fixture: fixture(
         "scripts/evals/recordings-fixture.mjs",
-        [...c.clips.map((clip) => `fixtures/evals/recordings/${c.set}/${clip}`)],
+        [...c.clips, ...(c.music ? [c.music] : [])].map(
+          (file) => `fixtures/evals/recordings/${c.set}/${file}`,
+        ),
         [c.set],
       ),
       prerequisites: ["desktop_connected", "working_folder_set", "media_providers_ready"],
