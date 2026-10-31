@@ -256,21 +256,35 @@ export function silentTail(totalMs: number, speechMs: number) {
  * the rest of the frame is blur. The frame here is the space above the captions.
  */
 export function framingNotes(
-  scenes: { focus?: { width: number; height: number }; aspect?: number | null }[],
+  scenes: {
+    focus?: { width: number; height: number };
+    aspect?: number | null;
+  }[],
   format: string,
 ) {
   const [w, h] = format.split(":").map(Number);
   const frame = (w / h) * (format === "9:16" ? 1 : 1.2);
-  return scenes.flatMap((scene, index) => {
-    if (!scene.focus || !scene.aspect) return [];
-    const box = (scene.focus.width * scene.aspect) / scene.focus.height;
-    const fills = Math.min(box / frame, frame / box);
-    return fills < 0.7
-      ? [
-          `Scene ${index + 1}'s focus is ${box.toFixed(1)}:1 in a ${frame.toFixed(1)}:1 frame, so it fills only ${Math.round(fills * 100)}% of it and the rest is blur. Make it ${box > frame ? "taller" : "wider"}, closer to the frame's shape, keeping the elements the scene needs.`,
-        ]
-      : [];
-  });
+  // Only clip scenes carry an aspect here.
+  const whole = scenes.flatMap((scene, index) =>
+    scene.aspect && !scene.focus ? [index + 1] : [],
+  );
+  const unfocused = whole.length
+    ? [
+        `Scene${whole.length > 1 ? "s" : ""} ${whole.join(", ")} show${whole.length > 1 ? "" : "s"} the whole recording: whatever was captured around the app (browser tabs and address bar, banners, the desktop) shows, and the app is smaller. Give each a focus: the app itself inside those bars for an overview, or the part in action.`,
+      ]
+    : [];
+  return unfocused.concat(
+    scenes.flatMap((scene, index) => {
+      if (!scene.focus || !scene.aspect) return [];
+      const box = (scene.focus.width * scene.aspect) / scene.focus.height;
+      const fills = Math.min(box / frame, frame / box);
+      return fills < 0.7
+        ? [
+            `Scene ${index + 1}'s focus is ${box.toFixed(1)}:1 in a ${frame.toFixed(1)}:1 frame, so it fills only ${Math.round(fills * 100)}% of it and the rest is blur. Make it ${box > frame ? "taller" : "wider"}, closer to the frame's shape, keeping the elements the scene needs.`,
+          ]
+        : [];
+    }),
+  );
 }
 
 /**
@@ -621,7 +635,9 @@ async function prepare(context: PluginContext, clip: Clip) {
         const framing = framingNotes(
           clip.scenes.map((scene) => ({
             focus: scene.focus,
-            aspect: scene.video_file ? videos.get(scene.video_file)!.aspect : null,
+            aspect: scene.video_file
+              ? videos.get(scene.video_file)!.aspect
+              : null,
           })),
           format,
         );

@@ -774,6 +774,8 @@ test("a recording's size comes from its header; previews say when the video runs
   // The Ledgerly cards close-up: a wide, short box leaves half a landscape frame empty.
   const [wide] = framingNotes([{ focus: { width: 0.78, height: 0.38 }, aspect }], "16:9");
   assert.match(wide, /Scene 1's focus is 3\.3:1 .* Make it taller/);
-  assert.deepEqual(framingNotes([{ focus: { width: 0.92, height: 0.84 }, aspect }, { aspect }], "16:9"), []);
+  assert.deepEqual(framingNotes([{ focus: { width: 0.92, height: 0.84 }, aspect }, {}], "16:9"), []);
+  const [whole] = framingNotes([{ aspect }, { focus: { width: 0.92, height: 0.84 }, aspect }, { aspect }], "16:9");
+  assert.match(whole, /^Scenes 1, 3 show the whole recording/);
   assert.match(framingNotes([{ focus: { width: 0.9, height: 0.5 }, aspect }], "9:16")[0], /Make it taller/);
 });
