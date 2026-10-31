@@ -258,6 +258,8 @@ export function silentTail(totalMs: number, speechMs: number) {
 export function framingNotes(
   scenes: {
     focus?: { width: number; height: number };
+    // A close-up named by its text (focus_on): framed, and not the whole app.
+    focus_on?: unknown;
     aspect?: number | null;
   }[],
   format: string,
@@ -266,11 +268,11 @@ export function framingNotes(
   const frame = (w / h) * (format === "9:16" ? 1 : 1.2);
   // Only clip scenes carry an aspect here.
   const whole = scenes.flatMap((scene, index) =>
-    scene.aspect && !scene.focus ? [index + 1] : [],
+    scene.aspect && !scene.focus && !scene.focus_on ? [index + 1] : [],
   );
   const unfocused = whole.length
     ? [
-        `Scene${whole.length > 1 ? "s" : ""} ${whole.join(", ")} show${whole.length > 1 ? "" : "s"} the whole recording: whatever was captured around the app (browser tabs and address bar, banners, the desktop) shows, and the app is smaller. Give each a focus: the app itself inside those bars for an overview, or the part in action.`,
+        `Scene${whole.length > 1 ? "s" : ""} ${whole.join(", ")} show${whole.length > 1 ? "" : "s"} the whole recording: whatever was captured around the app (browser tabs and address bar, banners, the desktop) shows, and the app is smaller. Give each a focus: the app itself inside those bars for an overview, or the part in action (focus_on).`,
       ]
     : [];
   // A focus on most of the recording is an overview: once sets the scene, but in every
@@ -283,7 +285,7 @@ export function framingNotes(
   const zoom =
     overviews.length > 1
       ? [
-          `Scenes ${overviews.join(", ")} each show the whole app, so nothing in them stands out and its text stays small. Show it whole once to set the scene, then zoom in: focus each later scene on what its line is about (the field being filled, the number that changes, the status that appears).`,
+          `Scenes ${overviews.join(", ")} each show the whole app, so nothing in them stands out and its text stays small. Show it whole once to set the scene, then zoom in: focus_on what each later line is about (the field being filled, the number that changes, the status that appears).`,
         ]
       : [];
   return unfocused.concat(
@@ -302,9 +304,11 @@ export function framingNotes(
 }
 
 /** Clip scenes, numbered from 1, that show their recording with no focus or device frame. */
-export function unframedClips(scenes: { video_file?: string; focus?: unknown; device?: unknown }[]) {
+export function unframedClips(
+  scenes: { video_file?: string; focus?: unknown; focus_on?: unknown; device?: unknown }[],
+) {
   return scenes.flatMap((scene, index) =>
-    scene.video_file && !scene.focus && !scene.device ? [index + 1] : [],
+    scene.video_file && !scene.focus && !scene.focus_on && !scene.device ? [index + 1] : [],
   );
 }
 
@@ -656,6 +660,7 @@ async function prepare(context: PluginContext, clip: Clip) {
         const framing = framingNotes(
           clip.scenes.map((scene) => ({
             focus: scene.focus,
+            focus_on: (scene as { focus_on?: string[] }).focus_on,
             aspect: scene.video_file
               ? videos.get(scene.video_file)!.aspect
               : null,
@@ -695,7 +700,7 @@ function videoTool(
         if (unframed.length)
           throw new HttpError(
             400,
-            `Scene${unframed.length > 1 ? "s" : ""} ${unframed.join(", ")} show${unframed.length > 1 ? "" : "s"} a recording with no focus. Give every clip scene a focus: the app inside whatever was captured around it (browser bars, banners, the desktop) for an overview, the whole frame (0, 0, 1, 1) if the recording is only the app, or the part in action. Preview, then export.`,
+            `Scene${unframed.length > 1 ? "s" : ""} ${unframed.join(", ")} show${unframed.length > 1 ? "" : "s"} a recording with no focus. Give every clip scene a focus: the app inside whatever was captured around it (browser bars, banners, the desktop) for an overview, the whole frame (0, 0, 1, 1) if the recording is only the app, or focus_on the part in action. Preview, then export.`,
           );
         const { render, timing } = await prepare(context, clip);
         const times: number[] = preview ? times_seconds.slice(0, 8) : [];
