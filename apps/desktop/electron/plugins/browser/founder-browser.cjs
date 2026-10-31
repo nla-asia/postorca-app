@@ -331,7 +331,8 @@ class FounderBrowser {
     if (box) await onCamera(page, box.x + box.width / 2, box.y + box.height / 2);
     await locator.selectOption({ label: wanted });
     await settle(page);
-    return this.afterAction(id);
+    // Snapshots don't show a dropdown's value, so say what is chosen now.
+    return { selected: wanted, ...(await this.afterAction(id)) };
   }
   async press(id, key) {
     const { page } = this.tab(id);

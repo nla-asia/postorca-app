@@ -139,7 +139,7 @@ export const browserTools: PluginToolDefinition[] = [
   ),
   tool(
     "browser_select",
-    "Choose an option in a dropdown (a <select>) by ref, by the option's visible text. Clicking an option in an open dropdown doesn't work, and typing its first letter can land on the wrong one: use this instead. Returns the page afterwards like browser_snapshot (in the mode of your last snapshot of this tab): usually only what changed, so you rarely need a separate snapshot.",
+    "Choose an option in a dropdown (a <select>) by ref, by the option's visible text. Clicking an option in an open dropdown doesn't work, and typing its first letter can land on the wrong one: use this instead. Returns the option now chosen (selected) and the page afterwards like browser_snapshot (in the mode of your last snapshot of this tab): usually only what changed, so you rarely need a separate snapshot.",
     { tab, ref, option: { type: "string" } },
     ["tab", "ref", "option"],
     z
