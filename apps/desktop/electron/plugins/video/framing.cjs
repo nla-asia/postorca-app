@@ -6,7 +6,7 @@
  *
  * `gray` is one byte per pixel, `width` × `height`, row by row. Each edge moves at most
  * `reach` of the picture: onto an edge that cuts nothing, or else into the empty space
- * beside what it would cut, and stays put when there is neither.
+ * beside what it would cut, looking further when that is all inside one big element.
  */
 function snapRegion(gray, width, height, region, { reach = 0.1, contrast = 12 } = {}) {
   const at = (x, y) => gray[y * width + x];
@@ -29,13 +29,14 @@ function snapRegion(gray, width, height, region, { reach = 0.1, contrast = 12 } 
       }
       total += Math.abs(before - after) / side;
       if (i > from) {
-        if (Math.abs(pixel(i, p) - pixel(i - 1, p)) > 15) crossings++;
-        if (Math.abs(pixel(i, p - 1) - pixel(i - 1, p - 1)) > 15) crossings++;
+        if (Math.abs(pixel(i, p) - pixel(i - 1, p)) > 10) crossings++;
+        if (Math.abs(pixel(i, p - 1) - pixel(i - 1, p - 1)) > 10) crossings++;
       }
     }
     const length = Math.max(1, to - from);
-    // An element's corners cross a line that runs past it; text crosses it many times.
-    return { strength: total / length, clear: crossings <= 4 + 0.008 * length };
+    // An element's corners may touch a line that runs past it; cutting through text or
+    // a card crosses it many times.
+    return { strength: total / length, clear: crossings <= 8 };
   }
   // The strongest clear edge nearby, nearer winning a close call; else the nearest clear
   // line, so the edge at least sits beside what it would cut; else where it was.
@@ -56,6 +57,11 @@ function snapRegion(gray, width, height, region, { reach = 0.1, contrast = 12 } 
         edgeScore = score;
       }
     }
+    // Nothing clean nearby: the edge is inside something big (a card, a chart), so move
+    // it to the nearest clean line further out, rather than leave it cutting through.
+    for (let d = range + 1; edge === null && gap === null && d <= 0.3 * size; d++)
+      for (const p of [position - d, position + d])
+        if (gap === null && p >= 1 && p <= size - 1 && line(vertical, p, from, to).clear) gap = p;
     if (edge !== null || gap === null || gap === position) return edge ?? position;
     // Beside an element, leave a little room, as far as the space stays empty.
     let roomy = gap;

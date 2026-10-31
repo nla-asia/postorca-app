@@ -72,14 +72,16 @@ async function clipPoster(file, seconds, output, signal) {
     { cwd: directory, signal },
   );
 }
-/** The poster in gray, one byte per pixel, for finding the edges a focus snaps to. */
-async function grayPixels(file, signal) {
+/**
+ * The poster in gray, one byte per pixel, at full size so 1-pixel borders (a card's
+ * edge) still count when finding the edges a focus snaps to.
+ */
+async function grayPixels(file, width, signal) {
   const { filename, directory } = mediaBinary("ffmpeg");
-  const width = 960;
   const { stdout } = await run(
     filename,
-    ["-v", "error", "-i", file, "-vf", `scale=${width}:-2,format=gray`, "-f", "image2pipe", "-c:v", "rawvideo", "-"],
-    { cwd: directory, signal, encoding: "buffer", maxBuffer: 64 * 1024 * 1024 },
+    ["-v", "error", "-i", file, "-vf", "format=gray", "-f", "image2pipe", "-c:v", "rawvideo", "-"],
+    { cwd: directory, signal, encoding: "buffer", maxBuffer: 256 * 1024 * 1024 },
   );
   return { gray: stdout, width, height: stdout.length / width };
 }
@@ -167,6 +169,7 @@ function withAssets(args, context, run) {
           if (focus) {
             const { gray, width, height } = await grayPixels(
               path.join(temporary, poster),
+              info.width,
               context.signal,
             );
             focus = snapRegion(gray, width, height, focus);
