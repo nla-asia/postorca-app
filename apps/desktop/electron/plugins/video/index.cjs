@@ -7,7 +7,7 @@ const { promisify } = require("node:util");
 const { app, nativeImage } = require("electron");
 const { mediaBinary, allowed } = require("../../tools/files.cjs");
 const render = require("./render.cjs");
-const { snapRegion, textBox, closeUp, wholeWords, appTop, notTooTight } = require("./framing.cjs");
+const { snapRegion, textBox, closeUp, wholeWords, appTop } = require("./framing.cjs");
 const { native } = require("../computer/native.cjs");
 
 const run = promisify(execFile);
@@ -260,6 +260,7 @@ function withAssets(args, context, run) {
               info.width / info.height,
               (w / h) * (args.format === "9:16" || !args.format ? 1 : 1.3),
               top,
+              scene.zoom,
             );
             // Built from its text, it is about right: snapping tidies its edges, looking
             // further sideways (past a sliver of sidebar) than up and down (where the
@@ -273,7 +274,7 @@ function withAssets(args, context, run) {
               info.width,
               context.signal,
             );
-            focus = snapRegion(gray, width, height, notTooTight(focus));
+            focus = snapRegion(gray, width, height, focus);
             // Snapping can move a drawn box's top edge up into the browser's bars; keep it
             // below them, as a close-up built from text is.
             if (process.platform === "darwin") {

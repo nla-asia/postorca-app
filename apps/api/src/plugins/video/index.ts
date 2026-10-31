@@ -129,6 +129,12 @@ const clipArgs = z
               .describe(
                 "For a screen recording: zoom in on these pieces of text as they read on screen (a button's label, a total, a status), instead of a focus box. The close-up is built around them with room to spare, so name only the one or two things the line is about: text far apart makes a wide shot. A later scene on the same clip moves the camera to its own. Copy the text from the preview's screen_text.",
               ),
+            zoom: z
+              .enum(["tight", "medium", "wide"])
+              .optional()
+              .describe(
+                "With focus_on: how much of the app the close-up keeps around the text. medium (the default) keeps about half the app, so the viewer sees where it sits; tight fills the frame with the element, for a detail that is the point on its own (a total, a badge); wide keeps most of the screen. Judge it in the preview.",
+              ),
             highlight: region
               .optional()
               .describe("Outline this region and dim the surrounding content."),
@@ -643,6 +649,7 @@ async function prepare(context: PluginContext, clip: Clip) {
         device: scene.device,
         focus: scene.focus,
         focus_on: scene.focus_on,
+        zoom: scene.zoom,
         highlight: scene.highlight,
       })),
       voiceover_file: voice,
