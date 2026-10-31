@@ -1,0 +1,52 @@
+---
+name: product-introduction
+description: Introduce the founder's whole product in a launch or introduction video, from its code and the running app - first a script the founder approves, then the recorded and edited video. For one feature or a moment from recent work, use create-content or work-content-ideas instead.
+---
+
+# Product introduction
+
+The founder asks for a video that introduces their product as a whole: a launch video, an introduction, "what is X" for people who have never seen it. Often nothing has been posted about it yet, and all there is to go on is the code. This is not about the latest change: a new viewer needs to learn what the product is, who it is for and what it does.
+
+It takes two steps, because a script is fast and cheap to change and a video is not:
+
+1. **The script.** Understand the product, then reply with a script the founder can review at a glance. Don't record, edit or generate anything yet.
+2. **The video.** When the founder approves or adjusts it, apply their changes and produce the video.
+
+## 1. Understand the product
+
+Read the project in the founder's Brand Profile projects (`list_dir`, `read_file`, `git_activity`):
+
+- **README and docs:** what the product says it is, who it's for, how it runs and where (its local address).
+- **The app's screens:** the pages, routes and main components show what a user can actually do. Name the flows in the app's own words.
+- **The history:** the commit history shows what the product is made of over time, not only what changed last. A long-built core flow matters more than a recent tweak.
+- **Notes:** user feedback, beta notes or plans say who uses it and the problem in their words.
+
+From these, work out:
+
+- **What it is**, in one plain line a stranger would understand.
+- **Who it's for** and **the problem it removes**, from the notes or README; if none says, use what the product plainly does and don't invent users, numbers or quotes.
+- **The core flows:** the 3–4 things a new user does, in the order they meet them, ending on the payoff, the moment the product does its job.
+
+Then open the running app in the browser (the README's address) and look at those screens, without recording, so the script matches what is really there. If it isn't running, say which command starts it (from the README or scripts) and ask the founder to start it.
+
+## 2. The script for the founder
+
+One message, short enough to review without scrolling back and forth:
+
+- **What it is** and **who it's for**, one line each.
+- **Format:** length, shape (16:9 for X, LinkedIn, YouTube; 9:16 for Reels, TikTok, Shorts), voiceover and captions. Follow the founder's request; otherwise around 30–45 seconds for the platform.
+- **Shots**, numbered, one per beat. For each: what's on screen (which screen and what happens) and the voiceover line for it. The voiceover read in order is the whole script, about 2.5 words per second of video.
+- **Assumptions:** what you chose and left out and why, in a line or two, so the founder can correct it quickly.
+
+End by asking the founder to approve it or say what to change.
+
+**The story:** open on who it's for and the problem, or on the payoff when no problem is stated; then the core flows, each shown working; close on the product's name. Say plainly what the product is and does, the way a product page introduces it ("Introducing [product]…" fits a launch). No slogans, abstract concepts or features it doesn't have, and no tour of every button: three or four flows done well.
+
+## 3. The video
+
+When the founder replies:
+
+- **Apply every change** they asked for. If they rewrite the story, show the new script and wait for approval again; otherwise go ahead.
+- **Capture:** read the `product-demo-capture` skill with `read_skill` and follow it, with the approved shots as its demo plan: one clip per flow, each starting from a clean, ready screen.
+- **Edit:** activate the video plugin, read its `video-product-demo` skill and build the video from the clips, with the approved voiceover as `voiceover_script` and each scene starting on its line. The founder's requested length and format win over that skill's defaults.
+- **Check and deliver** as those skills say. In the final message, say in a line what changed from the approved script, if anything had to.

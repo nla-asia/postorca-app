@@ -629,11 +629,15 @@ export class EvalRunner {
       if (entry.demo) {
         const last = evidence.task.turns.at(-1);
         checks.push(
-          ...gradeDemoCapture(entry.demo, {
-            status: last.status,
-            calls: evidence.calls,
-            artifacts: evidence.task.turns.flatMap((t: any) => t.artifacts),
-          }).map((c, i): Check => ({
+          ...gradeDemoCapture(
+            entry.demo,
+            {
+              status: last.status,
+              calls: evidence.calls,
+              artifacts: evidence.task.turns.flatMap((t: any) => t.artifacts),
+            },
+            evidence.task.turns.map((t: any) => t.id),
+          ).map((c, i): Check => ({
             id: `demo-${i}`,
             verdict: c.passed ? "passed" : "failed",
             reason: `${c.name}: ${JSON.stringify(c.details ?? "")}`,

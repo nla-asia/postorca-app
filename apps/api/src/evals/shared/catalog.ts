@@ -114,14 +114,15 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       platform: "darwin",
       level: c.level,
       turns: [
+        ...(c.follow_up ? [{ brief: c.brief }] : []),
         c.video
           ? {
-              brief: c.brief,
+              brief: c.follow_up ?? c.brief,
               video_case: c.id,
               video_expect: { exports: 1, seconds: c.video.seconds },
               exports: 1,
             }
-          : { brief: c.brief },
+          : { brief: c.follow_up ?? c.brief },
       ],
       criteria: criteria(c.criteria),
       demo: c,

@@ -19,6 +19,9 @@ export type DemoCase = {
   /** The work fixture's script, when it isn't the Streaks one. */
   fixture_script?: string;
   brief: string;
+  /** A two-step task: the brief asks for a script only, and this reply from the founder
+   * approves it with a change. Recording and the video belong to this second turn. */
+  follow_up?: string;
   /** Text the demo has to type into the app, as regexes. product-demo-capture sets
    * the stage before recording, so this may happen on or off camera. */
   typed: string[];
@@ -155,6 +158,29 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
       ...videoReview,
     ],
   },
+  // The whole product from its code alone, as a founder with nothing posted yet would ask.
+  // The script comes first and the founder replies, so a wrong plan costs one message.
+  {
+    id: "demo-tide-intro",
+    level: 3,
+    name: "Product introduction video from the code repo, script first (Tide web app)",
+    app: "web",
+    url: "http://127.0.0.1:4120",
+    fixture_script: "scripts/evals/tide-fixture.mjs",
+    brief: `I haven't posted anything about Tide yet. Can you make a launch video introducing the whole product for LinkedIn? Around 45 sec, landscape, voiceover and captions. The code is in my projects and the app is running locally; record it yourself. ${noPublish}`,
+    follow_up:
+      "Looks good. One change: open on the problem from the beta notes, that adding a task took too many clicks. Then go ahead and make it.",
+    typed: [],
+    min_clips: 3,
+    video: { seconds: [30, 60] },
+    criteria: [
+      "The script turn is easy to review: what Tide is and who it's for, numbered shots with what's on screen and the voiceover line, the format, and what was assumed or left out.",
+      "The script introduces the whole product, not only the latest commit: three or four core flows in the order a new user meets them (such as adding a dated task, Today and Upcoming, projects, quick add), each true to the code.",
+      "The video follows the approved script with the founder's change: it opens on adding a task taking too many clicks, then shows the core flows working.",
+      "It says plainly what Tide is and does, like a product page introducing it, with no slogans, and claims nothing the code, commits and notes don't support.",
+      ...videoReview,
+    ],
+  },
   {
     id: "demo-mac-maps-video",
     level: 3,
@@ -210,10 +236,32 @@ const opensApp = (app: "maps" | "clock" | "simulator", opened: any) =>
       /\/Simulator\.app$/.test(opened?.path ?? "")
     : opened?.path === appPaths[app];
 
+/** The script turn reads the project and makes nothing: no recording, video or media. */
+function scriptChecks(calls: any[], turnId: string | undefined): EvalCheck[] {
+  const first = calls.filter((c) => turnId && c.turn_id === turnId);
+  const made = first.filter((c) =>
+    /^(screen_record_|video_|media_(generate|edit)_)/.test(c.name),
+  );
+  return [
+    {
+      name: "Read the project before writing the script",
+      passed: first.some((c) =>
+        ["read_file", "list_dir", "git_activity"].includes(c.name),
+      ),
+    },
+    {
+      name: "The script turn recorded and made nothing",
+      passed: first.length > 0 && made.length === 0,
+      details: made.map((c) => c.name),
+    },
+  ];
+}
+
 /** Checks from the product task alone; app state and clip quality are reviewed. */
 export function gradeDemoCapture(
   entry: DemoCase,
   evidence: Pick<EvalEvidence, "status" | "calls" | "artifacts">,
+  turnIds: string[] = [],
 ): EvalCheck[] {
   const ok = evidence.calls.filter((c) => c.result && !c.result.error);
   const index = (call: any) => evidence.calls.indexOf(call);
@@ -255,6 +303,7 @@ export function gradeDemoCapture(
   );
   const checks: EvalCheck[] = [
     { name: "Turn completed", passed: evidence.status === "completed" },
+    ...(entry.follow_up ? scriptChecks(evidence.calls, turnIds[0]) : []),
     {
       // An app that is already running counts once its window is actually used.
       name: "Opened the app being demonstrated",

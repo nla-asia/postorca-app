@@ -338,6 +338,11 @@ Two separate evals use it, matching the product:
   a fixed approved idea in the words `queueIdeaContent` sends, so recording runs can be
   compared. It records and edits the video. How it records is left to the agent; the
   founder judges the outcome by reviewing the finished video.
+- `content-demo-tide-intro`: a product introduction from the code alone, as a founder
+  with nothing posted yet asks for it. Two turns: the agent replies with a script
+  (what Tide is, who it's for, numbered shots with voiceover lines) and makes nothing;
+  the founder approves it with one change; then it records and edits the video. The
+  observer judges the script; the founder reviews the video.
 
 Add `~/PostOrca Evals/tide` to the founder's Brand Profile projects once. Web comes first,
 then a desktop app, then a mobile app.
