@@ -312,7 +312,7 @@ You sent me this script and I approved it, go ahead and make the video:
 
 **Shots:**
 1. On screen: the Quill window with the sidebar, the editor and the preview. On-screen text: "Introducing Quill". Voiceover: "Introducing Quill, quiet notes for your desktop."
-2. On screen: in the Weekly plan note, type a new line "- [ ] Send the invites" at the end; it appears as a checklist item in the preview as you type. Voiceover: "Write in Markdown on the left, and watch it turn into clean formatting on the right as you type."
+2. On screen: in the Weekly plan note, type a new line "- Send the invites" at the end; it appears as a new list item in the preview as you type. Voiceover: "Write in Markdown on the left, and watch it turn into clean formatting on the right as you type."
 3. On screen: File, New Note, then type "# Launch checklist" as its title. Voiceover: "Start a new note from the File menu, or with Command N."
 4. On screen: type "chapter" in Search notes so the list narrows to Chapter 3 ideas, then click its star to pin it. Voiceover: "Find any note with search, and pin the ones you need to the top."
 5. On screen: Quill, Settings, switch Theme to Dark; the main window turns dark. On-screen text: "Quill". Voiceover: "Switch to the dark theme in Settings. That's Quill."`,
@@ -320,7 +320,7 @@ You sent me this script and I approved it, go ahead and make the video:
     min_clips: 3,
     video: { seconds: [20, 40] },
     criteria: [
-      "The video follows the approved script: each shot in order with its voiceover line and on-screen text, and every action visibly works (the checklist item in the preview, the new note, the narrowed and pinned list, the dark theme).",
+      "The video follows the approved script: each shot in order with its voiceover line and on-screen text, and every action visibly works (the new list item in the preview, the new note, the narrowed and pinned list, the dark theme).",
       "The clips show no fumbling: no missed clicks, wrong menus, stray windows or retyped text, and the pointer moves like a person's.",
       "It stays a straightforward product demo, like a product page introducing Quill, and claims nothing the script doesn't.",
       ...videoReview,
