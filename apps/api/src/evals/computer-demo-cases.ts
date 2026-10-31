@@ -211,38 +211,6 @@ const opensApp = (app: "maps" | "clock" | "simulator", opened: any) =>
     : opened?.path === appPaths[app];
 
 /** Checks from the product task alone; app state and clip quality are reviewed. */
-/**
- * How the recording looks: a demo can reach every step and still be awkward to watch.
- * Only for the commit-to-demo cases, which are judged on this; numbers go in the details.
- */
-function recordingChecks(
-  entry: DemoCase,
-  calls: any[],
-  spans: (readonly [number, number])[],
-  index: (call: any) => number,
-  clips: any[],
-): EvalCheck[] {
-  if (!entry.fixture_script) return [];
-  const onCamera = calls.filter(
-    (c) =>
-      (inputNames.has(c.name) || webInputNames.has(c.name)) &&
-      spans.some(([from, to]) => index(c) > from && index(c) < to),
-  );
-  const fumbled = onCamera.filter((c) => !c.result || c.result.error);
-  return [
-    {
-      name: "No failed input on camera",
-      passed: fumbled.length === 0,
-      details: fumbled.map((c) => c.name),
-    },
-    {
-      name: "At most 2 takes per clip kept",
-      passed: clips.length <= entry.min_clips * 2 + 1,
-      details: { recorded: clips.length, inputs_on_camera: onCamera.length },
-    },
-  ];
-}
-
 export function gradeDemoCapture(
   entry: DemoCase,
   evidence: Pick<EvalEvidence, "status" | "calls" | "artifacts">,
@@ -342,7 +310,6 @@ export function gradeDemoCapture(
       name: `Typed "${pattern}" in the app`,
       passed: typed.some((text) => new RegExp(pattern, "i").test(text)),
     })),
-    ...recordingChecks(entry, evidence.calls, spans, index, clips),
   ];
   if (entry.level === 2)
     checks.push({

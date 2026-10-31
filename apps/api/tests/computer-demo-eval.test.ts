@@ -222,62 +222,23 @@ test("an app that is already running counts as opened once its window is used", 
   assert.equal(opened("12"), true);
 });
 
-test("the idea-to-demo case judges how the recording looks", () => {
+test("the idea-to-demo case is judged on the video, with browser clicks as app use", () => {
   const entry = demo("demo-tide-from-idea");
-  const stop = (id: string, seconds: number) => ({
-    name: "screen_record_stop",
-    args: { id },
-    result: {
-      duration_seconds: seconds,
-      attachments: [{ file: `media/${id}.mp4`, ref: id }],
+  const calls = [
+    { name: "screen_record_start", args: {}, result: { id: "a" } },
+    { name: "browser_click", args: {}, result: { error: "covered" } },
+    { name: "browser_click", args: {}, result: { tab: "t1" } },
+    {
+      name: "screen_record_stop",
+      args: { id: "a" },
+      result: { duration_seconds: 28, attachments: [{ file: "media/a.mp4", ref: "a" }] },
     },
-  });
-  const start = (id: string) => ({
-    name: "screen_record_start",
-    args: {},
-    result: { id },
-  });
-  const click = { name: "browser_click", args: {}, result: { tab: "t1" } };
-  const missed = {
-    name: "browser_click",
-    args: {},
-    result: { error: "covered" },
-  };
-  const measures = (calls: any[]) =>
-    failed(
-      gradeDemoCapture(entry, { status: "completed", calls, artifacts: [] }),
-    );
-  const good = [
-    start("a"),
-    click,
-    stop("a", 6),
-    start("b"),
-    click,
-    stop("b", 7),
   ];
-  const named = /on camera|at most/;
-  assert.deepEqual(
-    measures(good).filter((n) => named.test(n)),
-    [],
-  );
-  assert.deepEqual(
-    measures([start("a"), missed, stop("a", 6)]).filter((n) => named.test(n)),
-    ["No failed input on camera"],
-  );
-  // Clip length is the agent's call; the finished video is reviewed.
-  assert.deepEqual(
-    measures([start("a"), click, stop("a", 28)]).filter((n) => named.test(n)),
-    [],
-  );
+  const names = failed(gradeDemoCapture(entry, { status: "completed", calls, artifacts: [] }));
   // A web demo's browser clicks count as using the app.
-  assert.ok(!measures(good).includes("Used the app while recording"));
-  // Other demo cases keep their existing checks.
-  const other = gradeDemoCapture(demo("demo-work-video"), {
-    status: "completed",
-    calls: good,
-    artifacts: [],
-  });
-  assert.ok(!other.some((c) => named.test(c.name)));
+  assert.ok(!names.includes("Used the app while recording"));
+  // How it was recorded (failed input, clip length, takes) is left to the agent.
+  assert.ok(!names.some((n) => /on camera|at most/.test(n)));
 });
 
 test("the idea-to-demo case carries its fixture and prerequisites", async () => {

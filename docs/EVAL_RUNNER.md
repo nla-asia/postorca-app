@@ -336,8 +336,8 @@ Two separate evals use it, matching the product:
   before repeat attempts.
 - `content-demo-tide-from-idea`: starts where "Create content from this idea" does, with
   a fixed approved idea in the words `queueIdeaContent` sends, so recording runs can be
-  compared. It records and edits the video, and measures failed input on camera and
-  takes. Clip length is left to the agent; the founder reviews the finished video.
+  compared. It records and edits the video. How it records is left to the agent; the
+  founder judges the outcome by reviewing the finished video.
 
 Add `~/PostOrca Evals/tide` to the founder's Brand Profile projects once. Web comes first,
 then a desktop app, then a mobile app.
