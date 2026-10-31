@@ -40,6 +40,7 @@ function fixture() {
     mouseClick: (...a) => sent.push(["click", ...a]),
     keyTap: (...a) => sent.push(["key", ...a]),
     scrollMouse: (...a) => sent.push(["scroll", ...a]),
+    mouseToggle: (...a) => sent.push(["toggle", ...a]),
   };
   let loads = 0;
   const controller = new ComputerController({
@@ -163,6 +164,22 @@ test("aborted queued input cannot execute after the preceding action", async () 
     ),
   );
   assert.deepEqual(f.sent, []);
+});
+test("a drag presses, moves in steps and releases within the screenshot", async () => {
+  const f = fixture(),
+    shot = await f.ready();
+  const args = { window: "7", observation: shot.observation, x: 20, y: 40, to_x: 20, to_y: 10 };
+  await f.controller.run("computer_drag", args, f.context);
+  const kinds = f.sent.map((s) => s[0]);
+  assert.equal(kinds[0], "move");
+  assert.deepEqual(f.sent[1], ["toggle", "down"]);
+  assert.deepEqual(f.sent.at(-1), ["toggle", "up"]);
+  assert.ok(kinds.filter((k) => k === "move").length > 10);
+  const fresh = await f.ready();
+  await assert.rejects(
+    f.controller.run("computer_drag", { ...args, observation: fresh.observation, to_y: 99999 }, f.context),
+    /outside the latest screenshot/,
+  );
 });
 test("bottom scrolling is bounded and does not assert completeness", async () => {
   const f = fixture(),

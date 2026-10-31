@@ -59,6 +59,7 @@ const names = [
   "computer_type",
   "computer_press",
   "computer_scroll",
+  "computer_drag",
 ];
 module.exports = {
   name: "computer",

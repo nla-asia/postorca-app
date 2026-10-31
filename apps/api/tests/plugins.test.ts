@@ -706,7 +706,7 @@ test("computer tools require activation, validate input, and release control bet
     assert.deepEqual(activated.skills.map((skill: any) => skill.name), ["computer-use"]);
     assert.deepEqual(offered[1].filter((name) => name.startsWith("computer_")), [
       "computer_list_apps", "computer_open", "computer_observe", "computer_click",
-      "computer_type", "computer_press", "computer_scroll",
+      "computer_type", "computer_press", "computer_drag", "computer_scroll",
     ]);
     assert.ok(offered.every((names) => !names.includes("desktop_computer_session")));
     assert.deepEqual(install.calls.map((sent) => sent.arguments), [
