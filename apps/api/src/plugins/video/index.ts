@@ -107,7 +107,15 @@ const clipArgs = z
             focus: region
               .optional()
               .describe(
-                "Zoom into this region; coordinates are fractions of the original image or video frame.",
+                "Zoom into this region; coordinates are fractions of the original image or video frame. For a screen recording only this region shows, as large as it fits above the captions: leave out browser bars and the desktop, and include every element the scene needs. Its edges snap to the nearest real edge (the window, a sidebar, the line under a bar), so a close estimate lands clean.",
+              ),
+            focus_on: z
+              .array(z.string().trim().min(1).max(80))
+              .min(1)
+              .max(4)
+              .optional()
+              .describe(
+                "For a screen recording: zoom in on these pieces of text as they read on screen (a button's label, a total, a status), instead of a focus box. The close-up is built around them with room to spare, so name only the one or two things the line is about: text far apart makes a wide shot. A later scene on the same clip moves the camera to its own. Copy the text from the preview's screen_text.",
               ),
             highlight: region
               .optional()
@@ -490,8 +498,8 @@ async function prepare(context: PluginContext, clip: Clip) {
       index === 0 ||
       !scene.image_file ||
       scene.image_file !== scenes[index - 1].image_file ||
-      JSON.stringify(scene.focus ?? null) !==
-        JSON.stringify(scenes[index - 1].focus ?? null),
+      JSON.stringify(scene.focus ?? scene.focus_on ?? null) !==
+        JSON.stringify(scenes[index - 1].focus ?? scenes[index - 1].focus_on ?? null),
   ).length;
   const format = clip.format ?? "9:16";
   return {
@@ -520,6 +528,7 @@ async function prepare(context: PluginContext, clip: Clip) {
             : undefined),
         device: scene.device,
         focus: scene.focus,
+        focus_on: scene.focus_on,
         highlight: scene.highlight,
       })),
       voiceover_file: voice,
@@ -619,6 +628,33 @@ function videoTool(
   };
 }
 
+const clipTextArgs = z
+  .object({
+    video_file: z.string().min(1),
+    every_seconds: z.number().min(0.5).max(5).optional(),
+  })
+  .strict();
+
+/** A recording's on-screen text over time, read on the founder's desktop. */
+const clipText: PluginToolDefinition = {
+  name: "video_clip_text",
+  description:
+    "Read a screen recording's text over time (macOS desktop): what is on screen at the start, then each change, when text appears or goes, with boxes as fractions of the recording (the space focus and focus_on use). Read each recording before planning a demo: a scene starts just before what its line is about appears, and zooms on it with focus_on.",
+  args: clipTextArgs,
+  parameters: (({ $schema, ...rest }) => rest)(z.toJSONSchema(clipTextArgs)),
+  runsOn: "server",
+  async run(context, input) {
+    const { video_file, every_seconds } = clipTextArgs.parse(input);
+    const file = await ownedFile(context, video_file, "video");
+    return callDesktop(
+      context,
+      "video_clip_text",
+      { timeoutMs: 300_000 },
+      { file, every_ms: Math.round((every_seconds ?? 1) * 1000) },
+    );
+  },
+};
+
 const sharedMedia = new Set([
   "media_generate_image",
   "media_edit_image",
@@ -645,7 +681,7 @@ export const videoPlugin: PluginDefinition = {
   tools: [
     videoTool(
       "video_preview_frames",
-      "Inspect still previews before exporting. Renders at most 8 chosen times; requires the desktop app.",
+      "Inspect still previews before exporting. Renders at most 8 chosen times; requires the desktop app. A frame on a screen recording also returns the text on screen (screen_text, macOS) with each line's box in the recording's own fractions, the space focus uses: aim a focus at the elements by these boxes rather than by eye.",
       clipArgs
         .extend({
           times_seconds: z.array(z.number().min(0)).min(1).max(30),
@@ -660,6 +696,7 @@ export const videoPlugin: PluginDefinition = {
       clipArgs.extend({ title: z.string().trim().min(1).max(200) }).strict(),
       600_000,
     ),
+    clipText,
     ...mediaPlugin.tools.filter((tool) => sharedMedia.has(tool.name)),
   ],
 };

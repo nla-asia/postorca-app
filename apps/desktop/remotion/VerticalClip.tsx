@@ -193,10 +193,11 @@ function focusTransform(
         scale: 1,
       };
     const [marginX, marginY] = stage ? [0.9, 0.9] : [0.88, 0.8];
+    // A focus on the stage may shrink to fit: the whole app, with room around it.
     const scale = Math.min(
       4,
       Math.max(
-        1,
+        stage ? 0.25 : 1,
         Math.min(
           (viewport.width * marginX) / (region.width * rect.width),
           (viewport.height * marginY) / (region.height * rect.height),
@@ -205,21 +206,9 @@ function focusTransform(
     );
     const x = rect.left + (region.x + region.width / 2) * rect.width,
       y = rect.top + (region.y + region.height / 2) * rect.height;
-    if (stage) {
-      // Keep the frame inside the recording: what shows around the focus is the app.
-      const anchorY = viewport.top + viewport.height / 2;
-      // A recording that fits the frame stays centred in it, not shifted to the anchor:
-      // otherwise a focus too big to zoom pushes the top of the app out of the frame.
-      const within = (center: number, start: number, length: number, before: number, after: number) =>
-        length * scale <= before + after
-          ? start + length / 2 - ((before + after) / 2 - before) / scale
-          : Math.min(start + length - after / scale, Math.max(start + before / scale, center));
-      return {
-        scale,
-        x: within(x, rect.left, rect.width, viewport.width / 2, stage.width - viewport.width / 2),
-        y: within(y, rect.top, rect.height, anchorY, stage.height - anchorY),
-      };
-    }
+    // Only the focus shows (focusBox), centred above the captions: nothing around it
+    // needs to stay inside the recording.
+    if (stage) return { scale, x, y };
     return {
       scale,
       x: bounded(x, rect.left, rect.width, viewport.width / scale),
@@ -229,7 +218,57 @@ function focusTransform(
   const start = target(previous),
     end = target(focus);
   const mix = (a: number, b: number) => a + (b - a) * fraction;
-  return `translate(${viewport.width / 2}px, ${viewport.top + viewport.height / 2}px) scale(${mix(start.scale, end.scale)}) translate(${-mix(start.x, end.x)}px, ${-mix(start.y, end.y)}px)`;
+  // On the stage the box itself moves (focusBox), so blend its size on screen: blending
+  // the zoom on its own would swell the box past the frame halfway.
+  const span = (region: Region | null) => (region ? region.width : 1) * rect.width;
+  const scale = stage
+    ? mix(start.scale * span(previous), end.scale * span(focus)) /
+      mix(span(previous), span(focus))
+    : mix(start.scale, end.scale),
+    x = mix(start.x, end.x),
+    y = mix(start.y, end.y);
+  const centre = { x: viewport.width / 2, y: viewport.top + viewport.height / 2 };
+  return {
+    transform: `translate(${centre.x}px, ${centre.y}px) scale(${scale}) translate(${-x}px, ${-y}px)`,
+    // Where a box in the recording lands on screen.
+    place: (box: Rect): Rect => ({
+      left: centre.x + scale * (box.left - x),
+      top: centre.y + scale * (box.top - y),
+      width: scale * box.width,
+      height: scale * box.height,
+    }),
+  };
+}
+
+/**
+ * The focus of a clip that fills the frame, as a clip path in the recording's own
+ * coordinates: only that area shows, so a focus that leaves out a browser's bars or the
+ * desktop really leaves them out. It moves with the zoom between foci.
+ */
+function focusBox(
+  frame: number,
+  rect: Rect,
+  focus: Region | null,
+  previous: Region | null,
+): Rect | undefined {
+  if (!focus && !previous) return undefined;
+  const fraction = interpolate(frame, [0, 18], [0, 1], {
+    ...clamp,
+    easing: (t) => 1 - (1 - t) ** 3,
+  });
+  const box = (region: Region | null) =>
+    region
+      ? {
+          left: rect.left + region.x * rect.width,
+          top: rect.top + region.y * rect.height,
+          width: region.width * rect.width,
+          height: region.height * rect.height,
+        }
+      : rect;
+  const a = box(previous),
+    b = box(focus);
+  const mix = (key: keyof Rect) => a[key] + (b[key] - a[key]) * fraction;
+  return { left: mix("left"), top: mix("top"), width: mix("width"), height: mix("height") };
 }
 
 function DeviceFrame({ device, rect }: { device: Device; rect: Rect }) {
@@ -356,10 +395,13 @@ function ClipVideo({
 function Headline({
   text,
   image,
+  stage = false,
   brand,
 }: {
   text: string;
   image: boolean;
+  // Over the stage's clean background, beside the app: plain type, no backing.
+  stage?: boolean;
   brand: VerticalClipProps["brand"];
 }) {
   const { width, height } = useVideoConfig();
@@ -419,9 +461,13 @@ function Headline({
             fontFamily,
             fontWeight: 800,
             fontSize: textSize(text, available - 60, [72, 62, 54]),
-            color: "#111111",
-            backgroundColor: "rgba(255,255,255,0.96)",
-            padding: "8px 26px",
+            ...(stage
+              ? { color: brand.text, letterSpacing: "-0.01em" }
+              : {
+                  color: "#111111",
+                  backgroundColor: "rgba(255,255,255,0.96)",
+                  padding: "8px 26px",
+                }),
             borderRadius: 18,
             whiteSpace: "pre-line",
             overflowWrap: "anywhere",
@@ -440,6 +486,7 @@ function Scene({
   scene,
   shot,
   previousFocus,
+  previousTitled,
   captioned,
   brand,
   base,
@@ -447,6 +494,7 @@ function Scene({
   scene: SceneData;
   shot: Shot;
   previousFocus: Region | null;
+  previousTitled: boolean;
   captioned: boolean;
   brand: VerticalClipProps["brand"];
   base: string;
@@ -457,11 +505,20 @@ function Scene({
     device = scene.device ?? null;
   const bands = textBands(width, height);
   const framed = fit === "contain" || !!device;
-  // A screen recording fills the frame, focused or whole, so the app keeps its size from
-  // shot to shot: the title and captions sit over the recording. A focus is kept clear
-  // of the captions; a title has its own backing and may overlap the top of the app.
+  // A screen recording is laid out on the whole frame, so the app keeps its size from
+  // shot to shot; its focus sits on the stage clear of the captions (and of a title).
   const croppedClip = !!scene.clip && framed && !device;
-  const top = framed && shot.stickered && !croppedClip ? bands.top : 0;
+  // On the stage, a title gets the band above the app, which makes room for it as the
+  // shot opens and gives it back when the title goes.
+  const titleBand = (titled: boolean) => (titled ? bands.top : 0);
+  const top = croppedClip
+    ? interpolate(frame, [0, 18], [titleBand(previousTitled), titleBand(!!scene.text)], {
+        ...clamp,
+        easing: (t) => 1 - (1 - t) ** 3,
+      })
+    : framed && shot.stickered
+      ? bands.top
+      : 0;
   const viewport = {
     top,
     width,
@@ -498,9 +555,24 @@ function Scene({
         height: "100%",
         objectFit: "cover",
       };
+  const framing = rect
+    ? focusTransform(
+        frame,
+        rect,
+        viewport,
+        focus,
+        previousFocus,
+        croppedClip ? { width, height } : undefined,
+      )
+    : undefined;
+  const shown = croppedClip && rect ? focusBox(frame, rect, focus, previousFocus) : undefined;
+  // Rounded a little and lifted off the background, so it reads as the app framed
+  // rather than a crop.
+  const corner = Math.round(width * 0.008);
+  const onScreen = shown && framing ? framing.place(shown) : undefined;
   return (
     <AbsoluteFill style={{ backgroundColor: brand.background }}>
-      {backdrop && shownWhole && (
+      {backdrop && shownWhole && !croppedClip && (
         <Img
           src={backdrop}
           style={{
@@ -508,9 +580,26 @@ function Scene({
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            // A focused clip's surround matches its own page, light or dark.
-            filter: croppedClip ? "blur(40px)" : "blur(40px) brightness(0.45)",
+            filter: "blur(40px) brightness(0.45)",
             transform: "scale(1.15)",
+          }}
+        />
+      )}
+      {croppedClip && (
+        // A focused recording sits on a clean stage, never a smear of itself.
+        <AbsoluteFill
+          style={{
+            background: `radial-gradient(ellipse at 50% 35%, ${brand.highlight}22, transparent 65%), ${brand.background}`,
+          }}
+        />
+      )}
+      {onScreen && (
+        <div
+          style={{
+            position: "absolute",
+            ...onScreen,
+            borderRadius: corner,
+            boxShadow: "0 30px 90px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.08)",
           }}
         />
       )}
@@ -524,16 +613,10 @@ function Scene({
           <AbsoluteFill
             style={{
               transformOrigin: "0 0",
-              transform: rect
-                ? focusTransform(
-                    frame,
-                    rect,
-                    viewport,
-                    focus,
-                    previousFocus,
-                    croppedClip ? { width, height } : undefined,
-                  )
-                : undefined,
+              ...(shown && {
+                clipPath: `inset(${shown.top}px ${width - shown.left - shown.width}px ${height - shown.top - shown.height}px ${shown.left}px round ${corner / (onScreen!.width / shown.width)}px)`,
+              }),
+              transform: framing?.transform,
             }}
           >
             {device && rect && <DeviceFrame device={device} rect={rect} />}
@@ -560,7 +643,9 @@ function Scene({
           </AbsoluteFill>
         </AbsoluteFill>
       )}
-      {scene.text && <Headline text={scene.text} image={!!src} brand={brand} />}
+      {scene.text && (
+        <Headline text={scene.text} image={!!src} stage={croppedClip} brand={brand} />
+      )}
     </AbsoluteFill>
   );
 }
@@ -723,6 +808,9 @@ export function VerticalClip({
               base={assetBaseUrl}
               captioned={pages.length > 0}
               brand={brand}
+              previousTitled={
+                continues(scenes[index - 1], scene) && !!scenes[index - 1].text
+              }
               previousFocus={
                 continues(scenes[index - 1], scene)
                   ? (scenes[index - 1].focus ?? null)

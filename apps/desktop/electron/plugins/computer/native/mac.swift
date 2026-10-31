@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import Vision
 
 func fail(_ message: String) throws -> Never { throw NSError(domain: "ComputerUse", code: 1, userInfo: [NSLocalizedDescriptionKey: message]) }
 func bounds(_ rect: CGRect) -> [String: Any] { ["x": Double(rect.origin.x), "y": Double(rect.origin.y), "width": Double(rect.width), "height": Double(rect.height)] }
@@ -121,6 +122,22 @@ func menuItems(_ pid: pid_t) -> [[String: Any]] {
 }
 func run(_ request: [String: Any]) throws -> [String: Any] {
     let action = request["action"] as? String ?? ""
+    if action == "read_text" {
+        // The words on a still (a frame of a recording) with their boxes, as fractions of
+        // the image from its top left, so a video's focus can be aimed at them.
+        guard let path = request["path"] as? String, let image = NSImage(contentsOfFile: path),
+              let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { try fail("Can't open the image.") }
+        let recognize = VNRecognizeTextRequest()
+        recognize.recognitionLevel = .accurate
+        recognize.usesLanguageCorrection = false
+        try VNImageRequestHandler(cgImage: cg).perform([recognize])
+        let lines: [[String: Any]] = (recognize.results ?? []).compactMap { observation in
+            guard let text = observation.topCandidates(1).first?.string else { return nil }
+            let box = observation.boundingBox
+            return ["text": text, "x": Double(box.minX), "y": Double(1 - box.maxY), "width": Double(box.width), "height": Double(box.height)]
+        }
+        return ["lines": lines]
+    }
     if action == "list" {
         let windows = windowList()
         var apps: [String: [String: Any]] = [:]
