@@ -645,7 +645,7 @@ export const videoPlugin: PluginDefinition = {
   tools: [
     videoTool(
       "video_preview_frames",
-      "Inspect still previews before exporting. Renders at most 8 chosen times; requires the desktop app.",
+      "Inspect still previews before exporting. Renders at most 8 chosen times; requires the desktop app. A frame on a screen recording also returns the text on screen (screen_text, macOS) with each line's box in the recording's own fractions, the space focus uses: aim a focus at the elements by these boxes rather than by eye.",
       clipArgs
         .extend({
           times_seconds: z.array(z.number().min(0)).min(1).max(30),

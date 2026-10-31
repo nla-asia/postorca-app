@@ -8,6 +8,7 @@ const { app, nativeImage } = require("electron");
 const { mediaBinary } = require("../../tools/files.cjs");
 const render = require("./render.cjs");
 const { snapRegion } = require("./framing.cjs");
+const { native } = require("../computer/native.cjs");
 
 const run = promisify(execFile);
 
@@ -84,6 +85,57 @@ async function grayPixels(file, width, signal) {
     { cwd: directory, signal, encoding: "buffer", maxBuffer: 256 * 1024 * 1024 },
   );
   return { gray: stdout, width, height: stdout.length / width };
+}
+/**
+ * The text on screen in each previewed frame that falls on a recording, read from the
+ * recording itself, with boxes as fractions of it (the space a focus uses), so a focus
+ * can be aimed at a button or a total rather than guessed. A frame lists only what
+ * changed since the last one read from the same clip. macOS only.
+ */
+async function screenText(props, directory, times, signal) {
+  if (process.platform !== "darwin") return undefined;
+  const { filename, directory: binaries } = mediaBinary("ffmpeg");
+  const seen = new Map();
+  const frames = [];
+  for (const time of times) {
+    let start = 0,
+      index = props.scenes.findIndex((scene) => {
+        if (time < start + scene.durationMs) return true;
+        start += scene.durationMs;
+        return false;
+      });
+    const scene = props.scenes[index];
+    if (!scene?.clip) continue;
+    const { clip } = scene;
+    const clipMs = Math.min(clip.endMs - 1, clip.startMs + (time - start) * clip.speed);
+    const still = path.join(directory, `text-${frames.length}.png`);
+    try {
+      await run(
+        filename,
+        ["-v", "error", "-ss", (clipMs / 1000).toFixed(3), "-i", path.join(directory, scene.src), "-frames:v", "1", "-y", still],
+        { cwd: binaries, signal },
+      );
+      const { lines = [] } = await native({ action: "read_text", path: still }, signal);
+      const round = (value) => Math.round(value * 100) / 100;
+      const all = lines.map(
+        (line) =>
+          `${line.text} @ x ${round(line.x)} y ${round(line.y)} w ${round(line.width)} h ${round(line.height)}`,
+      );
+      const before = seen.get(scene.src);
+      seen.set(scene.src, new Set(all));
+      const shown = before ? all.filter((line) => !before.has(line)) : all;
+      frames.push({
+        at_seconds: time / 1000,
+        scene: index + 1,
+        clip_seconds: Math.round(clipMs / 100) / 10,
+        ...(before && { only_changes: true }),
+        text: shown.slice(0, 80),
+      });
+    } catch {
+      // Reading text is a help for aiming a focus; the preview stands without it.
+    }
+  }
+  return frames.length ? frames : undefined;
 }
 if (app.isPackaged) {
   const workingDirectory = path.join(app.getPath("userData"), "video");
@@ -262,8 +314,15 @@ module.exports = {
               title: `Preview at ${(time / 1000).toFixed(1)} s`,
             });
           }
+          const text = await screenText(
+            options.props,
+            options.assetsDir,
+            args.times_ms,
+            context.signal,
+          );
           return {
             frames: args.times_ms.map((time) => time / 1000),
+            ...(text && { screen_text: text }),
             attachments,
           };
         }),
