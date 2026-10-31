@@ -15,6 +15,8 @@ export type EditCase = {
   music?: string;
   brief: string;
   video: { seconds: [number, number] };
+  /** Mistakes in a recording that the edit must leave out: seconds of that clip. */
+  cuts?: { name: string; clip: string; from: number; to: number }[];
   criteria: string[];
 };
 
@@ -78,6 +80,36 @@ ${noPublish}`,
       ...professional,
     ],
   },
+  {
+    // One long take, as recorded: dead air, a wrong turn and a typo to cut, a slow form
+    // to speed up, the moments to find in it rather than across tidy clips.
+    id: "edit-ledgerly-one-take",
+    name: "Edit one long, imperfect recording into a professional product demo (Ledgerly)",
+    set: "ledgerly-take",
+    clips: ["ledgerly-take.mp4"],
+    music: "music.mp3",
+    brief: `I recorded Ledgerly in one go for its launch video, but it's rough: it's about 45 seconds, I sat on the dashboard too long at the start, clicked into Clients by mistake, made a typo in the first line item and paused a while before saving. It's in my working folder, eval-fixtures/ledgerly-take-recordings/ledgerly-take.mp4, with music.mp3, a track I picked. Please cut it into a tight, polished launch video for LinkedIn: landscape, around 25–30 sec, voiceover and captions, none of my mistakes.
+
+The script I approved:
+1. The dashboard. Voiceover: "Introducing Ledgerly, invoicing for freelancers and small studios."
+2. The dashboard's cards. Voiceover: "See what's outstanding, what's been paid and what's overdue at a glance."
+3. A new invoice for Juniper Studio with two line items; the total reaches $3,000. Voiceover: "Pick a client, add what you did, and the total adds itself up as you type."
+4. Save it and mark it as sent. Voiceover: "Save it and mark it as sent."
+5. Record the payment; it turns Paid. Voiceover: "When the money lands, record the payment. That's Ledgerly."
+
+${noPublish}`,
+    video: { seconds: [20, 40] },
+    cuts: [
+      // On screen in the take: the Clients page, then the invoice list, before New invoice.
+      { name: "the wrong turn into Clients", clip: "ledgerly-take.mp4", from: 7.3, to: 12.2 },
+      { name: 'the typo "Webiste"', clip: "ledgerly-take.mp4", from: 17.3, to: 18.5 },
+    ],
+    criteria: [
+      "It follows the approved script: every line spoken over the screen it describes, the invoice built with both line items and the $3,000 total, then sent and paid.",
+      "None of the founder's mistakes show: no dead air on the dashboard, no wrong turn into Clients, no typo, no pause before saving; the slow form is cut or sped up.",
+      ...professional,
+    ],
+  },
 ];
 
 const valuesOf = (value: unknown): string[] =>
@@ -106,6 +138,18 @@ export function gradeEdit(
   const last = exports.at(-1);
   const scenes: any[] = last?.args.scenes ?? [];
   const used = new Set(scenes.filter((s) => fromUpload(s.video_file)).map((s) => s.video_file));
+  // How far into its clip a scene plays: to end_seconds, or, without one, for as long as
+  // the scene lasts (from the export's scene starts) at its speed, less any hold.
+  const starts: { at_seconds: number }[] = last?.result?.scene_starts ?? [];
+  const playedUntil = (s: any, index: number) => {
+    const from = starts[index]?.at_seconds;
+    const to = starts[index + 1]?.at_seconds ?? last?.result?.duration_seconds;
+    const played =
+      typeof from === "number" && typeof to === "number"
+        ? (s.start_seconds ?? 0) + Math.max(0, to - from - (s.hold_seconds ?? 0)) * (s.speed ?? 1)
+        : Infinity;
+    return Math.min(s.end_seconds ?? Infinity, played);
+  };
   return [
     { name: "Turn completed", passed: evidence.status === "completed" },
     {
@@ -115,7 +159,7 @@ export function gradeEdit(
     },
     {
       name: "Video built from the founder's recordings",
-      passed: used.size >= entry.clips.length - 1,
+      passed: used.size >= Math.max(1, entry.clips.length - 1),
       details: { recordings_used: used.size, scenes: scenes.length },
     },
     { name: "Video narrated", passed: !!last?.args.voiceover_file },
@@ -129,6 +173,24 @@ export function gradeEdit(
           },
         ]
       : []),
+    ...(entry.cuts ?? []).map((cut) => {
+      // The refs this clip came in as, and the scenes that play it over the mistake.
+      const clipRefs = uploads
+        .filter((c) => String(c.args.path ?? "").endsWith(cut.clip))
+        .flatMap((c) => valuesOf(c.result));
+      const shows = scenes.filter(
+        (s, index) =>
+          typeof s.video_file === "string" &&
+          clipRefs.some((r) => r === s.video_file || r.includes(s.video_file)) &&
+          (s.start_seconds ?? 0) < cut.to &&
+          playedUntil(s, index) > cut.from,
+      );
+      return {
+        name: `Cut ${cut.name}`,
+        passed: !!last && !shows.length,
+        details: shows.map((s) => [s.start_seconds ?? 0, s.end_seconds ?? null]),
+      };
+    }),
     {
       // Looking at the app (or searching for music) is fine; recording it again isn't.
       name: "Edited, not re-recorded",
