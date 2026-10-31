@@ -208,9 +208,11 @@ function focusTransform(
     if (stage) {
       // Keep the frame inside the recording: what shows around the focus is the app.
       const anchorY = viewport.top + viewport.height / 2;
+      // A recording that fits the frame stays centred in it, not shifted to the anchor:
+      // otherwise a focus too big to zoom pushes the top of the app out of the frame.
       const within = (center: number, start: number, length: number, before: number, after: number) =>
         length * scale <= before + after
-          ? start + length / 2
+          ? start + length / 2 - ((before + after) / 2 - before) / scale
           : Math.min(start + length - after / scale, Math.max(start + before / scale, center));
       return {
         scale,
@@ -455,10 +457,10 @@ function Scene({
     device = scene.device ?? null;
   const bands = textBands(width, height);
   const framed = fit === "contain" || !!device;
-  // A focused clip fills the frame: the title and captions sit over the recording.
-  // The focus is kept clear of the captions; a title has its own backing and may
-  // overlap the top of the app.
-  const croppedClip = !!scene.clip && framed && !!scene.focus && !device;
+  // A screen recording fills the frame, focused or whole, so the app keeps its size from
+  // shot to shot: the title and captions sit over the recording. A focus is kept clear
+  // of the captions; a title has its own backing and may overlap the top of the app.
+  const croppedClip = !!scene.clip && framed && !device;
   const top = framed && shot.stickered && !croppedClip ? bands.top : 0;
   const viewport = {
     top,

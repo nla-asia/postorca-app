@@ -510,9 +510,9 @@ async function prepare(context: PluginContext, clip: Clip) {
           end_ms: clips[index].end_ms,
           speed: clips[index].speed,
         }),
-        // A screen recording keeps its text readable: outside portrait, contain gives
-        // stickers and captions their own space when the whole recording shows. A
-        // focused recording fills the frame instead, with the focus clear of captions.
+        // A screen recording is shown whole, never cropped: outside portrait, contain.
+        // It fills the frame's height, with stickers and captions over it and a focus
+        // kept clear of the captions.
         fit:
           scene.fit ??
           (scene.video_file && !scene.device && format !== "9:16"
