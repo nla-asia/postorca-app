@@ -107,7 +107,7 @@ const clipArgs = z
             focus: region
               .optional()
               .describe(
-                "Zoom into this region; coordinates are fractions of the original image or video frame.",
+                "Zoom into this region; coordinates are fractions of the original image or video frame. For a screen recording only this region shows, as large as it fits above the captions: leave out browser bars and the desktop, and include every element the scene needs.",
               ),
             highlight: region
               .optional()

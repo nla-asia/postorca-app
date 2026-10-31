@@ -192,7 +192,7 @@ function focusTransform(
         y: viewport.top + viewport.height / 2,
         scale: 1,
       };
-    const [marginX, marginY] = stage ? [0.9, 0.9] : [0.88, 0.8];
+    const [marginX, marginY] = stage ? [0.96, 0.96] : [0.88, 0.8];
     const scale = Math.min(
       4,
       Math.max(
@@ -205,21 +205,9 @@ function focusTransform(
     );
     const x = rect.left + (region.x + region.width / 2) * rect.width,
       y = rect.top + (region.y + region.height / 2) * rect.height;
-    if (stage) {
-      // Keep the frame inside the recording: what shows around the focus is the app.
-      const anchorY = viewport.top + viewport.height / 2;
-      // A recording that fits the frame stays centred in it, not shifted to the anchor:
-      // otherwise a focus too big to zoom pushes the top of the app out of the frame.
-      const within = (center: number, start: number, length: number, before: number, after: number) =>
-        length * scale <= before + after
-          ? start + length / 2 - ((before + after) / 2 - before) / scale
-          : Math.min(start + length - after / scale, Math.max(start + before / scale, center));
-      return {
-        scale,
-        x: within(x, rect.left, rect.width, viewport.width / 2, stage.width - viewport.width / 2),
-        y: within(y, rect.top, rect.height, anchorY, stage.height - anchorY),
-      };
-    }
+    // Only the focus shows (focusClip), centred above the captions: nothing around it
+    // needs to stay inside the recording.
+    if (stage) return { scale, x, y };
     return {
       scale,
       x: bounded(x, rect.left, rect.width, viewport.width / scale),
@@ -230,6 +218,41 @@ function focusTransform(
     end = target(focus);
   const mix = (a: number, b: number) => a + (b - a) * fraction;
   return `translate(${viewport.width / 2}px, ${viewport.top + viewport.height / 2}px) scale(${mix(start.scale, end.scale)}) translate(${-mix(start.x, end.x)}px, ${-mix(start.y, end.y)}px)`;
+}
+
+/**
+ * The focus of a clip that fills the frame, as a clip path in the recording's own
+ * coordinates: only that area shows, so a focus that leaves out a browser's bars or the
+ * desktop really leaves them out. It moves with the zoom between foci.
+ */
+function focusClip(
+  frame: number,
+  rect: Rect,
+  focus: Region | null,
+  previous: Region | null,
+  stage: { width: number; height: number },
+) {
+  if (!focus && !previous) return undefined;
+  const fraction = interpolate(frame, [0, 18], [0, 1], {
+    ...clamp,
+    easing: (t) => 1 - (1 - t) ** 3,
+  });
+  const box = (region: Region | null) =>
+    region
+      ? {
+          left: rect.left + region.x * rect.width,
+          top: rect.top + region.y * rect.height,
+          width: region.width * rect.width,
+          height: region.height * rect.height,
+        }
+      : rect;
+  const a = box(previous),
+    b = box(focus);
+  const mix = (key: keyof Rect) => a[key] + (b[key] - a[key]) * fraction;
+  const left = mix("left"),
+    top = mix("top");
+  // Rounded a little, so it reads as the app framed rather than a crop.
+  return `inset(${top}px ${stage.width - left - mix("width")}px ${stage.height - top - mix("height")}px ${left}px round ${Math.round(stage.width * 0.006)}px)`;
 }
 
 function DeviceFrame({ device, rect }: { device: Device; rect: Rect }) {
@@ -524,6 +547,10 @@ function Scene({
           <AbsoluteFill
             style={{
               transformOrigin: "0 0",
+              ...(croppedClip &&
+                rect && {
+                  clipPath: focusClip(frame, rect, focus, previousFocus, { width, height }),
+                }),
               transform: rect
                 ? focusTransform(
                     frame,
