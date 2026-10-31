@@ -353,6 +353,9 @@ Two separate evals use it, matching the product:
   and recording it take computer use. Prepare runs it as its own "Quill" app, a renamed
   and re-signed copy of the repo's Electron, from a fresh data folder. Add
   `~/PostOrca Evals/quill` to the founder's Brand Profile projects once.
+- `content-demo-quill-from-script`: script to video on Quill, from an approved script, all
+  through computer use: typing with the live preview, the File menu, search, pinning
+  and the Settings window.
 - `content-demo-ledgerly-from-script`: script to video on Ledgerly, from an approved
   script. Sign-in happens off camera; on camera it picks a client, adds and types line
   items with a live total, and marks the invoice sent and paid.
