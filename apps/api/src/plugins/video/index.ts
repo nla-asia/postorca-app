@@ -774,27 +774,37 @@ function videoTool(
 
 const clipTextArgs = z
   .object({
-    video_file: z.string().min(1),
+    video_file: z.string().min(1).optional(),
+    path: z
+      .string()
+      .min(1)
+      .optional()
+      .describe("A recording in the founder's working folder, read in place without uploading it."),
     every_seconds: z.number().min(0.5).max(5).optional(),
   })
-  .strict();
+  .strict()
+  .refine((args) => !!args.video_file !== !!args.path, {
+    message: "Give either video_file (a saved video's ref) or path (a file in the working folder).",
+  });
 
 /** A recording's on-screen text over time, read on the founder's desktop. */
 const clipText: PluginToolDefinition = {
   name: "video_clip_text",
   description:
-    "Read a screen recording's text over time (macOS desktop): what is on screen at the start, then each change, when text appears or goes, with boxes as fractions of the recording (the space focus and focus_on use). Read each recording before planning a demo: a scene starts just before what its line is about appears, and zooms on it with focus_on.",
+    "Read a screen recording's text over time (macOS desktop): what is on screen at the start, then each change, when text appears or goes, with boxes as fractions of the recording (the space focus and focus_on use). Give a saved video's ref, or the path of a recording in the working folder. Read each recording before planning a demo: a scene starts just before what its line is about appears, and zooms on it with focus_on.",
   args: clipTextArgs,
   parameters: (({ $schema, ...rest }) => rest)(z.toJSONSchema(clipTextArgs)),
   runsOn: "server",
   async run(context, input) {
-    const { video_file, every_seconds } = clipTextArgs.parse(input);
-    const file = await ownedFile(context, video_file, "video");
+    const { video_file, path, every_seconds } = clipTextArgs.parse(input);
     return callDesktop(
       context,
       "video_clip_text",
       { timeoutMs: 300_000 },
-      { file, every_ms: Math.round((every_seconds ?? 1) * 1000) },
+      {
+        ...(video_file ? { file: await ownedFile(context, video_file, "video") } : { path }),
+        every_ms: Math.round((every_seconds ?? 1) * 1000),
+      },
     );
   },
 };
