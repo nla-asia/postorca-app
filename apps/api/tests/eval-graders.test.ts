@@ -586,3 +586,49 @@ test("an editing eval needs the founder's recordings edited, not re-recorded", a
     "Used the founder's track under the voice",
   ]);
 });
+
+test("an editing eval with mistakes in the take checks they were cut", async () => {
+  const { editCases, gradeEdit } = await import("../src/evals/edit-cases.js");
+  const entry = editCases.find((c) => c.id === "edit-ledgerly-one-take")!;
+  const calls = (scenes: any[]): any[] => [
+    {
+      name: "upload_file",
+      args: { path: "eval-fixtures/ledgerly-take-recordings/ledgerly-take.mp4" },
+      result: { ref: "t0000000", file: "users/u/media/t0000000abcd.mp4" },
+    },
+    { name: "read_file", args: { path: "eval-fixtures/ledgerly-take-recordings/music.mp3" }, result: { ref: "m0000000" } },
+    {
+      name: "video_export",
+      args: { voiceover_file: "v1", music: { file: "m0000000" }, scenes },
+      result: { ref: "out" },
+    },
+  ];
+  const failed = (scenes: any[]) =>
+    gradeEdit(entry, { status: "completed", calls: calls(scenes), artifacts: [] })
+      .filter((c) => !c.passed)
+      .map((c) => c.name);
+  const clean = [
+    { video_file: "t0000000", start_seconds: 1, end_seconds: 6 },
+    { video_file: "t0000000", start_seconds: 12.5, end_seconds: 17 },
+    { video_file: "t0000000", start_seconds: 19, end_seconds: 30 },
+    { video_file: "t0000000", start_seconds: 35 },
+  ];
+  assert.deepEqual(failed(clean), []);
+  // Playing on from the dashboard into Clients, or through the typo, fails.
+  assert.deepEqual(failed([{ video_file: "t0000000", start_seconds: 1 }, ...clean.slice(3)]), [
+    "Cut the wrong turn into Clients",
+    'Cut the typo "Webiste"',
+  ]);
+  assert.deepEqual(failed([{ video_file: "t0000000", start_seconds: 14, end_seconds: 20 }]), ['Cut the typo "Webiste"']);
+  // A scene with no end plays for as long as it lasts in the export.
+  const timed = (scenes: any[], starts: number[], seconds: number) => {
+    const all = calls(scenes);
+    all[2].result = { ref: "out", scene_starts: starts.map((at_seconds) => ({ at_seconds })), duration_seconds: seconds };
+    return gradeEdit(entry, { status: "completed", calls: all, artifacts: [] })
+      .filter((c) => !c.passed)
+      .map((c) => c.name);
+  };
+  const opening = [{ video_file: "t0000000", start_seconds: 0.5 }, { video_file: "t0000000", start_seconds: 35 }];
+  assert.deepEqual(timed(opening, [0, 4], 10), []);
+  assert.deepEqual(timed(opening, [0, 9], 15), ["Cut the wrong turn into Clients"]);
+});

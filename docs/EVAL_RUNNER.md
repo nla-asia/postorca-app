@@ -384,6 +384,11 @@ pinned set from `fixtures/evals/recordings/` into the working folder's `eval-fix
   app (title bar and all, no browser), a calm track and an approved voiceover, to a
   calm LinkedIn walkthrough. Same checks and review; it shows whether the editing holds
   for a desktop app, not only a website.
+- `content-edit-ledgerly-one-take`: one 46 s take of Ledgerly with the founder's
+  mistakes left in (dead air, a wrong turn into Clients, a typo, a long pause) and a
+  track, to a tight 25–30 s launch video. Besides the usual checks, it checks that the
+  wrong turn and the typo were cut (no scene plays those seconds of the take).
+  `scripts/evals/recordings/record-ledgerly-take.cjs` records the take again if needed.
 
 ### Product-demo cases (Computer level 2, Content level 3)
 
