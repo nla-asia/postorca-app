@@ -54,3 +54,18 @@ test("a close-up finds the named text and frames it with room, widening a narrow
   const narrow = closeUp({ x: 0.8, y: 0.2, width: 0.05, height: 0.3 }, 1.6, 2.35);
   assert.ok((narrow.width * 1.6) / narrow.height >= 2.35 * 0.75 - 1e-6);
 });
+
+test("a close-up's edges never cut a word", () => {
+  const { wholeWords } = require("./framing.cjs");
+  const issued = { text: "Issued Oct 31, 2026", x: 0.64, y: 0.31, width: 0.09, height: 0.02 };
+  const sent = { text: "Sent", x: 0.7, y: 0.28, width: 0.02, height: 0.015 };
+  // Mostly inside: taken in whole.
+  const taken = wholeWords({ x: 0.66, y: 0.15, width: 0.3, height: 0.25 }, [issued, sent]);
+  assert.ok(taken.x <= 0.64 && taken.x + taken.width >= 0.95);
+  // Barely inside: left out.
+  const left = wholeWords({ x: 0.72, y: 0.15, width: 0.25, height: 0.25 }, [issued]);
+  assert.ok(left.x >= 0.73);
+  // A word that is fully inside, or fully outside, changes nothing.
+  const box = { x: 0.6, y: 0.2, width: 0.3, height: 0.2 };
+  assert.deepEqual(wholeWords(box, [sent]), box);
+});

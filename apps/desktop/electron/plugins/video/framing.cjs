@@ -170,4 +170,44 @@ function closeUp(box, aspect, frame) {
   return { x, y, width: w, height: h };
 }
 
-module.exports = { snapRegion, textBox, closeUp };
+/**
+ * Keep the words on screen whole: a line of text the region's edge runs through is
+ * taken in when most of it is inside, and left out otherwise. Edges can otherwise sit
+ * in the gap between two letters, which looks clean to the pixels and reads "ssued".
+ */
+function wholeWords(region, lines) {
+  let { x, y, width, height } = region;
+  for (let pass = 0; pass < 3; pass++) {
+    let moved = false;
+    for (const line of lines) {
+      const left = Math.max(x, line.x),
+        right = Math.min(x + width, line.x + line.width),
+        top = Math.max(y, line.y),
+        bottom = Math.min(y + height, line.y + line.height);
+      if (right <= left || bottom <= top) continue;
+      const inside = ((right - left) * (bottom - top)) / (line.width * line.height);
+      if (inside >= 0.999) continue;
+      moved = true;
+      const gap = 0.006;
+      if (inside >= 0.5) {
+        const r = Math.min(1, Math.max(x + width, line.x + line.width + gap)),
+          b = Math.min(1, Math.max(y + height, line.y + line.height + gap));
+        x = Math.max(0, Math.min(x, line.x - gap));
+        y = Math.max(0, Math.min(y, line.y - gap));
+        width = r - x;
+        height = b - y;
+      } else if (line.x < x) {
+        width -= line.x + line.width + gap - x;
+        x = line.x + line.width + gap;
+      } else if (line.x + line.width > x + width) width = line.x - gap - x;
+      else if (line.y < y) {
+        height -= line.y + line.height + gap - y;
+        y = line.y + line.height + gap;
+      } else height = line.y - gap - y;
+    }
+    if (!moved) break;
+  }
+  return { x, y, width, height };
+}
+
+module.exports = { snapRegion, textBox, closeUp, wholeWords };

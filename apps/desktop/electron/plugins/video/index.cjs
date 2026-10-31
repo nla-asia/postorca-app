@@ -7,7 +7,7 @@ const { promisify } = require("node:util");
 const { app, nativeImage } = require("electron");
 const { mediaBinary } = require("../../tools/files.cjs");
 const render = require("./render.cjs");
-const { snapRegion, textBox, closeUp } = require("./framing.cjs");
+const { snapRegion, textBox, closeUp, wholeWords } = require("./framing.cjs");
 const { native } = require("../computer/native.cjs");
 
 const run = promisify(execFile);
@@ -203,6 +203,7 @@ function withAssets(args, context, run) {
         let size = null,
           clip = null,
           focus = scene.focus ?? null;
+        let words = null;
         if (media?.video) {
           const file = path.join(temporary, src);
           const info = await probeClip(file, context.signal);
@@ -237,6 +238,7 @@ function withAssets(args, context, run) {
               lines.push(
                 ...(await readText(file, ms, path.join(temporary, `scene-${index}-text.png`), context.signal)),
               );
+            words = lines;
             const found = textBox(lines, scene.focus_on);
             if (found.missing)
               throw new Error(
@@ -256,6 +258,7 @@ function withAssets(args, context, run) {
             focus = snapRegion(gray, width, height, focus, {
               reach: scene.focus_on?.length ? 0.03 : 0.1,
             });
+            if (words) focus = wholeWords(focus, words);
           }
         } else if (src)
           size = nativeImage
