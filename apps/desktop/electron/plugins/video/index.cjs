@@ -5,9 +5,9 @@ const os = require("node:os");
 const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
 const { app, nativeImage } = require("electron");
-const { mediaBinary } = require("../../tools/files.cjs");
+const { mediaBinary, allowed } = require("../../tools/files.cjs");
 const render = require("./render.cjs");
-const { snapRegion, textBox, closeUp, wholeWords, appTop } = require("./framing.cjs");
+const { snapRegion, textBox, closeUp, wholeWords, appTop, notTooTight } = require("./framing.cjs");
 const { native } = require("../computer/native.cjs");
 
 const run = promisify(execFile);
@@ -230,10 +230,16 @@ function withAssets(args, context, run) {
               throw new Error(
                 `Scene ${index + 1}: focus_on reads the text on screen, which needs macOS here; give a focus box instead.`,
               );
-            // The text as it is when the scene starts and when it ends, so a result that
-            // appears during the scene (a badge, a total) can be named too.
+            // The text at a few moments through the scene, so something on screen only
+            // part of the time (a result that appears, a title before it's renamed) can
+            // be named too.
             const lines = [];
-            for (const ms of [startMs, Math.max(startMs, endMs - 50)])
+            const last = Math.max(startMs, endMs - 50);
+            const moments = Math.min(4, Math.max(2, Math.ceil((last - startMs) / 1500) + 1));
+            for (const ms of Array.from(
+              { length: moments },
+              (_, step) => startMs + ((last - startMs) * step) / (moments - 1),
+            ))
               lines.push(
                 ...(await readText(file, ms, path.join(temporary, `scene-${index}-text.png`), context.signal)),
               );
@@ -267,7 +273,20 @@ function withAssets(args, context, run) {
               info.width,
               context.signal,
             );
-            focus = snapRegion(gray, width, height, focus);
+            focus = snapRegion(gray, width, height, notTooTight(focus));
+            // Snapping can move a drawn box's top edge up into the browser's bars; keep it
+            // below them, as a close-up built from text is.
+            if (process.platform === "darwin") {
+              const lines = await readText(
+                file,
+                startMs,
+                path.join(temporary, `scene-${index}-text.png`),
+                context.signal,
+              ).catch(() => []);
+              const top = appTop(lines, gray, width, height);
+              if (focus.y < top)
+                focus = { ...focus, y: top, height: Math.max(0.05, focus.height - (top - focus.y)) };
+            }
           }
         } else if (src)
           size = nativeImage
@@ -381,9 +400,14 @@ module.exports = {
           throw new Error("Reading a recording's text needs macOS here.");
         const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "postorca-clip-text-"));
         try {
-          const { data, type } = await context.download(args.file);
-          const file = path.join(temporary, "clip" + (extensions[type] ?? ".mp4"));
-          await fs.writeFile(file, data);
+          // A recording in the working folder is read in place; a saved one is fetched.
+          let file;
+          if (args.path) file = await allowed(args.path);
+          else {
+            const { data, type } = await context.download(args.file);
+            file = path.join(temporary, "clip" + (extensions[type] ?? ".mp4"));
+            await fs.writeFile(file, data);
+          }
           const { seconds } = await probeClip(file, context.signal);
           const every = Math.max(args.every_ms ?? 1000, Math.ceil((seconds * 1000) / 60));
           const { filename, directory } = mediaBinary("ffmpeg");

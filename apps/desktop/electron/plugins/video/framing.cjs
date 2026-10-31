@@ -151,27 +151,46 @@ function textBox(lines, names) {
   return { box: { x: left, y: top, width: right - left, height: bottom - top } };
 }
 
+// The tightest a close-up goes, as fractions of the recording: about 1.8 times the whole
+// app at most, so the viewer still sees where the element sits. Tighter reads as a
+// crop of one word rather than a camera moving in.
+const tightest = { width: 0.55, height: 0.35 };
+
 /**
  * A close-up around `box` (fractions of a picture `aspect` wide per unit tall): room
- * around the elements, at least a third of the picture wide and a fifth tall so the
- * element is seen in its place rather than as a sliver, and shaped toward the space it
- * fills (`frame`, width over height) so it shows large. It stays below `top`, where the
- * app starts under any browser bars, and inside the picture.
+ * around the elements, no tighter than `tightest`, and shaped toward the space it fills
+ * (`frame`, width over height) so it shows large. It stays below `top`, where the app
+ * starts under any browser bars, and inside the picture.
  */
 function closeUp(box, aspect, frame, top = 0) {
   let width = (box.width + 2 * 0.04) * aspect,
     height = box.height + 2 * 0.03;
-  width = Math.max(width, aspect / 3);
-  height = Math.max(height, 0.2);
+  width = Math.max(width, aspect * tightest.width);
+  height = Math.max(height, tightest.height);
   if (width / height < frame * 0.75) width = height * frame * 0.75;
   if (width / height > frame * 1.5) height = width / (frame * 1.5);
-  const w = Math.min(1, width / aspect),
-    h = Math.min(1 - top, height);
+  return around(box, width / aspect, height, top);
+}
+
+/** A region `w` × `h` centred on `box`, kept below `top` and inside the picture. */
+function around(box, w, h, top = 0) {
+  w = Math.min(1, w);
+  h = Math.min(1 - top, h);
   const cx = box.x + box.width / 2,
     cy = box.y + box.height / 2;
   const x = Math.min(1 - w, Math.max(0, cx - w / 2)),
     y = Math.min(1 - h, Math.max(top, cy - h / 2));
   return { x, y, width: w, height: h };
+}
+
+/** A focus box drawn tighter than `tightest`, widened around its centre to it. */
+function notTooTight(region) {
+  if (region.width >= tightest.width && region.height >= tightest.height) return region;
+  return around(
+    region,
+    Math.max(region.width, tightest.width),
+    Math.max(region.height, tightest.height),
+  );
 }
 
 /**
@@ -230,4 +249,4 @@ function wholeWords(region, lines) {
   return { x, y, width, height };
 }
 
-module.exports = { snapRegion, textBox, closeUp, wholeWords, appTop };
+module.exports = { snapRegion, textBox, closeUp, wholeWords, appTop, notTooTight };
