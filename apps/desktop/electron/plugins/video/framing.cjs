@@ -152,9 +152,10 @@ function textBox(lines, names) {
  * allows for showing it large. Kept inside the picture.
  */
 function closeUp(box, aspect, frame) {
-  const room = 0.04;
-  let width = (box.width + 2 * room) * aspect,
-    height = box.height + 2 * room * aspect;
+  // A little more room beside the text than above and below it, where a close-up
+  // would soon reach the next row (or the browser's bars).
+  let width = (box.width + 2 * 0.04) * aspect,
+    height = box.height + 2 * 0.03;
   width = Math.max(width, aspect / 3);
   // A tall, narrow box widens toward the frame's shape. A wide one stays as it is: on the
   // stage a strip shows large, and growing it taller would reach past the app into

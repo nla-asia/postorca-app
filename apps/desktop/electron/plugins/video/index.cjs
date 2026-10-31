@@ -251,7 +251,11 @@ function withAssets(args, context, run) {
               info.width,
               context.signal,
             );
-            focus = snapRegion(gray, width, height, focus);
+            // A close-up built from its text is already about right: snapping only
+            // tidies its edges, and looking far could reach the browser's bars.
+            focus = snapRegion(gray, width, height, focus, {
+              reach: scene.focus_on?.length ? 0.03 : 0.1,
+            });
           }
         } else if (src)
           size = nativeImage
