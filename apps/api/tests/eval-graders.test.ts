@@ -572,5 +572,6 @@ test("an editing eval needs the founder's recordings edited, not re-recorded", a
   assert.deepEqual(failed([...calls, { name: "screen_record_start", args: {}, result: {} }]), [
     "Edited, not re-recorded",
   ]);
+  assert.deepEqual(failed([...calls, { name: "browser_open", args: {}, result: {} }]), []);
   assert.ok(failed(calls.slice(1)).includes("Brought in the founder's recordings"));
 });
