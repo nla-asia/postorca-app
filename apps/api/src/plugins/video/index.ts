@@ -628,6 +628,33 @@ function videoTool(
   };
 }
 
+const clipTextArgs = z
+  .object({
+    video_file: z.string().min(1),
+    every_seconds: z.number().min(0.5).max(5).optional(),
+  })
+  .strict();
+
+/** A recording's on-screen text over time, read on the founder's desktop. */
+const clipText: PluginToolDefinition = {
+  name: "video_clip_text",
+  description:
+    "Read a screen recording's text over time (macOS desktop): what is on screen at the start, then each change, when text appears or goes, with boxes as fractions of the recording (the space focus and focus_on use). Read each recording before planning a demo: a scene starts just before what its line is about appears, and zooms on it with focus_on.",
+  args: clipTextArgs,
+  parameters: (({ $schema, ...rest }) => rest)(z.toJSONSchema(clipTextArgs)),
+  runsOn: "server",
+  async run(context, input) {
+    const { video_file, every_seconds } = clipTextArgs.parse(input);
+    const file = await ownedFile(context, video_file, "video");
+    return callDesktop(
+      context,
+      "video_clip_text",
+      { timeoutMs: 300_000 },
+      { file, every_ms: Math.round((every_seconds ?? 1) * 1000) },
+    );
+  },
+};
+
 const sharedMedia = new Set([
   "media_generate_image",
   "media_edit_image",
@@ -669,6 +696,7 @@ export const videoPlugin: PluginDefinition = {
       clipArgs.extend({ title: z.string().trim().min(1).max(200) }).strict(),
       600_000,
     ),
+    clipText,
     ...mediaPlugin.tools.filter((tool) => sharedMedia.has(tool.name)),
   ],
 };

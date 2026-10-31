@@ -361,6 +361,67 @@ module.exports = {
           };
         }),
     },
+    video_clip_text: {
+      // The text on a recording over time: what is on screen at the start, then what
+      // appears and goes, and when. Read about once a second (at most 60 reads), so a
+      // demo can cut to the moment a result appears and zoom on it. macOS only.
+      run: async (args, context) => {
+        if (process.platform !== "darwin")
+          throw new Error("Reading a recording's text needs macOS here.");
+        const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "postorca-clip-text-"));
+        try {
+          const { data, type } = await context.download(args.file);
+          const file = path.join(temporary, "clip" + (extensions[type] ?? ".mp4"));
+          await fs.writeFile(file, data);
+          const { seconds } = await probeClip(file, context.signal);
+          const every = Math.max(args.every_ms ?? 1000, Math.ceil((seconds * 1000) / 60));
+          const { filename, directory } = mediaBinary("ffmpeg");
+          await run(
+            filename,
+            ["-v", "error", "-i", file, "-vf", `fps=1000/${every},scale=1920:-2`, path.join(temporary, "%03d.png")],
+            { cwd: directory, signal: context.signal },
+          );
+          const stills = (await fs.readdir(temporary)).filter((name) => /^\d+\.png$/.test(name)).sort();
+          const round = (value) => Math.round(value * 100) / 100;
+          const describe = (line) =>
+            `${line.text} @ x ${round(line.x)} y ${round(line.y)} w ${round(line.width)} h ${round(line.height)}`;
+          // Text read twice the same way can differ by a space or a dot ("$0.00x" and
+          // "$0.00 x"); compare loosely, and only report what holds for two reads, so a
+          // cursor or a flicker isn't an event.
+          const key = (text) => text.toLowerCase().replace(/[^a-z0-9$]/g, "");
+          const reads = [];
+          for (const still of stills) {
+            const { lines = [], error } = await native(
+              { action: "read_text", path: path.join(temporary, still) },
+              context.signal,
+            );
+            if (error) throw new Error(error);
+            reads.push(new Map(lines.filter((line) => key(line.text)).map((line) => [key(line.text), line])));
+          }
+          const start = [...(reads[0]?.values() ?? [])].map(describe);
+          const changes = [];
+          for (let index = 1; index < reads.length; index++) {
+            const [before, now, next] = [reads[index - 1], reads[index], reads[index + 1] ?? reads[index]];
+            const appeared = [...now.keys()].filter((text) => !before.has(text) && next.has(text));
+            const gone = [...before.keys()].filter((text) => !now.has(text) && !next.has(text));
+            if (appeared.length || gone.length)
+              changes.push({
+                at_seconds: Math.round((index * every) / 100) / 10,
+                ...(appeared.length && { appeared: appeared.slice(0, 15).map((text) => describe(now.get(text))) }),
+                ...(gone.length && { gone: gone.slice(0, 15).map((text) => before.get(text).text) }),
+              });
+          }
+          return {
+            seconds: Math.round(seconds * 10) / 10,
+            every_seconds: every / 1000,
+            on_screen_at_start: start.slice(0, 80),
+            changes,
+          };
+        } finally {
+          await fs.rm(temporary, { recursive: true, force: true });
+        }
+      },
+    },
     video_export: {
       run: (args, context) =>
         withAssets(args, context, async (options, output) => {
