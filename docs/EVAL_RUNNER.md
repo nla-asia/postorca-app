@@ -380,6 +380,10 @@ pinned set from `fixtures/evals/recordings/` into the working folder's `eval-fix
   under it, nothing was re-recorded.
   The review holds it to a professional bar: structure with an intro and end card,
   framing, guiding the eye at each key moment, pacing, text, sound, and overall.
+- `content-edit-quill-walkthrough`: five window recordings of the Quill desktop notes
+  app (title bar and all, no browser), a calm track and an approved voiceover, to a
+  calm LinkedIn walkthrough. Same checks and review; it shows whether the editing holds
+  for a desktop app, not only a website.
 
 ### Product-demo cases (Computer level 2, Content level 3)
 
