@@ -7,6 +7,7 @@ const { promisify } = require("node:util");
 const { app, nativeImage } = require("electron");
 const { mediaBinary } = require("../../tools/files.cjs");
 const render = require("./render.cjs");
+const { snapRegion } = require("./framing.cjs");
 
 const run = promisify(execFile);
 
@@ -71,6 +72,17 @@ async function clipPoster(file, seconds, output, signal) {
     { cwd: directory, signal },
   );
 }
+/** The poster in gray, one byte per pixel, for finding the edges a focus snaps to. */
+async function grayPixels(file, signal) {
+  const { filename, directory } = mediaBinary("ffmpeg");
+  const width = 960;
+  const { stdout } = await run(
+    filename,
+    ["-v", "error", "-i", file, "-vf", `scale=${width}:-2,format=gray`, "-f", "rawvideo", "-"],
+    { cwd: directory, signal, encoding: "buffer", maxBuffer: 64 * 1024 * 1024 },
+  );
+  return { gray: stdout, width, height: stdout.length / width };
+}
 if (app.isPackaged) {
   const workingDirectory = path.join(app.getPath("userData"), "video");
   mkdirSync(workingDirectory, { recursive: true });
@@ -128,7 +140,8 @@ function withAssets(args, context, run) {
           : null;
         const src = media?.filename ?? null;
         let size = null,
-          clip = null;
+          clip = null,
+          focus = scene.focus ?? null;
         if (media?.video) {
           const file = path.join(temporary, src);
           const info = await probeClip(file, context.signal);
@@ -151,6 +164,13 @@ function withAssets(args, context, run) {
           );
           size = info;
           clip = { startMs, endMs, speed: scene.speed ?? 1, poster };
+          if (focus) {
+            const { gray, width, height } = await grayPixels(
+              path.join(temporary, poster),
+              context.signal,
+            );
+            focus = snapRegion(gray, width, height, focus);
+          }
         } else if (src)
           size = nativeImage
             .createFromPath(path.join(temporary, src))
@@ -162,7 +182,7 @@ function withAssets(args, context, run) {
           durationMs: scene.duration_ms,
           fit: scene.fit ?? "cover",
           device: scene.device ?? null,
-          focus: scene.focus ?? null,
+          focus,
           highlight: scene.highlight ?? null,
           aspect: size?.width && size.height ? size.width / size.height : null,
         });

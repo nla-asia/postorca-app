@@ -192,11 +192,12 @@ function focusTransform(
         y: viewport.top + viewport.height / 2,
         scale: 1,
       };
-    const [marginX, marginY] = stage ? [0.96, 0.96] : [0.88, 0.8];
+    const [marginX, marginY] = stage ? [0.9, 0.9] : [0.88, 0.8];
+    // A focus on the stage may shrink to fit: the whole app, with room around it.
     const scale = Math.min(
       4,
       Math.max(
-        1,
+        stage ? 0.25 : 1,
         Math.min(
           (viewport.width * marginX) / (region.width * rect.width),
           (viewport.height * marginY) / (region.height * rect.height),
@@ -205,7 +206,7 @@ function focusTransform(
     );
     const x = rect.left + (region.x + region.width / 2) * rect.width,
       y = rect.top + (region.y + region.height / 2) * rect.height;
-    // Only the focus shows (focusClip), centred above the captions: nothing around it
+    // Only the focus shows (focusBox), centred above the captions: nothing around it
     // needs to stay inside the recording.
     if (stage) return { scale, x, y };
     return {
@@ -217,7 +218,20 @@ function focusTransform(
   const start = target(previous),
     end = target(focus);
   const mix = (a: number, b: number) => a + (b - a) * fraction;
-  return `translate(${viewport.width / 2}px, ${viewport.top + viewport.height / 2}px) scale(${mix(start.scale, end.scale)}) translate(${-mix(start.x, end.x)}px, ${-mix(start.y, end.y)}px)`;
+  const scale = mix(start.scale, end.scale),
+    x = mix(start.x, end.x),
+    y = mix(start.y, end.y);
+  const centre = { x: viewport.width / 2, y: viewport.top + viewport.height / 2 };
+  return {
+    transform: `translate(${centre.x}px, ${centre.y}px) scale(${scale}) translate(${-x}px, ${-y}px)`,
+    // Where a box in the recording lands on screen.
+    place: (box: Rect): Rect => ({
+      left: centre.x + scale * (box.left - x),
+      top: centre.y + scale * (box.top - y),
+      width: scale * box.width,
+      height: scale * box.height,
+    }),
+  };
 }
 
 /**
@@ -225,13 +239,12 @@ function focusTransform(
  * coordinates: only that area shows, so a focus that leaves out a browser's bars or the
  * desktop really leaves them out. It moves with the zoom between foci.
  */
-function focusClip(
+function focusBox(
   frame: number,
   rect: Rect,
   focus: Region | null,
   previous: Region | null,
-  stage: { width: number; height: number },
-) {
+): Rect | undefined {
   if (!focus && !previous) return undefined;
   const fraction = interpolate(frame, [0, 18], [0, 1], {
     ...clamp,
@@ -249,10 +262,7 @@ function focusClip(
   const a = box(previous),
     b = box(focus);
   const mix = (key: keyof Rect) => a[key] + (b[key] - a[key]) * fraction;
-  const left = mix("left"),
-    top = mix("top");
-  // Rounded a little, so it reads as the app framed rather than a crop.
-  return `inset(${top}px ${stage.width - left - mix("width")}px ${stage.height - top - mix("height")}px ${left}px round ${Math.round(stage.width * 0.006)}px)`;
+  return { left: mix("left"), top: mix("top"), width: mix("width"), height: mix("height") };
 }
 
 function DeviceFrame({ device, rect }: { device: Device; rect: Rect }) {
@@ -521,9 +531,24 @@ function Scene({
         height: "100%",
         objectFit: "cover",
       };
+  const framing = rect
+    ? focusTransform(
+        frame,
+        rect,
+        viewport,
+        focus,
+        previousFocus,
+        croppedClip ? { width, height } : undefined,
+      )
+    : undefined;
+  const shown = croppedClip && rect ? focusBox(frame, rect, focus, previousFocus) : undefined;
+  // Rounded a little and lifted off the background, so it reads as the app framed
+  // rather than a crop.
+  const corner = Math.round(width * 0.008);
+  const onScreen = shown && framing ? framing.place(shown) : undefined;
   return (
     <AbsoluteFill style={{ backgroundColor: brand.background }}>
-      {backdrop && shownWhole && (
+      {backdrop && shownWhole && !croppedClip && (
         <Img
           src={backdrop}
           style={{
@@ -531,9 +556,26 @@ function Scene({
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            // A focused clip's surround matches its own page, light or dark.
-            filter: croppedClip ? "blur(40px)" : "blur(40px) brightness(0.45)",
+            filter: "blur(40px) brightness(0.45)",
             transform: "scale(1.15)",
+          }}
+        />
+      )}
+      {croppedClip && (
+        // A focused recording sits on a clean stage, never a smear of itself.
+        <AbsoluteFill
+          style={{
+            background: `radial-gradient(ellipse at 50% 35%, ${brand.highlight}22, transparent 65%), ${brand.background}`,
+          }}
+        />
+      )}
+      {onScreen && (
+        <div
+          style={{
+            position: "absolute",
+            ...onScreen,
+            borderRadius: corner,
+            boxShadow: "0 30px 90px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.08)",
           }}
         />
       )}
@@ -547,20 +589,10 @@ function Scene({
           <AbsoluteFill
             style={{
               transformOrigin: "0 0",
-              ...(croppedClip &&
-                rect && {
-                  clipPath: focusClip(frame, rect, focus, previousFocus, { width, height }),
-                }),
-              transform: rect
-                ? focusTransform(
-                    frame,
-                    rect,
-                    viewport,
-                    focus,
-                    previousFocus,
-                    croppedClip ? { width, height } : undefined,
-                  )
-                : undefined,
+              ...(shown && {
+                clipPath: `inset(${shown.top}px ${width - shown.left - shown.width}px ${height - shown.top - shown.height}px ${shown.left}px round ${corner / (onScreen!.width / shown.width)}px)`,
+              }),
+              transform: framing?.transform,
             }}
           >
             {device && rect && <DeviceFrame device={device} rect={rect} />}
