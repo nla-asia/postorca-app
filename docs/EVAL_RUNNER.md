@@ -343,6 +343,11 @@ Two separate evals use it, matching the product:
   reads the code and replies with a script only: what it is, numbered shots with
   on-screen text and voiceover, format and assumptions. It records nothing. Two apps,
   so a skill fitted to one shows. The observer judges the script as the founder.
+- `content-script-ledgerly-intro`: the same on Ledgerly (`scripts/evals/ledgerly-fixture.mjs`,
+  port 4130), an invoicing SaaS with sign-in (local demo login in its README), a
+  dashboard chart, invoices with line items and live totals, status changes, a status
+  filter and an "Add client" modal. The script has to pick a few flows out of many. Add
+  `~/PostOrca Evals/ledgerly` to the founder's Brand Profile projects once.
 - `content-demo-tide-from-script` (script to video): starts from an approved script,
   fixed so recording runs compare, and records and edits the video. The founder reviews
   the video.

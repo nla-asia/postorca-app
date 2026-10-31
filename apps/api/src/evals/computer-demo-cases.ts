@@ -196,6 +196,22 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
     min_clips: 0,
     criteria: scriptReview("Streaks", "such as adding a habit, checking in, the streak count, the weekly recap"),
   },
+  // A richer product than a list: sign in, a dashboard with a chart, invoices with line
+  // items and live totals, status changes, a filter and a modal. The script has to pick
+  // a few flows out of many.
+  {
+    id: "script-ledgerly-intro",
+    level: 3,
+    name: "Product introduction script from the code repo (Ledgerly invoicing SaaS)",
+    app: "web",
+    url: "http://127.0.0.1:4130",
+    fixture_script: "scripts/evals/ledgerly-fixture.mjs",
+    script_only: true,
+    brief: introRequest("Ledgerly"),
+    typed: [],
+    min_clips: 0,
+    criteria: scriptReview("Ledgerly", "such as the dashboard, creating an invoice with line items, sending it and recording the payment"),
+  },
   // Script to video: starts from an approved script, fixed so recording runs compare.
   {
     id: "demo-tide-from-script",
