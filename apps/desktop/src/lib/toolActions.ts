@@ -124,6 +124,8 @@ function describe(
       return result?.url ? `Clicked → ${shortUrl(result.url)}` : "Clicked";
     case "browser_type":
       return `Typed “${clip(args.text)}”${args.submit ? " and pressed Enter" : ""}`;
+    case "browser_select":
+      return `Chose “${clip(args.option)}”`;
     case "browser_press":
       return `Pressed ${args.key}`;
     case "browser_scroll":

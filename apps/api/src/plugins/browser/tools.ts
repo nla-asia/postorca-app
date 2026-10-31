@@ -138,6 +138,15 @@ export const browserTools: PluginToolDefinition[] = [
       .strict(),
   ),
   tool(
+    "browser_select",
+    "Choose an option in a dropdown (a <select>) by ref, by the option's visible text. Clicking an option in an open dropdown doesn't work, and typing its first letter can land on the wrong one: use this instead. Returns the page afterwards like browser_snapshot (in the mode of your last snapshot of this tab): usually only what changed, so you rarely need a separate snapshot.",
+    { tab, ref, option: { type: "string" } },
+    ["tab", "ref", "option"],
+    z
+      .object({ tab: tabId, ref: refId, option: z.string().min(1).max(500) })
+      .strict(),
+  ),
+  tool(
     "browser_press",
     "Press a key or shortcut in a tab, e.g. Escape, Enter, Home, PageDown, ControlOrMeta+A. Named keys accept any letter case and common aliases (HOME, Esc, Ctrl, Cmd). ControlOrMeta means Command on macOS and Control on Windows; explicit Control/Meta keep their meaning. Printable letter case is preserved. Returns the page afterwards like browser_snapshot (in the mode of your last snapshot of this tab): usually only what changed, so you rarely need a separate snapshot.",
     { tab, key: { type: "string" } },

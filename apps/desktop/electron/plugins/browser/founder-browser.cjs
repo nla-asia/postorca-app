@@ -313,6 +313,26 @@ class FounderBrowser {
     await settle(page);
     return this.afterAction(id);
   }
+  async select(id, ref, option) {
+    const { page, element } = this.locator(id, ref);
+    const { locator } = element;
+    const options = await locator
+      .evaluate((node) => (node instanceof HTMLSelectElement ? [...node.options].map((o) => o.label) : null))
+      .catch(() => {
+        throw new Error("That element is no longer on the page as observed (it was removed or changed). Take a new snapshot.");
+      });
+    if (!options)
+      throw new Error("That element is not a dropdown (<select>). Click it, then click the option in the list it opens.");
+    const wanted = options.find((label) => label === option) ?? options.find((label) => label.trim().toLowerCase() === option.trim().toLowerCase());
+    if (wanted === undefined)
+      throw new Error(`No option "${option}" in that dropdown. Its options: ${options.map((o) => `"${o}"`).join(", ")}.`);
+    // On camera the pointer moves to the dropdown first, as a person's would.
+    const box = await locator.boundingBox().catch(() => null);
+    if (box) await onCamera(page, box.x + box.width / 2, box.y + box.height / 2);
+    await locator.selectOption({ label: wanted });
+    await settle(page);
+    return this.afterAction(id);
+  }
   async press(id, key) {
     const { page } = this.tab(id);
     await pressKey(page, key);
