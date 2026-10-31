@@ -638,14 +638,9 @@ async function prepare(context: PluginContext, clip: Clip) {
           end_ms: clips[index].end_ms,
           speed: clips[index].speed,
         }),
-        // A screen recording is shown whole, never cropped: outside portrait, contain.
-        // It fills the frame's height, with stickers and captions over it and a focus
-        // kept clear of the captions.
-        fit:
-          scene.fit ??
-          (scene.video_file && !scene.device && format !== "9:16"
-            ? "contain"
-            : undefined),
+        // A screen recording sits on the stage in every format, clear of the title and
+        // captions; a bare one (no device frame) is shown whole, never cropped.
+        fit: scene.fit ?? (scene.video_file && !scene.device ? "contain" : undefined),
         device: scene.device,
         focus: scene.focus,
         focus_on: scene.focus_on,

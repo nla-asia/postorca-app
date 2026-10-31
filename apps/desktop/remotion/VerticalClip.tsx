@@ -101,6 +101,18 @@ function textBands(width: number, height: number) {
     bottom: Math.round(safe.bottom + 84 * 1.12 + 30),
   };
 }
+// On the stage, the bands a title and captions take, so neither covers the app. In
+// portrait they sit inside a Reel's safe area: the app keeps the middle of the screen.
+function stageBands(width: number, height: number) {
+  if (height <= width * 1.5) return { ...textBands(width, height), clear: 0 };
+  const safe = safeArea(width, height);
+  return {
+    top: Math.round(safe.top + 40 + 2 * 62 * 1.35 + 40),
+    bottom: Math.round(safe.bottom + 2 * 84 * 1.12 + 30),
+    // Untitled, the app still stays below the app's own controls at the top of a Reel.
+    clear: safe.top,
+  };
+}
 function textSize(
   text: string,
   width: number,
@@ -573,14 +585,14 @@ function Scene({
   const { width, height, fps } = useVideoConfig();
   const fit = scene.fit ?? "cover",
     device = scene.device ?? null;
-  const bands = textBands(width, height);
   const framed = fit === "contain" || !!device;
   // A screen recording is laid out on the whole frame, so the app keeps its size from
   // shot to shot; its focus sits on the stage clear of the captions (and of a title).
   const croppedClip = !!scene.clip && framed && !device;
+  const bands = croppedClip ? stageBands(width, height) : { ...textBands(width, height), clear: 0 };
   // On the stage, a title gets the band above the app, which makes room for it as the
   // shot opens and gives it back when the title goes.
-  const titleBand = (titled: boolean) => (titled ? bands.top : 0);
+  const titleBand = (titled: boolean) => (titled ? bands.top : bands.clear);
   const top = croppedClip
     ? interpolate(frame, [0, 18], [titleBand(previousTitled), titleBand(!!scene.text)], {
         ...clamp,
