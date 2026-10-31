@@ -547,3 +547,30 @@ test("commit to ideas only proposes, leading with the demo-worthy work", () => {
     ["Only proposed: no browsing, recording or video"],
   );
 });
+
+test("an editing eval needs the founder's recordings edited, not re-recorded", async () => {
+  const { editCases, gradeEdit } = await import("../src/evals/edit-cases.js");
+  const entry = editCases[0];
+  const upload = (clip: string, ref: string) => ({
+    name: "upload_file",
+    args: { path: `eval-fixtures/ledgerly-recordings/${clip}` },
+    result: { ref, file: `users/u/media/${ref}abcd.mp4` },
+  });
+  const calls: any[] = [
+    ...entry.clips.map((clip, i) => upload(clip, `r${i}000000`)),
+    {
+      name: "video_export",
+      args: { voiceover_file: "v1", scenes: entry.clips.map((_, i) => ({ video_file: `r${i}000000` })) },
+      result: { ref: "out" },
+    },
+  ];
+  const failed = (cs: any[]) =>
+    gradeEdit(entry, { status: "completed", calls: cs, artifacts: [] })
+      .filter((c) => !c.passed)
+      .map((c) => c.name);
+  assert.deepEqual(failed(calls), []);
+  assert.deepEqual(failed([...calls, { name: "screen_record_start", args: {}, result: {} }]), [
+    "Edited, not re-recorded",
+  ]);
+  assert.ok(failed(calls.slice(1)).includes("Brought in the founder's recordings"));
+});

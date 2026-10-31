@@ -17,6 +17,7 @@ import {
 import { writingCases, writingToolsCase } from "../writing-cases.js";
 import { browserToolsCase } from "../browser-tools.js";
 import { demoCases } from "../computer-demo-cases.js";
+import { editCases } from "../edit-cases.js";
 import { caseSchema, type EvalCase } from "./contracts.js";
 
 /** A fixture whose script and files are pinned by hash: the Streaks repo the "from
@@ -43,12 +44,12 @@ const packlightFiles = (dir = "scripts/evals/fixtures/packlight"): string[] =>
         : [`${dir}/${entry.name}`],
     )
     .sort();
-const fixture = (script: string, files: string[] = []) => {
+const fixture = (script: string, files: string[] = [], extra: string[] = []) => {
   if (script === "scripts/evals/packlight-fixture.mjs")
     files = [...files, ...packlightFiles()];
   const hook = (mode: string) => ({
     executable: process.execPath,
-    args: [repoFile(script), mode],
+    args: [repoFile(script), mode, ...extra],
     ...(script === "scripts/evals/packlight-fixture.mjs"
       ? { timeout_ms: 180_000 }
       : {}),
@@ -125,6 +126,30 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       computer: { id: c.id, attempt, nonce, contract: c },
       prerequisites: ["desktop_connected", "independent_observer_ready"],
       source: `apps/api/src/evals/computer-${platform === "darwin" ? "mac-" : ""}cases.ts`,
+    }),
+  );
+  const edits = editCases.map((c) =>
+    caseSchema.parse({
+      id: `content-${c.id}`,
+      plugin: "content",
+      level: 3,
+      title: c.name,
+      turns: [
+        {
+          brief: c.brief,
+          video_case: c.id,
+          video_expect: { exports: 1, seconds: c.video.seconds },
+          exports: 1,
+        },
+      ],
+      criteria: criteria(c.criteria),
+      fixture: fixture(
+        "scripts/evals/recordings-fixture.mjs",
+        [...c.clips.map((clip) => `fixtures/evals/recordings/${c.set}/${clip}`)],
+        [c.set],
+      ),
+      prerequisites: ["desktop_connected", "working_folder_set", "media_providers_ready"],
+      source: "apps/api/src/evals/edit-cases.ts",
     }),
   );
   const demos = demoCases.map((c) =>
@@ -248,6 +273,7 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
     ...browser,
     ...computers,
     ...demos,
+    ...edits,
     caseSchema.parse({
       id: "media-M1",
       revision: 3,
