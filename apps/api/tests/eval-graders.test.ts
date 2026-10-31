@@ -579,4 +579,10 @@ test("an editing eval needs the founder's recordings edited, not re-recorded", a
   ]);
   assert.deepEqual(failed([...calls, { name: "browser_open", args: {}, result: {} }]), []);
   assert.ok(failed(calls.slice(1)).includes("Brought in the founder's recordings"));
+  // Reading the track in (to listen to its length) brings it in too.
+  const read = { ...upload("music.mp3", "m0000000"), name: "read_file" };
+  assert.deepEqual(failed(calls.map((c) => (c.args.path?.endsWith("music.mp3") ? read : c))), []);
+  assert.deepEqual(failed(calls.filter((c) => !c.args.path?.endsWith("music.mp3"))), [
+    "Used the founder's track under the voice",
+  ]);
 });

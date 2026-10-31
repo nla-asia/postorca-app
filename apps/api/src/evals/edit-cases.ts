@@ -69,11 +69,12 @@ export function gradeEdit(
   evidence: Pick<EvalEvidence, "status" | "calls" | "artifacts">,
 ): EvalCheck[] {
   const ok = evidence.calls.filter((c) => c.result && !c.result.error);
-  const uploads = ok.filter((c) => c.name === "upload_file");
+  // A file comes in through upload_file, or read_file for one Orca also looks at.
+  const uploads = ok.filter((c) => c.name === "upload_file" || c.name === "read_file");
   const uploaded = entry.clips.filter((clip) =>
     uploads.some((c) => String(c.args.path ?? "").endsWith(clip)),
   );
-  // A scene's video_file is a ref the upload returned (or a prefix of its key).
+  // A scene's video_file is a ref the upload or read returned (or a prefix of its key).
   const refs = uploads.flatMap((c) => valuesOf(c.result));
   const fromUpload = (file: unknown) =>
     typeof file === "string" && file.length >= 6 && refs.some((r) => r === file || r.includes(file));
