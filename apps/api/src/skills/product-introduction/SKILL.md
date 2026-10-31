@@ -29,6 +29,8 @@ From these, work out:
 
 Then open the running app in the browser (the README's address) and look at those screens, without recording, so the script matches what is really there. If it isn't running, say which command starts it (from the README or scripts) and ask the founder to start it.
 
+**A mobile app is introduced on the phone,** where people use it. Check whether it runs in the iOS Simulator: `list_capture_targets` lists a booted Simulator, and the project's scripts or README say how it runs on iOS; if it does, look at it there too. Its web version (React Native, Flutter and others often have one) works for flows that look the same on web; anything only the phone does, such as the share sheet, the camera or notifications, is shown on the phone, never left out because the web version lacks it. Say in the script where each shot is recorded.
+
 ## 2. The script for the founder
 
 One message, short enough to review without scrolling back and forth:

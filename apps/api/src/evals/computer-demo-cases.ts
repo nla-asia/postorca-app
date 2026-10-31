@@ -51,8 +51,9 @@ const videoReview = [
   "Format, length and captions fit the requested platform; the video is delivered as an MP4.",
 ];
 
-const introRequest = (product: string) =>
-  `I haven't posted anything about ${product} yet. Can you make a launch video introducing the whole product for LinkedIn? Around 30 sec, landscape, voiceover and captions. The code is in my projects and the app is running locally; record it yourself. ${noPublish}`;
+const introRequest = (product: string, format = "for LinkedIn? Around 30 sec, landscape") =>
+  `I haven't posted anything about ${product} yet. Can you make a launch video introducing the whole product ${format}, voiceover and captions. The code is in my projects and the app is running locally; record it yourself. ${noPublish}`;
+const reel = "as an Instagram reel? Around 30 sec, portrait";
 const scriptReview = (product: string, flows: string) => [
   `The script is easy to review: what ${product} is and who it's for, numbered shots with what's on screen, on-screen text and the voiceover line, the format, and what was assumed or left out.`,
   `It introduces the whole product, not only the latest commit: its core flows in the order a new user meets them (${flows}), each true to the code.`,
@@ -61,6 +62,85 @@ const scriptReview = (product: string, flows: string) => [
 ];
 
 export const demoCases: DemoCase[] = [
+  {
+    id: "script-packlight-intro",
+    level: 3,
+    name: "Product introduction script from the code repo (Packlight React Native app)",
+    app: "web",
+    url: "http://127.0.0.1:4140",
+    fixture_script: "scripts/evals/packlight-fixture.mjs",
+    script_only: true,
+    brief: introRequest("Packlight", reel),
+    typed: [],
+    min_clips: 0,
+    criteria: [
+      ...scriptReview(
+        "Packlight",
+        "choosing a trip, packing checkboxes and progress, adding an item, previewing the list, sharing the list on iPhone",
+      ),
+      "It plans where each shot is recorded: the web version can show the shared flows, and native sharing needs the iPhone app. It invents no backend, accounts, reminders or camera features.",
+    ],
+  },
+  // Script to video on a mobile app, two ways: through its web version, and in the
+  // iPhone Simulator for what only the native app does.
+  {
+    id: "demo-packlight-web-from-script",
+    level: 3,
+    name: "From an approved product introduction script to the video, through the web version (Packlight)",
+    app: "web",
+    url: "http://127.0.0.1:4140",
+    fixture_script: "scripts/evals/packlight-fixture.mjs",
+    brief: `${introRequest("Packlight", reel)}
+
+You sent me this script and I approved it, go ahead and make the video:
+
+**What it is:** Packlight, a packing list for your trips.
+**Format:** about 30 sec, portrait 9:16 for Instagram, voiceover and captions.
+
+**Shots:**
+1. On screen: the sample trips, then open A weekend away. On-screen text: "Introducing Packlight". Voiceover: "Packlight keeps the little things for your trip in one place."
+2. On screen: the Chiang Mai packing list at 2 of 6 packed. Voiceover: "Pick a trip and see what's packed and what's still to go."
+3. On screen: add "Travel adapter", then tick Phone charger; the count becomes 3 of 7. Voiceover: "Add one more thing, tick off what's in your bag, and watch the list move toward ready."
+4. On screen: open Preview packing list. On-screen text: "Packlight". Voiceover: "Check the whole list before you go. That's Packlight."`,
+    typed: ["Travel adapter"],
+    min_clips: 2,
+    video: { seconds: [20, 40] },
+    criteria: [
+      "The video follows the approved shots in order on the real app, readable in portrait: Travel adapter is added, Phone charger is checked, progress becomes 3 of 7 and the preview shows the updated list.",
+      "It stays a straightforward product demo, like a product page introducing Packlight, and claims nothing the script doesn't.",
+      ...videoReview,
+    ],
+  },
+  {
+    id: "demo-packlight-sim-from-script",
+    level: 3,
+    name: "From an approved product introduction script to the video, in the iPhone Simulator (Packlight)",
+    app: "simulator",
+    fixture_script: "scripts/evals/packlight-fixture.mjs",
+    brief: `${introRequest("Packlight", reel)}
+
+You sent me this script and I approved it, go ahead and make the video:
+
+**What it is:** Packlight, a packing list for your trips.
+**Format:** about 30 sec, portrait 9:16 for Instagram, voiceover and captions.
+
+**Shots:**
+1. On screen: the sample trips, then open A weekend away. On-screen text: "Introducing Packlight". Voiceover: "Packlight keeps the little things for your trip in one place."
+2. On screen: add "Travel adapter", then tick Phone charger; the count becomes 3 of 7. Voiceover: "Add what you need and tick things off as they go in your bag."
+3. On screen: tap Share packing list; the iPhone share sheet opens with the list. Voiceover: "On iPhone, share your packing list with whoever you're travelling with."
+4. On screen: close the share sheet and hold on the packing list. On-screen text: "Packlight". Voiceover: "A little less to remember. That's Packlight."
+
+Only open and close the share sheet: don't choose anyone or send anything.`,
+    typed: ["Travel adapter"],
+    min_clips: 2,
+    video: { seconds: [20, 40] },
+    criteria: [
+      "The video follows the approved shots in order in the iPhone app: Travel adapter added, Phone charger checked, 3 of 7, then the real iPhone share sheet with the list, closed without choosing anyone or sending anything.",
+      "The clips show the phone screen itself, with no Simulator window frame or desktop around it, and no fumbling.",
+      ...videoReview,
+    ],
+  },
+
   {
     id: "demo-mac-maps-route",
     level: 2,
@@ -386,6 +466,9 @@ const opensApp = (entry: DemoCase, opened: any) =>
       ? opened?.path === entry.app_path?.replace(/^~/, homedir())
       : opened?.path === appPaths[entry.app as "maps" | "clock"];
 
+/** localhost and 127.0.0.1 are the same local app. */
+const local = (url: string) => url.replace("//localhost:", "//127.0.0.1:");
+
 /** Code to script reads the project and makes nothing: no recording, video or media. */
 function scriptChecks(calls: any[]): EvalCheck[] {
   const made = calls.filter((c) =>
@@ -464,7 +547,7 @@ export function gradeDemoCapture(
           ? ok.some(
               (c) =>
                 c.name === "browser_open" &&
-                String(c.args.url ?? "").startsWith(entry.url ?? "-"),
+                local(String(c.args.url ?? "")).startsWith(local(entry.url ?? "-")),
             )
           : ok.some(
               (c) =>

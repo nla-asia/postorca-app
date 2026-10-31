@@ -527,3 +527,49 @@ These are runner checks, not claims that live PostOrca agent cases passed.
 `apps/desktop/electron/eval-observer.test.cjs` covers native readback, incorrect
 answer preservation, active control, missing/truncated evidence and inspector
 operation/endpoint restrictions without operating the desktop.
+
+### Packlight: React Native mobile product, web and Simulator
+
+`Packlight` is an Expo SDK 58 / React Native packing-list fixture. It has two sample
+trips, item check-offs, an add-item field, progress and a list preview. There is no
+backend, sign-in or persisted user data; reload or **Reset sample trips** restores
+the sample lists. The same source runs in a browser and in Expo Go on iPhone.
+The real native **Share packing list** sheet is the one intentional difference.
+
+The template is in `scripts/evals/fixtures/packlight`. Install its separate
+node_modules and create the founder-readable project once:
+
+```sh
+node scripts/evals/packlight-fixture.mjs setup
+```
+
+Add `~/PostOrca Evals/packlight` to Brand Profile projects. The ordinary fixture
+prepare/observe/cleanup hooks reset its owned source repository, start Metro at
+`http://127.0.0.1:4140`, check for source edits, and stop only the Metro process
+started by that attempt. Setup refuses an existing folder without its ownership
+marker. Dependencies remain outside PostOrca's workspaces; if the template lock
+changes, run setup again. The eval contract pins the helper and the complete
+source template, including its lockfile, rather than only the helper script.
+
+For Simulator, install/open an SDK-compatible Expo Go once with `npm run ios --
+--port 4140` from the project folder, then stop that manual Metro before using
+fixture prepare. With the eval's Metro running and an iPhone already booted,
+`xcrun simctl openurl booted exp://127.0.0.1:4140` opens the app. Expo Go welcome,
+developer or permission overlays must be dismissed before recording. Turn off the
+Expo Go developer menu’s **Tools button** to hide its floating gear. Do not run
+a second Metro on the same port. A custom native build is not required.
+
+Prepared cases (no automatic agent execution):
+
+- `content-script-packlight-intro`: read the project and propose a portrait product
+  introduction for approval. Distinguish shared web flows from native sharing.
+- `content-demo-packlight-web-from-script`: an approved script using the web app:
+  open a trip, add Travel adapter, check Phone charger and preview the list.
+- `content-demo-packlight-sim-from-script`: the native route, including opening
+  and cancelling the real iPhone share sheet. Never select a recipient or send.
+
+Both video cases require real clips, narration, captions and a portrait export.
+Their reset baseline is 2 of 6 packed; the actions produce 3 of 7. Simulator clips
+must use the device-screen capture target. The native case cannot pass with a
+web imitation of the share sheet. Recording, model calls and exports happen only
+when an operator explicitly runs a prepared eval through the existing workflow.
