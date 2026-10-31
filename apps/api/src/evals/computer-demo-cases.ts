@@ -4,9 +4,10 @@
  * clips; level 3 also edits them into a narrated demo video.
  * Writes happen only in the Simulator: Mac Notes, Reminders and Calendar sync to iCloud.
  */
+import { homedir } from "node:os";
 import type { EvalCheck, EvalEvidence } from "./computer-eval-types.js";
 
-export type DemoApp = "maps" | "clock" | "simulator" | "web";
+export type DemoApp = "maps" | "clock" | "simulator" | "web" | "desktop";
 export type DemoCase = {
   id: string;
   level: 2 | 3;
@@ -14,6 +15,8 @@ export type DemoCase = {
   app: DemoApp;
   /** web: the local app's address, opened in the founder's browser. */
   url?: string;
+  /** desktop: the app bundle the fixture opens, ~ for the home folder. */
+  app_path?: string;
   /** Finds what to demo in the founder's recent work (the work fixture). */
   read_work?: boolean;
   /** The work fixture's script, when it isn't the Streaks one. */
@@ -243,6 +246,21 @@ You sent me this script and I approved it, go ahead and make the video:
       ...videoReview,
     ],
   },
+  // A desktop app with no web way in: looking at it, and later recording it, takes
+  // computer use.
+  {
+    id: "script-quill-intro",
+    level: 3,
+    name: "Product introduction script from the code repo (Quill desktop notes app)",
+    app: "desktop",
+    app_path: "~/PostOrca Evals/.quill-runtime/Quill.app",
+    fixture_script: "scripts/evals/quill-fixture.mjs",
+    script_only: true,
+    brief: introRequest("Quill"),
+    typed: [],
+    min_clips: 0,
+    criteria: scriptReview("Quill", "such as writing a note with the live preview, finding one with search, a new note from the File menu, pinning, Settings with the dark theme"),
+  },
   // Script to video on a richer app: sign in off camera, a dropdown, line items added and
   // typed into, live totals and status buttons, all on camera.
   {
@@ -273,6 +291,38 @@ You sent me this script and I approved it, go ahead and make the video:
       "The video follows the approved script: each shot in order with its voiceover line and on-screen text, the invoice built with both line items and the total updating, then sent and paid.",
       "Sign-in happens before recording, never on camera, and the clips show no fumbling: no failed selections, wrong fields or retyped values.",
       "It stays a straightforward product demo, like a product page introducing Ledgerly, and claims nothing the script doesn't.",
+      ...videoReview,
+    ],
+  },
+  // Script to video on a desktop app: every step goes through computer use (typing,
+  // a menu, search, a small button and a second window), on camera.
+  {
+    id: "demo-quill-from-script",
+    level: 3,
+    name: "From an approved product introduction script to the video (Quill desktop notes app)",
+    app: "desktop",
+    app_path: "~/PostOrca Evals/.quill-runtime/Quill.app",
+    fixture_script: "scripts/evals/quill-fixture.mjs",
+    brief: `${introRequest("Quill")}
+
+You sent me this script and I approved it, go ahead and make the video:
+
+**What it is:** Quill, quiet notes for your desktop.
+**Format:** about 30 sec, landscape 16:9 for LinkedIn, voiceover and captions.
+
+**Shots:**
+1. On screen: the Quill window with the sidebar, the editor and the preview. On-screen text: "Introducing Quill". Voiceover: "Introducing Quill, quiet notes for your desktop."
+2. On screen: in the Weekly plan note, type a new line "- Send the invites" at the end; it appears as a new list item in the preview as you type. Voiceover: "Write in Markdown on the left, and watch it turn into clean formatting on the right as you type."
+3. On screen: File, New Note, then type "# Launch checklist" as its title. Voiceover: "Start a new note from the File menu, or with Command N."
+4. On screen: type "ideas" in Search notes so the list narrows to Chapter 3 ideas, then click its star to pin it. Voiceover: "Find any note with search, and pin the ones you need to the top."
+5. On screen: Quill, Settings, switch Theme to Dark; the main window turns dark. On-screen text: "Quill". Voiceover: "Switch to the dark theme in Settings. That's Quill."`,
+    typed: ["send the invites", "launch checklist", "ideas"],
+    min_clips: 3,
+    video: { seconds: [20, 40] },
+    criteria: [
+      "The video follows the approved script: each shot in order with its voiceover line and on-screen text, and every action visibly works (the new list item in the preview, the new note, the narrowed and pinned list, the dark theme).",
+      "The clips show no fumbling: no missed clicks, wrong menus, stray windows or retyped text, and the pointer moves like a person's.",
+      "It stays a straightforward product demo, like a product page introducing Quill, and claims nothing the script doesn't.",
       ...videoReview,
     ],
   },
@@ -327,11 +377,13 @@ const fileOf = (artifact: any) => {
     return undefined;
   }
 };
-const opensApp = (app: "maps" | "clock" | "simulator", opened: any) =>
-  app === "simulator"
+const opensApp = (entry: DemoCase, opened: any) =>
+  entry.app === "simulator"
     ? opened?.name === "Simulator" &&
       /\/Simulator\.app$/.test(opened?.path ?? "")
-    : opened?.path === appPaths[app];
+    : entry.app === "desktop"
+      ? opened?.path === entry.app_path?.replace(/^~/, homedir())
+      : opened?.path === appPaths[entry.app as "maps" | "clock"];
 
 /** Code to script reads the project and makes nothing: no recording, video or media. */
 function scriptChecks(calls: any[]): EvalCheck[] {
@@ -390,7 +442,7 @@ export function gradeDemoCapture(
     new Set<string>(
       (c.result?.apps ?? [])
         .filter((app: any) =>
-          opensApp(entry.app as "maps" | "clock" | "simulator", app),
+          opensApp(entry, app),
         )
         .flatMap((app: any) =>
           (app.windows ?? []).map((w: any) => String(w.id)),
@@ -417,7 +469,7 @@ export function gradeDemoCapture(
               (c) =>
                 c.name === "computer_open" &&
                 (c.result.apps ?? []).some((app: any) =>
-                  opensApp(entry.app as "maps" | "clock" | "simulator", app),
+                  opensApp(entry, app),
                 ),
             ) ||
             ok.some(
