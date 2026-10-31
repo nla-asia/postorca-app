@@ -153,11 +153,19 @@ async function prepare(attempt) {
       const response = await fetch(url, { signal: AbortSignal.timeout(1000) });
       if (response.ok) {
         // Like a founder's app already open on their iPhone: open it in a booted
-        // Simulator with Expo Go, if there is one.
+        // Simulator with Expo Go, if there is one. A web video case is an app that
+        // only runs as a web page, so there it is closed instead.
+        const demo = await readFile(join(attempt, "case.json"), "utf8").then((c) => JSON.parse(c).demo, () => null);
+        const webOnly = demo?.app === "web" && !!demo?.video;
         let simulator = "none booted";
         try {
-          execFileSync("xcrun", ["simctl", "openurl", "booted", "exp://127.0.0.1:4140"], { stdio: "ignore" });
-          simulator = "opened exp://127.0.0.1:4140";
+          if (webOnly) {
+            execFileSync("xcrun", ["simctl", "terminate", "booted", "host.exp.Exponent"], { stdio: "ignore" });
+            simulator = "Expo Go closed: web only";
+          } else {
+            execFileSync("xcrun", ["simctl", "openurl", "booted", "exp://127.0.0.1:4140"], { stdio: "ignore" });
+            simulator = "opened exp://127.0.0.1:4140";
+          }
         } catch {}
         return {
           folder,
