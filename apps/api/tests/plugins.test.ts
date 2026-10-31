@@ -637,6 +637,7 @@ test("the browser plugin offers its desktop tools and skill, and validates calls
         "browser_select",
         "browser_press",
         "browser_scroll",
+        "browser_hover",
         "browser_close",
       ],
     );

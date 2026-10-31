@@ -128,6 +128,8 @@ function describe(
       return `Chose “${clip(args.option)}”`;
     case "browser_press":
       return `Pressed ${args.key}`;
+    case "browser_hover":
+      return "Hovered";
     case "browser_scroll":
       return `Scrolled ${args.direction}`;
     case "browser_close":
