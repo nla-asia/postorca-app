@@ -3,7 +3,7 @@ import { before, after, test, mock } from "node:test";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { once } from "node:events";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -745,4 +745,47 @@ test("the desktop's WAV reaches Meta through the thin route, charged to its own 
   });
   assert.equal(file.status, 404);
   assert.equal(requests.length, before);
+});
+
+test("a recording's size comes from its header; previews say when the video runs silent or a focus leaves the frame empty", async () => {
+  const { mp4Info, silentTail, framingNotes } = await import("../src/plugins/video/index.js");
+  const box = (type: string, body: Buffer) => {
+    const size = Buffer.alloc(4);
+    size.writeUInt32BE(body.length + 8);
+    return Buffer.concat([size, Buffer.from(type, "latin1"), body]);
+  };
+  const mvhd = Buffer.alloc(100);
+  mvhd.writeUInt32BE(600, 12);
+  mvhd.writeUInt32BE(9 * 600, 16);
+  const tkhd = Buffer.alloc(84);
+  tkhd.writeUInt32BE(2940 * 65536, 76);
+  tkhd.writeUInt32BE(1846 * 65536, 80);
+  const file = join(await mkdtemp(join(tmpdir(), "mp4-")), "clip.mp4");
+  await writeFile(
+    file,
+    Buffer.concat([box("ftyp", Buffer.from("isom\0\0\0\0")), box("moov", Buffer.concat([box("mvhd", mvhd), box("trak", box("tkhd", tkhd))]))]),
+  );
+  assert.deepEqual(await mp4Info(file), { seconds: 9, width: 2940, height: 1846 });
+
+  assert.equal(silentTail(22_000, 19_400), undefined);
+  assert.match(silentTail(26_500, 19_400)!, /runs 7\.1 s after the voiceover ends/);
+
+  const aspect = 2940 / 1846;
+  // A row of cards is a fine close-up in landscape; a sliver isn't.
+  assert.deepEqual(framingNotes([{ focus: { width: 0.78, height: 0.38 }, aspect }], "16:9"), []);
+  const [sliver] = framingNotes([{ focus: { width: 0.9, height: 0.2 }, aspect }], "16:9");
+  assert.match(sliver, /Scene 1's focus is 7\.2:1 .* Make it taller/);
+  assert.deepEqual(framingNotes([{ focus: { width: 0.92, height: 0.84 }, aspect }, {}], "16:9"), []);
+  const app = { width: 0.99, height: 0.86 };
+  const [overview] = framingNotes([{ focus: app, aspect }, { focus: app, aspect }, { focus: { width: 0.4, height: 0.3 }, aspect }], "16:9");
+  assert.match(overview, /^Scenes 1, 2 each show the whole app/);
+  const [whole] = framingNotes([{ aspect }, { focus: { width: 0.92, height: 0.84 }, aspect }, { aspect }], "16:9");
+  assert.match(whole, /^Scenes 1, 3 show the whole recording/);
+  const { unframedClips } = await import("../src/plugins/video/index.js");
+  const focus = { x: 0, y: 0, width: 1, height: 1 };
+  assert.deepEqual(
+    unframedClips([{ video_file: "a" }, { video_file: "a", focus }, { text: "Card" } as any, { video_file: "b", device: "phone" }]),
+    [1],
+  );
+  assert.match(framingNotes([{ focus: { width: 0.9, height: 0.5 }, aspect }], "9:16")[0], /Make it taller/);
 });

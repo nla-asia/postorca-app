@@ -194,11 +194,17 @@ type SceneArgs = Clip["scenes"][number];
 
 /** Length in seconds of an MP4/QuickTime file, from its movie header; null when absent. */
 export async function mp4Seconds(path: string) {
+  return (await mp4Info(path))?.seconds ?? null;
+}
+
+/** An MP4's duration and its video track's size, read from its header without decoding. */
+export async function mp4Info(path: string) {
   const handle = await open(path, "r");
   try {
     const { size } = await handle.stat();
     const header = Buffer.alloc(16);
-    async function find(type: string, start: number, end: number) {
+    async function boxes(type: string, start: number, end: number) {
+      const found: { start: number; end: number }[] = [];
       for (let offset = start; offset + 8 <= end;) {
         await handle.read(header, 0, 16, offset);
         let length = header.readUInt32BE(0),
@@ -207,15 +213,15 @@ export async function mp4Seconds(path: string) {
           length = Number(header.readBigUInt64BE(8));
           body = 16;
         } else if (length === 0) length = end - offset;
-        if (length < body) return null;
+        if (length < body) break;
         if (header.toString("latin1", 4, 8) === type)
-          return { start: offset + body, end: offset + length };
+          found.push({ start: offset + body, end: offset + length });
         offset += length;
       }
-      return null;
+      return found;
     }
-    const moov = await find("moov", 0, size);
-    const mvhd = moov && (await find("mvhd", moov.start, moov.end));
+    const [moov] = await boxes("moov", 0, size);
+    const [mvhd] = moov ? await boxes("mvhd", moov.start, moov.end) : [];
     if (!mvhd) return null;
     const box = Buffer.alloc(32);
     await handle.read(box, 0, 32, mvhd.start);
@@ -223,10 +229,95 @@ export async function mp4Seconds(path: string) {
       box[0] === 1
         ? [box.readUInt32BE(20), Number(box.readBigUInt64BE(24))]
         : [box.readUInt32BE(12), box.readUInt32BE(16)];
-    return scale ? duration / scale : null;
+    let width = 0,
+      height = 0;
+    // The first track with a size is the video; width and height are 16.16 fixed point.
+    for (const trak of await boxes("trak", moov.start, moov.end)) {
+      const [tkhd] = await boxes("tkhd", trak.start, trak.end);
+      if (!tkhd) continue;
+      const head = Buffer.alloc(96);
+      await handle.read(head, 0, 96, tkhd.start);
+      const at = head[0] === 1 ? 88 : 76;
+      width = head.readUInt32BE(at) / 65536;
+      height = head.readUInt32BE(at + 4) / 65536;
+      if (width && height) break;
+    }
+    return {
+      seconds: scale ? duration / scale : null,
+      ...(width && height ? { width, height } : {}),
+    };
   } finally {
     await handle.close();
   }
+}
+
+/** How long the video runs on after the voiceover ends, when that is more than an end card's hold. */
+export function silentTail(totalMs: number, speechMs: number) {
+  const tail = (totalMs - speechMs) / 1000;
+  return tail > 3.5
+    ? `The video runs ${tail.toFixed(1)} s after the voiceover ends; nothing is said over that. Beyond an end card held 2–3 s, trim the last clip (end_seconds), shorten holds, or move lines later so the voice covers the picture.`
+    : undefined;
+}
+
+/**
+ * Recording scenes whose focus is far from the frame's shape: only the focus shows, so
+ * the rest of the frame is blur. The frame here is the space above the captions.
+ */
+export function framingNotes(
+  scenes: {
+    focus?: { width: number; height: number };
+    // A close-up named by its text (focus_on): framed, and not the whole app.
+    focus_on?: unknown;
+    aspect?: number | null;
+  }[],
+  format: string,
+) {
+  const [w, h] = format.split(":").map(Number);
+  const frame = (w / h) * (format === "9:16" ? 1 : 1.2);
+  // Only clip scenes carry an aspect here.
+  const whole = scenes.flatMap((scene, index) =>
+    scene.aspect && !scene.focus && !scene.focus_on ? [index + 1] : [],
+  );
+  const unfocused = whole.length
+    ? [
+        `Scene${whole.length > 1 ? "s" : ""} ${whole.join(", ")} show${whole.length > 1 ? "" : "s"} the whole recording: whatever was captured around the app (browser tabs and address bar, banners, the desktop) shows, and the app is smaller. Give each a focus: the app itself inside those bars for an overview, or the part in action (focus_on).`,
+      ]
+    : [];
+  // A focus on most of the recording is an overview: once sets the scene, but in every
+  // shot nothing stands out and the text stays small.
+  const overviews = scenes.flatMap((scene, index) =>
+    scene.aspect && scene.focus && scene.focus.width * scene.focus.height > 0.6
+      ? [index + 1]
+      : [],
+  );
+  const zoom =
+    overviews.length > 1
+      ? [
+          `Scenes ${overviews.join(", ")} each show the whole app, so nothing in them stands out and its text stays small. Show it whole once to set the scene, then zoom in: focus_on what each later line is about (the field being filled, the number that changes, the status that appears).`,
+        ]
+      : [];
+  return unfocused.concat(
+    zoom,
+    scenes.flatMap((scene, index) => {
+      if (!scene.focus || !scene.aspect) return [];
+      const box = (scene.focus.width * scene.aspect) / scene.focus.height;
+      const fills = Math.min(box / frame, frame / box);
+      return fills < 0.5
+        ? [
+            `Scene ${index + 1}'s focus is ${box.toFixed(1)}:1 in a ${frame.toFixed(1)}:1 frame, so it fills only ${Math.round(fills * 100)}% of it and shows small. Make it ${box > frame ? "taller" : "wider"}, closer to the frame's shape, keeping the elements the scene needs.`,
+          ]
+        : [];
+    }),
+  );
+}
+
+/** Clip scenes, numbered from 1, that show their recording with no focus or device frame. */
+export function unframedClips(
+  scenes: { video_file?: string; focus?: unknown; focus_on?: unknown; device?: unknown }[],
+) {
+  return scenes.flatMap((scene, index) =>
+    scene.video_file && !scene.focus && !scene.focus_on && !scene.device ? [index + 1] : [],
+  );
 }
 
 /**
@@ -438,7 +529,10 @@ function voiceoverLines(transcript: Transcript) {
 
 async function prepare(context: PluginContext, clip: Clip) {
   const images = new Map<string, string>();
-  const videos = new Map<string, { key: string; seconds: number | null }>();
+  const videos = new Map<
+    string,
+    { key: string; seconds: number | null; aspect: number | null }
+  >();
   for (const scene of clip.scenes) {
     if (scene.image_file && !images.has(scene.image_file))
       images.set(
@@ -447,9 +541,11 @@ async function prepare(context: PluginContext, clip: Clip) {
       );
     if (scene.video_file && !videos.has(scene.video_file)) {
       const key = await ownedFile(context, scene.video_file, "video");
+      const info = await mp4Info(filePath(key)).catch(() => null);
       videos.set(scene.video_file, {
         key,
-        seconds: await mp4Seconds(filePath(key)).catch(() => null),
+        seconds: info?.seconds ?? null,
+        aspect: info?.width && info.height ? info.width / info.height : null,
       });
     }
   }
@@ -546,6 +642,8 @@ async function prepare(context: PluginContext, clip: Clip) {
       transcript: (clip.captions ?? true) ? transcript : undefined,
       brand,
     },
+    // Seconds of picture after the last word, for export to hold to.
+    tail: transcript ? (totalMs - speechMs) / 1000 : 0,
     timing: {
       duration_seconds: totalMs / 1000,
       brand_colors: Object.keys(colors).length
@@ -565,6 +663,23 @@ async function prepare(context: PluginContext, clip: Clip) {
       ...(extension > 0 && {
         note: `The last scene was extended by ${(extension / 1000).toFixed(1)} s to cover the voiceover.`,
       }),
+      ...(transcript &&
+        silentTail(totalMs, speechMs) && {
+          silent_tail: silentTail(totalMs, speechMs),
+        }),
+      ...(() => {
+        const framing = framingNotes(
+          clip.scenes.map((scene) => ({
+            focus: scene.focus,
+            focus_on: (scene as { focus_on?: string[] }).focus_on,
+            aspect: scene.video_file
+              ? videos.get(scene.video_file)!.aspect
+              : null,
+          })),
+          format,
+        );
+        return framing.length ? { framing } : {};
+      })(),
       // Viewers need longer to read a screen recording than to take in a photo.
       ...(totalMs / shots >
         (clip.scenes.some((scene) => scene.video_file) ? 5000 : 3000) && {
@@ -590,8 +705,19 @@ function videoTool(
     async run(context, input) {
       try {
         const { title, times_seconds, ...clip } = input;
-        const { render, timing } = await prepare(context, clip);
         const preview = name === "video_preview_frames";
+        // An export says how each recording is framed; a preview may look at it raw.
+        const unframed = preview ? [] : unframedClips(clip.scenes);
+        if (unframed.length)
+          throw new HttpError(
+            400,
+            `Scene${unframed.length > 1 ? "s" : ""} ${unframed.join(", ")} show${unframed.length > 1 ? "" : "s"} a recording with no focus. Give every clip scene a focus: the app inside whatever was captured around it (browser bars, banners, the desktop) for an overview, the whole frame (0, 0, 1, 1) if the recording is only the app, or focus_on the part in action. Preview, then export.`,
+          );
+        const { render, timing, tail } = await prepare(context, clip);
+        // A preview shows the silence; an export with seconds of it after the last word
+        // (beyond an end card) would ship it.
+        if (!preview && tail > 5)
+          throw new HttpError(400, `${silentTail(tail * 1000, 0)} Fix it, preview, then export.`);
         const times: number[] = preview ? times_seconds.slice(0, 8) : [];
         const result = await callDesktop(
           context,
