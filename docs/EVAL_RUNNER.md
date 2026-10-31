@@ -389,6 +389,9 @@ pinned set from `fixtures/evals/recordings/` into the working folder's `eval-fix
   track, to a tight 25–30 s launch video. Besides the usual checks, it checks that the
   wrong turn and the typo were cut (no scene plays those seconds of the take).
   `scripts/evals/recordings/record-ledgerly-take.cjs` records the take again if needed.
+- `content-edit-packlight-reel`: three iPhone Simulator recordings of Packlight (status
+  bar and all) and a track, to a 15–20 s vertical Reel. Besides the usual checks, it
+  checks the export is 9:16.
 
 ### Product-demo cases (Computer level 2, Content level 3)
 

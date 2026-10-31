@@ -14,7 +14,7 @@ export type EditCase = {
   /** A track the founder hands over with the recordings, in the same folder. */
   music?: string;
   brief: string;
-  video: { seconds: [number, number] };
+  video: { seconds: [number, number]; format?: "9:16" | "4:5" | "1:1" | "16:9" };
   /** Mistakes in a recording that the edit must leave out: seconds of that clip. */
   cuts?: { name: string; clip: string; from: number; to: number }[];
   criteria: string[];
@@ -110,6 +110,29 @@ ${noPublish}`,
       ...professional,
     ],
   },
+  {
+    // Phone recordings to a vertical Reel: portrait, small touch UI, the iOS status bar
+    // in every clip, and a share sheet over the app.
+    id: "edit-packlight-reel",
+    name: "Edit given phone recordings into a vertical Reel (Packlight iPhone app)",
+    set: "packlight",
+    clips: ["1-open-trip.mp4", "2-add-and-tick.mp4", "3-share.mp4"],
+    music: "music.mp3",
+    brief: `I recorded my iPhone app Packlight in the Simulator for an Instagram Reel. The recordings are in my working folder, in eval-fixtures/packlight-recordings: 1-open-trip, 2-add-and-tick and 3-share, with music.mp3, a track I picked. Please edit them into a polished vertical Reel: 9:16, around 15–20 sec, voiceover and captions. Make it feel like a good app's Reel, not a screen recording.
+
+The script I approved:
+1. The trips, then opening A weekend away. Voiceover: "Packlight keeps the little things for your trip in one place."
+2. Adding Travel adapter, then ticking Phone charger; the count goes up. Voiceover: "Add what you need and tick things off as they go in your bag."
+3. Share packing list; the share sheet opens. Voiceover: "Share your packing list with whoever you're travelling with."
+4. Back on the list. Voiceover: "A little less to remember. That's Packlight."
+
+${noPublish}`,
+    video: { seconds: [12, 28], format: "9:16" },
+    criteria: [
+      "It follows the approved script: every line spoken over the screen it describes, Travel adapter added and Phone charger ticked with the count going up, and the share sheet opening.",
+      ...professional,
+    ],
+  },
 ];
 
 const valuesOf = (value: unknown): string[] =>
@@ -152,6 +175,15 @@ export function gradeEdit(
   };
   return [
     { name: "Turn completed", passed: evidence.status === "completed" },
+    ...(entry.video.format
+      ? [
+          {
+            name: `Exported ${entry.video.format}`,
+            passed: (last?.args.format ?? "9:16") === entry.video.format,
+            details: last?.args.format ?? "9:16 (default)",
+          },
+        ]
+      : []),
     {
       name: "Brought in the founder's recordings",
       passed: uploaded.length === entry.clips.length,

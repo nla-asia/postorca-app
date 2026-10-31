@@ -632,3 +632,17 @@ test("an editing eval with mistakes in the take checks they were cut", async () 
   assert.deepEqual(timed(opening, [0, 4], 10), []);
   assert.deepEqual(timed(opening, [0, 9], 15), ["Cut the wrong turn into Clients"]);
 });
+
+test("an editing eval for a Reel checks the export is vertical", async () => {
+  const { editCases, gradeEdit } = await import("../src/evals/edit-cases.js");
+  const entry = editCases.find((c) => c.id === "edit-packlight-reel")!;
+  const check = (format?: string) =>
+    gradeEdit(entry, {
+      status: "completed",
+      calls: [{ name: "video_export", args: { ...(format && { format }), scenes: [] }, result: { ref: "out" } }],
+      artifacts: [],
+    }).find((c) => c.name === "Exported 9:16")!.passed;
+  assert.equal(check("9:16"), true);
+  assert.equal(check(), true);
+  assert.equal(check("16:9"), false);
+});
