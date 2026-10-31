@@ -159,6 +159,8 @@ function withAssets(args, context, run) {
           src,
           clip,
           text: scene.text ?? null,
+          subtitle: scene.subtitle ?? null,
+          label: scene.label ?? null,
           durationMs: scene.duration_ms,
           fit: scene.fit ?? "cover",
           device: scene.device ?? null,

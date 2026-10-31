@@ -73,8 +73,20 @@ const clipArgs = z
               .max(120)
               .optional()
               .describe(
-                "Headline sticker over an image or clip, or a text card without either.",
+                "Headline sticker over an image or clip, or the title of a card without either: an intro card, a section card between flows, an end card.",
               ),
+            subtitle: z
+              .string()
+              .trim()
+              .max(120)
+              .optional()
+              .describe("Card only: a smaller line under the title, such as what the product does."),
+            label: z
+              .string()
+              .trim()
+              .max(60)
+              .optional()
+              .describe("Card only: a small line above the title, such as the step number or, on an end card, the URL."),
             says: z
               .string()
               .trim()
@@ -117,6 +129,10 @@ const clipArgs = z
           .refine(
             (scene) => !!(scene.image_file || scene.video_file || scene.text),
             { message: "A scene needs an image_file, video_file or text." },
+          )
+          .refine(
+            (scene) => !((scene.subtitle || scene.label) && (scene.image_file || scene.video_file || !scene.text)),
+            { message: "subtitle and label belong to a card: a scene with text and no image or video." },
           )
           .refine((scene) => !(scene.image_file && scene.video_file), {
             message: "Use image_file or video_file in a scene, not both.",
@@ -504,6 +520,8 @@ async function prepare(context: PluginContext, clip: Clip) {
             ? images.get(scene.image_file)
             : undefined,
         text: scene.text || undefined,
+        subtitle: scene.subtitle || undefined,
+        label: scene.label || undefined,
         duration_ms: durations[index],
         ...(clips[index] && {
           start_ms: clips[index].start_ms,
