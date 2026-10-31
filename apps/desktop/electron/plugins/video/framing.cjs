@@ -148,17 +148,18 @@ function textBox(lines, names) {
 /**
  * A close-up around `box` (fractions of a picture `aspect` wide per unit tall): room
  * around the elements, at least a third of the picture's width so the app stays
- * recognisable, and shaped toward the space it fills (`frame`, width over height) so
- * it shows large. Kept inside the picture.
+ * recognisable, and no narrower than the space it fills (`frame`, width over height)
+ * allows for showing it large. Kept inside the picture.
  */
 function closeUp(box, aspect, frame) {
   const room = 0.04;
   let width = (box.width + 2 * room) * aspect,
     height = box.height + 2 * room * aspect;
   width = Math.max(width, aspect / 3);
-  // Within three quarters of the frame's shape either way.
+  // A tall, narrow box widens toward the frame's shape. A wide one stays as it is: on the
+  // stage a strip shows large, and growing it taller would reach past the app into
+  // whatever was recorded around it.
   if (width / height < frame * 0.75) width = height * frame * 0.75;
-  if (width / height > frame / 0.75) height = width / (frame / 0.75);
   const w = Math.min(1, width / aspect),
     h = Math.min(1, height);
   const cx = box.x + box.width / 2,

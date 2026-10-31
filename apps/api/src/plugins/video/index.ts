@@ -115,7 +115,7 @@ const clipArgs = z
               .max(4)
               .optional()
               .describe(
-                "For a screen recording: zoom in on these pieces of text as they read on screen (a button's label, a total, a status), instead of a focus box. The close-up is built around them with room to spare and shaped to the frame; a later scene on the same clip moves the camera to its own. Copy the text from the preview's screen_text.",
+                "For a screen recording: zoom in on these pieces of text as they read on screen (a button's label, a total, a status), instead of a focus box. The close-up is built around them with room to spare, so name only the one or two things the line is about: text far apart makes a wide shot. A later scene on the same clip moves the camera to its own. Copy the text from the preview's screen_text.",
               ),
             highlight: region
               .optional()
