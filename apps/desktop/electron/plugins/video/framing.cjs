@@ -5,60 +5,66 @@
  * bar), which reads as a mistake; on an edge, it reads as framed.
  *
  * `gray` is one byte per pixel, `width` × `height`, row by row. Each edge moves at most
- * `reach` of the picture, and stays put when nothing nearby stands out.
+ * `reach` of the picture: onto an edge that cuts nothing, or else into the empty space
+ * beside what it would cut, and stays put when there is neither.
  */
 function snapRegion(gray, width, height, region, { reach = 0.05, contrast = 12 } = {}) {
   const at = (x, y) => gray[y * width + x];
-  // How sharply the picture changes across the vertical line at x (between x-1 and x),
-  // over rows from..to: the mean step between a few pixels either side, so a hairline
-  // scores lower than a real boundary.
-  function columnStep(x, from, to) {
-    const side = Math.min(3, x, width - x);
-    let total = 0;
-    for (let y = from; y < to; y++) {
+  // The line between pixels p-1 and p (columns or rows), over from..to along it: how
+  // sharply the picture changes across it (the mean step between a few pixels either
+  // side, so a hairline scores lower than a real boundary), and whether it runs through
+  // empty space on both sides rather than cutting text or an element.
+  function line(vertical, p, from, to) {
+    const size = vertical ? width : height;
+    const side = Math.min(3, p, size - p);
+    const pixel = (along, across) => (vertical ? at(across, along) : at(along, across));
+    let total = 0,
+      crossings = 0;
+    for (let i = from; i < to; i++) {
       let before = 0,
         after = 0;
       for (let k = 0; k < side; k++) {
-        before += at(x - 1 - k, y);
-        after += at(x + k, y);
+        before += pixel(i, p - 1 - k);
+        after += pixel(i, p + k);
       }
       total += Math.abs(before - after) / side;
-    }
-    return total / Math.max(1, to - from);
-  }
-  function rowStep(y, from, to) {
-    const side = Math.min(3, y, height - y);
-    let total = 0;
-    for (let x = from; x < to; x++) {
-      let before = 0,
-        after = 0;
-      for (let k = 0; k < side; k++) {
-        before += at(x, y - 1 - k);
-        after += at(x, y + k);
+      if (i > from) {
+        if (Math.abs(pixel(i, p) - pixel(i - 1, p)) > 15) crossings++;
+        if (Math.abs(pixel(i, p - 1) - pixel(i - 1, p - 1)) > 15) crossings++;
       }
-      total += Math.abs(before - after) / side;
     }
-    return total / Math.max(1, to - from);
+    const length = Math.max(1, to - from);
+    // An element's corners cross a line that runs past it; text crosses it many times.
+    return { strength: total / length, clear: crossings <= 4 + 0.008 * length };
   }
-  function snap(position, size, step) {
+  // The strongest clear edge nearby, nearer winning a close call; else the nearest clear
+  // line, so the edge at least sits beside what it would cut; else where it was.
+  function snap(vertical, position, from, to, outward) {
+    const size = vertical ? width : height;
     const range = Math.max(1, Math.round(reach * size));
-    let best = position,
-      bestScore = 0;
-    for (
-      let p = Math.max(1, position - range);
-      p <= Math.min(size - 1, position + range);
-      p++
-    ) {
-      const strength = step(p);
-      if (strength < contrast) continue;
-      // Nearer edges win a close call.
-      const score = strength * (1 - (0.5 * Math.abs(p - position)) / range);
-      if (score > bestScore) {
-        best = p;
-        bestScore = score;
+    let edge = null,
+      edgeScore = 0,
+      gap = null;
+    for (let p = Math.max(1, position - range); p <= Math.min(size - 1, position + range); p++) {
+      const { strength, clear } = line(vertical, p, from, to);
+      if (!clear) continue;
+      const distance = Math.abs(p - position);
+      if (gap === null || distance < Math.abs(gap - position)) gap = p;
+      const score = strength * (1 - (0.3 * distance) / range);
+      if (strength >= contrast && score > edgeScore) {
+        edge = p;
+        edgeScore = score;
       }
     }
-    return best;
+    if (edge !== null || gap === null || gap === position) return edge ?? position;
+    // Beside an element, leave a little room, as far as the space stays empty.
+    let roomy = gap;
+    for (let i = 0; i < Math.round(0.012 * size); i++) {
+      const next = roomy + outward;
+      if (next < 1 || next > size - 1 || !line(vertical, next, from, to).clear) break;
+      roomy = next;
+    }
+    return roomy;
   }
   const left = Math.round(region.x * width),
     right = Math.round((region.x + region.width) * width),
@@ -67,10 +73,10 @@ function snapRegion(gray, width, height, region, { reach = 0.05, contrast = 12 }
   const rows = [Math.max(0, top), Math.min(height, bottom)],
     columns = [Math.max(0, left), Math.min(width, right)];
   const snapped = {
-    left: snap(left, width, (x) => columnStep(x, ...rows)),
-    right: snap(right, width, (x) => columnStep(x, ...rows)),
-    top: snap(top, height, (y) => rowStep(y, ...columns)),
-    bottom: snap(bottom, height, (y) => rowStep(y, ...columns)),
+    left: snap(true, left, ...rows, -1),
+    right: snap(true, right, ...rows, 1),
+    top: snap(false, top, ...columns, -1),
+    bottom: snap(false, bottom, ...columns, 1),
   };
   // An edge that wandered past its opposite would turn the region inside out.
   if (snapped.right - snapped.left < (right - left) / 2) {
