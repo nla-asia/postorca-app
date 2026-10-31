@@ -466,6 +466,9 @@ const opensApp = (entry: DemoCase, opened: any) =>
       ? opened?.path === entry.app_path?.replace(/^~/, homedir())
       : opened?.path === appPaths[entry.app as "maps" | "clock"];
 
+/** localhost and 127.0.0.1 are the same local app. */
+const local = (url: string) => url.replace("//localhost:", "//127.0.0.1:");
+
 /** Code to script reads the project and makes nothing: no recording, video or media. */
 function scriptChecks(calls: any[]): EvalCheck[] {
   const made = calls.filter((c) =>
@@ -544,7 +547,7 @@ export function gradeDemoCapture(
           ? ok.some(
               (c) =>
                 c.name === "browser_open" &&
-                String(c.args.url ?? "").startsWith(entry.url ?? "-"),
+                local(String(c.args.url ?? "")).startsWith(local(entry.url ?? "-")),
             )
           : ok.some(
               (c) =>

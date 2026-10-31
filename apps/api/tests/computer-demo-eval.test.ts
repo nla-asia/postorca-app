@@ -279,3 +279,15 @@ test("code to script reads the project and records nothing", () => {
     "Read the project before writing the script",
   ]);
 });
+
+test("a local web app opened as localhost counts as opened", () => {
+  const entry = demo("demo-packlight-web-from-script");
+  const names = failed(
+    gradeDemoCapture(entry, {
+      status: "completed",
+      calls: [{ name: "browser_open", args: { url: "http://localhost:4140/" }, result: { tab: "t1" } }],
+      artifacts: [],
+    }),
+  );
+  assert.ok(!names.includes("Opened the app being demonstrated"));
+});
