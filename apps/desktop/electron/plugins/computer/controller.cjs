@@ -325,6 +325,8 @@ class ComputerController {
     );
     const bitmap = await this.takeCapture(bounds);
     this.check(context);
+    // An observe is a look at the window, which a screen recording of it requires.
+    require("../../tools/screen.cjs").lookedAt(window);
     const image = this.encode(bitmap);
     const id = `o${++this.observationSequence}_${this.observationPrefix}`;
     this.observations.set(window, {

@@ -233,3 +233,24 @@ test("recording a window brings it to the front first, and refuses if it can't",
   assert.deepEqual(order, ["record"]);
   await other.screen_record_stop.run({ id: screen.id }, context);
 });
+
+test("a recording starts only from a screen the agent has just looked at", async () => {
+  const { spawnProcess } = fakeSpawn();
+  const tools = createScreenTools({
+    platform: "darwin",
+    access: () => "granted",
+    spawnProcess,
+    indicator: fakeIndicator(),
+    startupMs: 1,
+    raiseWindow: async () => ({ foreground: true }),
+    requireLook: true,
+  });
+  const target = { type: "window", window_id: 77 };
+  await assert.rejects(tools.screen_record_start.run({ target }), /Look at what you are about to record first/);
+  // A computer-use observe of the window counts as a look.
+  require("./screen.cjs").lookedAt("77");
+  const started = await tools.screen_record_start.run({ target });
+  await tools.screen_record_stop.run({ id: started.id }, context);
+  // Another target still needs its own look.
+  await assert.rejects(tools.screen_record_start.run({ target: { type: "window", window_id: 78 } }), /Look at what/);
+});
