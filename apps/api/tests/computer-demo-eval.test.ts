@@ -264,9 +264,10 @@ test("the idea-to-demo case judges how the recording looks", () => {
     measures([start("a"), missed, stop("a", 6)]).filter((n) => named.test(n)),
     ["No failed input on camera"],
   );
+  // Clip length is the agent's call; the finished video is reviewed.
   assert.deepEqual(
     measures([start("a"), click, stop("a", 28)]).filter((n) => named.test(n)),
-    ["Each clip at most 15 s, so it holds no long pauses"],
+    [],
   );
   // A web demo's browser clicks count as using the app.
   assert.ok(!measures(good).includes("Used the app while recording"));

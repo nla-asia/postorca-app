@@ -229,17 +229,11 @@ function recordingChecks(
       spans.some(([from, to]) => index(c) > from && index(c) < to),
   );
   const fumbled = onCamera.filter((c) => !c.result || c.result.error);
-  const seconds: number[] = clips.map((c) => c.result.duration_seconds);
   return [
     {
       name: "No failed input on camera",
       passed: fumbled.length === 0,
       details: fumbled.map((c) => c.name),
-    },
-    {
-      name: "Each clip at most 15 s, so it holds no long pauses",
-      passed: seconds.every((s) => s <= 15),
-      details: seconds,
     },
     {
       name: "At most 2 takes per clip kept",
