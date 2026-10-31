@@ -157,23 +157,36 @@ export const browserTools: PluginToolDefinition[] = [
   ),
   tool(
     "browser_scroll",
-    "Scroll by most of a screen to see more of a page, feed or list. It scrolls what actually scrolls: the page, or in apps that keep the page fixed, the largest panel that scrolls. To scroll a particular panel, list or dialog, pass ref: an element inside it. Returns where it is (area page or panel, at_end) and the page afterwards like browser_snapshot (in the mode of your last snapshot of this tab): usually only what changed, so you rarely need a separate snapshot.",
-    { tab, direction: { type: "string", enum: ["down", "up"] }, ref },
+    "Scroll by most of a screen to see more of a page, feed or list. It scrolls what actually scrolls: the page, or in apps that keep the page fixed, the largest panel that scrolls. To scroll a particular panel, list or dialog, pass ref (an element inside it) or, when nothing inside has a ref, text visible inside it. Returns where it is (area page or panel, at_end) and the page afterwards like browser_snapshot (in the mode of your last snapshot of this tab): usually only what changed, so you rarely need a separate snapshot.",
+    {
+      tab,
+      direction: { type: "string", enum: ["down", "up"] },
+      ref,
+      text: { type: "string" },
+    },
     ["tab", "direction"],
     z
       .object({
         tab: tabId,
         direction: z.enum(["down", "up"]),
         ref: refId.optional(),
+        text: z.string().min(1).max(200).optional(),
       })
       .strict(),
   ),
   tool(
     "browser_hover",
-    "Move the pointer over an element by ref, for what only shows on hover: tooltips, hover menus, row actions, chart values. Returns the page afterwards like browser_snapshot (in the mode of your last snapshot of this tab): usually only what changed, so you rarely need a separate snapshot.",
-    { tab, ref },
-    ["tab", "ref"],
-    z.object({ tab: tabId, ref: refId }).strict(),
+    "Move the pointer over an element, for what only shows on hover: tooltips, hover menus, row actions, chart values. Give its ref, or for things without one (a table row, a chart bar, a card) text visible in it. Returns the page afterwards like browser_snapshot (in the mode of your last snapshot of this tab): usually only what changed, so you rarely need a separate snapshot.",
+    { tab, ref, text: { type: "string" } },
+    ["tab"],
+    z
+      .object({
+        tab: tabId,
+        ref: refId.optional(),
+        text: z.string().min(1).max(200).optional(),
+      })
+      .strict()
+      .refine((args) => !args.ref !== !args.text, "Give a ref or text, not both."),
   ),
   tool(
     "browser_close",
