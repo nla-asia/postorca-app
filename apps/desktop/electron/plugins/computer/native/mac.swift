@@ -32,6 +32,22 @@ func axFrame(_ element: AXUIElement) -> CGRect? {
 @_silgen_name("_AXUIElementGetWindow")
 func _AXUIElementGetWindow(_ element: AXUIElement, _ id: UnsafeMutablePointer<CGWindowID>) -> AXError
 
+/// Electron apps build the accessibility tree of their content only when an assistive
+/// app asks for it; until then a window shows nothing but its title-bar buttons.
+/// Returns true for an app that takes the request (Electron), whose page content may
+/// take a moment to appear the first time.
+func exposeAppContent(_ pid: pid_t) -> Bool {
+    let app = AXUIElementCreateApplication(pid)
+    AXUIElementSetMessagingTimeout(app, 3)
+    // Electron builds the tree while answering, so a slow answer still means it took.
+    let result = AXUIElementSetAttributeValue(app, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+    return result == .success || result == .cannotComplete
+}
+func hasWebArea(_ element: AXUIElement, _ depth: Int) -> Bool {
+    if axValue(element, kAXRoleAttribute) as? String == "AXWebArea" { return true }
+    guard depth > 0 else { return false }
+    return (axValue(element, kAXChildrenAttribute) as? [AXUIElement] ?? []).contains { hasWebArea($0, depth - 1) }
+}
 func axWindow(_ pid: pid_t, _ target: [String: Any]) throws -> AXUIElement {
     let app = AXUIElementCreateApplication(pid)
     AXUIElementSetMessagingTimeout(app, 2)
@@ -194,7 +210,10 @@ func run(_ request: [String: Any]) throws -> [String: Any] {
     }
     if action == "accessibility" {
         guard AXIsProcessTrusted() else { try fail("Accessibility permission is missing.") }
+        let electron = exposeAppContent(pid_t(pid))
         let root = try axWindow(pid_t(pid), window)
+        // The first time, an Electron window's page content builds after the request.
+        for _ in 0..<5 where electron && !hasWebArea(root, 10) { Thread.sleep(forTimeInterval: 0.4) }
         var queue: [(AXUIElement, Int)] = [(root, 0)], nodes: [[String: Any]] = []
         let deadline = Date(timeIntervalSinceNow: 4)
         var characters = 0
