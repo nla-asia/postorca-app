@@ -777,5 +777,11 @@ test("a recording's size comes from its header; previews say when the video runs
   assert.deepEqual(framingNotes([{ focus: { width: 0.92, height: 0.84 }, aspect }, {}], "16:9"), []);
   const [whole] = framingNotes([{ aspect }, { focus: { width: 0.92, height: 0.84 }, aspect }, { aspect }], "16:9");
   assert.match(whole, /^Scenes 1, 3 show the whole recording/);
+  const { unframedClips } = await import("../src/plugins/video/index.js");
+  const focus = { x: 0, y: 0, width: 1, height: 1 };
+  assert.deepEqual(
+    unframedClips([{ video_file: "a" }, { video_file: "a", focus }, { text: "Card" } as any, { video_file: "b", device: "phone" }]),
+    [1],
+  );
   assert.match(framingNotes([{ focus: { width: 0.9, height: 0.5 }, aspect }], "9:16")[0], /Make it taller/);
 });

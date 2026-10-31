@@ -287,6 +287,13 @@ export function framingNotes(
   );
 }
 
+/** Clip scenes, numbered from 1, that show their recording with no focus or device frame. */
+export function unframedClips(scenes: { video_file?: string; focus?: unknown; device?: unknown }[]) {
+  return scenes.flatMap((scene, index) =>
+    scene.video_file && !scene.focus && !scene.device ? [index + 1] : [],
+  );
+}
+
 /**
  * Trim, speed and hold of a clip scene, and its length: duration_seconds when given,
  * otherwise the trimmed part at its speed plus the hold.
@@ -668,8 +675,15 @@ function videoTool(
     async run(context, input) {
       try {
         const { title, times_seconds, ...clip } = input;
-        const { render, timing } = await prepare(context, clip);
         const preview = name === "video_preview_frames";
+        // An export says how each recording is framed; a preview may look at it raw.
+        const unframed = preview ? [] : unframedClips(clip.scenes);
+        if (unframed.length)
+          throw new HttpError(
+            400,
+            `Scene${unframed.length > 1 ? "s" : ""} ${unframed.join(", ")} show${unframed.length > 1 ? "" : "s"} a recording with no focus. Give every clip scene a focus: the app inside whatever was captured around it (browser bars, banners, the desktop) for an overview, the whole frame (0, 0, 1, 1) if the recording is only the app, or the part in action. Preview, then export.`,
+          );
+        const { render, timing } = await prepare(context, clip);
         const times: number[] = preview ? times_seconds.slice(0, 8) : [];
         const result = await callDesktop(
           context,
