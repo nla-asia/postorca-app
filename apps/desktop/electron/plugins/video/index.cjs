@@ -7,7 +7,7 @@ const { promisify } = require("node:util");
 const { app, nativeImage } = require("electron");
 const { mediaBinary } = require("../../tools/files.cjs");
 const render = require("./render.cjs");
-const { snapRegion } = require("./framing.cjs");
+const { snapRegion, textBox, closeUp } = require("./framing.cjs");
 const { native } = require("../computer/native.cjs");
 
 const run = promisify(execFile);
@@ -86,6 +86,19 @@ async function grayPixels(file, width, signal) {
   );
   return { gray: stdout, width, height: stdout.length / width };
 }
+/** The lines of text on a recording's frame at `ms`, from macOS text recognition. */
+async function readText(file, ms, still, signal) {
+  const { filename, directory } = mediaBinary("ffmpeg");
+  await run(
+    filename,
+    ["-v", "error", "-ss", (ms / 1000).toFixed(3), "-i", file, "-frames:v", "1", "-y", still],
+    { cwd: directory, signal },
+  );
+  const { lines = [], error } = await native({ action: "read_text", path: still }, signal);
+  if (error) throw new Error(error);
+  return lines;
+}
+
 /**
  * The text on screen in each previewed frame that falls on a recording, read from the
  * recording itself, with boxes as fractions of it (the space a focus uses), so a focus
@@ -94,7 +107,6 @@ async function grayPixels(file, width, signal) {
  */
 async function screenText(props, directory, times, signal) {
   if (process.platform !== "darwin") return undefined;
-  const { filename, directory: binaries } = mediaBinary("ffmpeg");
   const seen = new Map();
   const frames = [];
   for (const time of times) {
@@ -110,12 +122,7 @@ async function screenText(props, directory, times, signal) {
     const clipMs = Math.min(clip.endMs - 1, clip.startMs + (time - start) * clip.speed);
     const still = path.join(directory, `text-${frames.length}.png`);
     try {
-      await run(
-        filename,
-        ["-v", "error", "-ss", (clipMs / 1000).toFixed(3), "-i", path.join(directory, scene.src), "-frames:v", "1", "-y", still],
-        { cwd: binaries, signal },
-      );
-      const { lines = [] } = await native({ action: "read_text", path: still }, signal);
+      const lines = await readText(path.join(directory, scene.src), clipMs, still, signal);
       const round = (value) => Math.round(value * 100) / 100;
       const all = lines.map(
         (line) =>
@@ -218,6 +225,26 @@ function withAssets(args, context, run) {
           );
           size = info;
           clip = { startMs, endMs, speed: scene.speed ?? 1, poster };
+          if (scene.focus_on?.length) {
+            if (process.platform !== "darwin")
+              throw new Error(
+                `Scene ${index + 1}: focus_on reads the text on screen, which needs macOS here; give a focus box instead.`,
+              );
+            // The text as it is when the scene starts and when it ends, so a result that
+            // appears during the scene (a badge, a total) can be named too.
+            const lines = [];
+            for (const ms of [startMs, Math.max(startMs, endMs - 50)])
+              lines.push(
+                ...(await readText(file, ms, path.join(temporary, `scene-${index}-text.png`), context.signal)),
+              );
+            const found = textBox(lines, scene.focus_on);
+            if (found.missing)
+              throw new Error(
+                `Scene ${index + 1}: ${found.missing.map((name) => `"${name}"`).join(", ")} isn't on screen in that part of the clip. On screen: ${[...new Set(lines.map((line) => line.text))].slice(0, 60).join(" | ")}`,
+              );
+            const [w, h] = (args.format ?? "9:16").split(":").map(Number);
+            focus = closeUp(found.box, info.width / info.height, (w / h) * (args.format === "9:16" || !args.format ? 1 : 1.3));
+          }
           if (focus) {
             const { gray, width, height } = await grayPixels(
               path.join(temporary, poster),

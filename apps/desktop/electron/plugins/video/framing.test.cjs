@@ -30,3 +30,25 @@ test("a focus with no edge nearby stays where it is", () => {
   const focus = { x: 0.1, y: 0.2, width: 0.5, height: 0.5 };
   assert.deepEqual(snapRegion(gray, width, height, focus), focus);
 });
+
+test("a close-up finds the named text and frames it with room, shaped to the frame", () => {
+  const { textBox, closeUp } = require("./framing.cjs");
+  const lines = [
+    { text: "Total", x: 0.53, y: 0.57, width: 0.04, height: 0.03 },
+    { text: "$3,000.00", x: 0.66, y: 0.57, width: 0.08, height: 0.03 },
+    { text: "Record payment", x: 0.83, y: 0.19, width: 0.09, height: 0.03 },
+  ];
+  assert.deepEqual(textBox(lines, ["total", "Missing thing"]), { missing: ["Missing thing"] });
+  const { box } = textBox(lines, ["Total", "$3,000"]);
+  assert.deepEqual(
+    [box.x, box.y, box.width, box.height].map((v) => +v.toFixed(3)),
+    [0.53, 0.57, 0.21, 0.03],
+  );
+  const region = closeUp(box, 1.6, 2.35);
+  // Contains the total with room, at least a third wide, about the frame's shape.
+  assert.ok(region.x < 0.53 && region.x + region.width > 0.74);
+  assert.ok(region.y < 0.57 && region.y + region.height > 0.6);
+  assert.ok(region.width >= 1 / 3 - 1e-9);
+  const shape = (region.width * 1.6) / region.height;
+  assert.ok(shape >= 2.35 * 0.75 - 1e-6 && shape <= 2.35 / 0.75 + 1e-6, String(shape));
+});

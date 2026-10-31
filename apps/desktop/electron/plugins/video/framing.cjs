@@ -107,4 +107,65 @@ function snapRegion(gray, width, height, region, { reach = 0.1, contrast = 12 } 
   };
 }
 
-module.exports = { snapRegion };
+
+const normal = (text) => text.toLowerCase().replace(/\s+/g, " ").trim();
+
+/**
+ * The box around the named pieces of on-screen text (`lines` from read_text, fractions
+ * of the picture): for each, the line containing it, picking near the ones already found
+ * when it appears more than once. Returns the names it couldn't find instead, if any.
+ */
+function textBox(lines, names) {
+  const found = [];
+  const missing = [];
+  for (const name of names) {
+    const matches = lines.filter((line) => normal(line.text).includes(normal(name)));
+    if (!matches.length) {
+      missing.push(name);
+      continue;
+    }
+    const centre = (box) => [box.x + box.width / 2, box.y + box.height / 2];
+    const [cx, cy] = found.length
+      ? found.map(centre).reduce(([ax, ay], [bx, by]) => [ax + bx / found.length, ay + by / found.length], [0, 0])
+      : [0.5, 0.5];
+    // The first one: the most prominent (tallest) match; after that, the nearest.
+    const pick = found.length
+      ? matches.reduce((a, b) => {
+          const d = (box) => Math.hypot(centre(box)[0] - cx, centre(box)[1] - cy);
+          return d(b) < d(a) ? b : a;
+        })
+      : matches.reduce((a, b) => (b.height > a.height ? b : a));
+    found.push(pick);
+  }
+  if (missing.length) return { missing };
+  const left = Math.min(...found.map((b) => b.x)),
+    top = Math.min(...found.map((b) => b.y)),
+    right = Math.max(...found.map((b) => b.x + b.width)),
+    bottom = Math.max(...found.map((b) => b.y + b.height));
+  return { box: { x: left, y: top, width: right - left, height: bottom - top } };
+}
+
+/**
+ * A close-up around `box` (fractions of a picture `aspect` wide per unit tall): room
+ * around the elements, at least a third of the picture's width so the app stays
+ * recognisable, and shaped toward the space it fills (`frame`, width over height) so
+ * it shows large. Kept inside the picture.
+ */
+function closeUp(box, aspect, frame) {
+  const room = 0.04;
+  let width = (box.width + 2 * room) * aspect,
+    height = box.height + 2 * room * aspect;
+  width = Math.max(width, aspect / 3);
+  // Within three quarters of the frame's shape either way.
+  if (width / height < frame * 0.75) width = height * frame * 0.75;
+  if (width / height > frame / 0.75) height = width / (frame / 0.75);
+  const w = Math.min(1, width / aspect),
+    h = Math.min(1, height);
+  const cx = box.x + box.width / 2,
+    cy = box.y + box.height / 2;
+  const x = Math.min(1 - w, Math.max(0, cx - w / 2)),
+    y = Math.min(1 - h, Math.max(0, cy - h / 2));
+  return { x, y, width: w, height: h };
+}
+
+module.exports = { snapRegion, textBox, closeUp };

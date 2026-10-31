@@ -109,6 +109,14 @@ const clipArgs = z
               .describe(
                 "Zoom into this region; coordinates are fractions of the original image or video frame. For a screen recording only this region shows, as large as it fits above the captions: leave out browser bars and the desktop, and include every element the scene needs. Its edges snap to the nearest real edge (the window, a sidebar, the line under a bar), so a close estimate lands clean.",
               ),
+            focus_on: z
+              .array(z.string().trim().min(1).max(80))
+              .min(1)
+              .max(4)
+              .optional()
+              .describe(
+                "For a screen recording: zoom in on these pieces of text as they read on screen (a button's label, a total, a status), instead of a focus box. The close-up is built around them with room to spare and shaped to the frame; a later scene on the same clip moves the camera to its own. Copy the text from the preview's screen_text.",
+              ),
             highlight: region
               .optional()
               .describe("Outline this region and dim the surrounding content."),
@@ -490,8 +498,8 @@ async function prepare(context: PluginContext, clip: Clip) {
       index === 0 ||
       !scene.image_file ||
       scene.image_file !== scenes[index - 1].image_file ||
-      JSON.stringify(scene.focus ?? null) !==
-        JSON.stringify(scenes[index - 1].focus ?? null),
+      JSON.stringify(scene.focus ?? scene.focus_on ?? null) !==
+        JSON.stringify(scenes[index - 1].focus ?? scenes[index - 1].focus_on ?? null),
   ).length;
   const format = clip.format ?? "9:16";
   return {
@@ -520,6 +528,7 @@ async function prepare(context: PluginContext, clip: Clip) {
             : undefined),
         device: scene.device,
         focus: scene.focus,
+        focus_on: scene.focus_on,
         highlight: scene.highlight,
       })),
       voiceover_file: voice,
