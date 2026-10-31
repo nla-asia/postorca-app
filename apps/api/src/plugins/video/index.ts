@@ -511,7 +511,8 @@ async function prepare(context: PluginContext, clip: Clip) {
           speed: clips[index].speed,
         }),
         // A screen recording keeps its text readable: outside portrait, contain gives
-        // stickers and captions their own space instead of covering the app.
+        // stickers and captions their own space when the whole recording shows. A
+        // focused recording fills the frame instead, with the focus clear of captions.
         fit:
           scene.fit ??
           (scene.video_file && !scene.device && format !== "9:16"

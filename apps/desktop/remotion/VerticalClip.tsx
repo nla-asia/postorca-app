@@ -163,6 +163,9 @@ function focusTransform(
   viewport: { top: number; width: number; height: number },
   focus: Region | null,
   previous: Region | null,
+  // A clip that fills the frame: the whole frame shows the recording, and the focus
+  // fits in the viewport (clear of the title and captions) instead of in the frame.
+  stage?: { width: number; height: number },
 ) {
   if (!focus && !previous) return undefined;
   const fraction = interpolate(frame, [0, 18], [0, 1], {
@@ -189,30 +192,36 @@ function focusTransform(
         y: viewport.top + viewport.height / 2,
         scale: 1,
       };
+    const [marginX, marginY] = stage ? [0.9, 0.9] : [0.88, 0.8];
     const scale = Math.min(
       4,
       Math.max(
         1,
         Math.min(
-          (viewport.width * 0.88) / (region.width * rect.width),
-          (viewport.height * 0.8) / (region.height * rect.height),
+          (viewport.width * marginX) / (region.width * rect.width),
+          (viewport.height * marginY) / (region.height * rect.height),
         ),
       ),
     );
+    const x = rect.left + (region.x + region.width / 2) * rect.width,
+      y = rect.top + (region.y + region.height / 2) * rect.height;
+    if (stage) {
+      // Keep the frame inside the recording: what shows around the focus is the app.
+      const anchorY = viewport.top + viewport.height / 2;
+      const within = (center: number, start: number, length: number, before: number, after: number) =>
+        length * scale <= before + after
+          ? start + length / 2
+          : Math.min(start + length - after / scale, Math.max(start + before / scale, center));
+      return {
+        scale,
+        x: within(x, rect.left, rect.width, viewport.width / 2, stage.width - viewport.width / 2),
+        y: within(y, rect.top, rect.height, anchorY, stage.height - anchorY),
+      };
+    }
     return {
       scale,
-      x: bounded(
-        rect.left + (region.x + region.width / 2) * rect.width,
-        rect.left,
-        rect.width,
-        viewport.width / scale,
-      ),
-      y: bounded(
-        rect.top + (region.y + region.height / 2) * rect.height,
-        rect.top,
-        rect.height,
-        viewport.height / scale,
-      ),
+      x: bounded(x, rect.left, rect.width, viewport.width / scale),
+      y: bounded(y, rect.top, rect.height, viewport.height / scale),
     };
   }
   const start = target(previous),
@@ -446,19 +455,25 @@ function Scene({
     device = scene.device ?? null;
   const bands = textBands(width, height);
   const framed = fit === "contain" || !!device;
-  const top = framed && shot.stickered ? bands.top : 0;
+  // A focused clip fills the frame: the title and captions sit over the recording.
+  // The focus is kept clear of the captions; a title has its own backing and may
+  // overlap the top of the app.
+  const croppedClip = !!scene.clip && framed && !!scene.focus && !device;
+  const top = framed && shot.stickered && !croppedClip ? bands.top : 0;
   const viewport = {
     top,
     width,
     height: height - top - (framed && captioned ? bands.bottom : 0),
   };
   const placed = scene.aspect
-    ? imageRect(scene.aspect, fit, device, width, viewport.height)
+    ? croppedClip
+      ? imageRect(scene.aspect, fit, device, width, height)
+      : imageRect(scene.aspect, fit, device, width, viewport.height)
     : null;
-  const rect = placed ? { ...placed, top: placed.top + top } : null;
+  const rect = placed
+    ? { ...placed, top: placed.top + (croppedClip ? 0 : top) }
+    : null;
   const shownWhole = !!rect && framed;
-  // A focused clip shows only that part, between the text bands: never the browser's bars.
-  const croppedClip = !!scene.clip && framed && !!scene.focus;
   const focus = scene.focus ?? null;
   // A clip has its own motion: only image shots get the handheld drift.
   const amount = scene.clip
@@ -501,16 +516,21 @@ function Scene({
         <AbsoluteFill
           style={{
             transform: camera(frame, fps, shot, amount),
-            ...(croppedClip && {
-              clipPath: `inset(${top}px 0 ${height - top - viewport.height}px 0)`,
-            }),
+
           }}
         >
           <AbsoluteFill
             style={{
               transformOrigin: "0 0",
               transform: rect
-                ? focusTransform(frame, rect, viewport, focus, previousFocus)
+                ? focusTransform(
+                    frame,
+                    rect,
+                    viewport,
+                    focus,
+                    previousFocus,
+                    croppedClip ? { width, height } : undefined,
+                  )
                 : undefined,
             }}
           >
