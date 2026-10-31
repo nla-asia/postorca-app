@@ -771,10 +771,14 @@ test("a recording's size comes from its header; previews say when the video runs
   assert.match(silentTail(26_500, 19_400)!, /runs 7\.1 s after the voiceover ends/);
 
   const aspect = 2940 / 1846;
-  // The Ledgerly cards close-up: a wide, short box leaves half a landscape frame empty.
-  const [wide] = framingNotes([{ focus: { width: 0.78, height: 0.38 }, aspect }], "16:9");
-  assert.match(wide, /Scene 1's focus is 3\.3:1 .* Make it taller/);
+  // A row of cards is a fine close-up in landscape; a sliver isn't.
+  assert.deepEqual(framingNotes([{ focus: { width: 0.78, height: 0.38 }, aspect }], "16:9"), []);
+  const [sliver] = framingNotes([{ focus: { width: 0.9, height: 0.2 }, aspect }], "16:9");
+  assert.match(sliver, /Scene 1's focus is 7\.2:1 .* Make it taller/);
   assert.deepEqual(framingNotes([{ focus: { width: 0.92, height: 0.84 }, aspect }, {}], "16:9"), []);
+  const app = { width: 0.99, height: 0.86 };
+  const [overview] = framingNotes([{ focus: app, aspect }, { focus: app, aspect }, { focus: { width: 0.4, height: 0.3 }, aspect }], "16:9");
+  assert.match(overview, /^Scenes 1, 2 each show the whole app/);
   const [whole] = framingNotes([{ aspect }, { focus: { width: 0.92, height: 0.84 }, aspect }, { aspect }], "16:9");
   assert.match(whole, /^Scenes 1, 3 show the whole recording/);
   const { unframedClips } = await import("../src/plugins/video/index.js");

@@ -273,14 +273,28 @@ export function framingNotes(
         `Scene${whole.length > 1 ? "s" : ""} ${whole.join(", ")} show${whole.length > 1 ? "" : "s"} the whole recording: whatever was captured around the app (browser tabs and address bar, banners, the desktop) shows, and the app is smaller. Give each a focus: the app itself inside those bars for an overview, or the part in action.`,
       ]
     : [];
+  // A focus on most of the recording is an overview: once sets the scene, but in every
+  // shot nothing stands out and the text stays small.
+  const overviews = scenes.flatMap((scene, index) =>
+    scene.aspect && scene.focus && scene.focus.width * scene.focus.height > 0.6
+      ? [index + 1]
+      : [],
+  );
+  const zoom =
+    overviews.length > 1
+      ? [
+          `Scenes ${overviews.join(", ")} each show the whole app, so nothing in them stands out and its text stays small. Show it whole once to set the scene, then zoom in: focus each later scene on what its line is about (the field being filled, the number that changes, the status that appears).`,
+        ]
+      : [];
   return unfocused.concat(
+    zoom,
     scenes.flatMap((scene, index) => {
       if (!scene.focus || !scene.aspect) return [];
       const box = (scene.focus.width * scene.aspect) / scene.focus.height;
       const fills = Math.min(box / frame, frame / box);
-      return fills < 0.7
+      return fills < 0.5
         ? [
-            `Scene ${index + 1}'s focus is ${box.toFixed(1)}:1 in a ${frame.toFixed(1)}:1 frame, so it fills only ${Math.round(fills * 100)}% of it and the rest is blur. Make it ${box > frame ? "taller" : "wider"}, closer to the frame's shape, keeping the elements the scene needs.`,
+            `Scene ${index + 1}'s focus is ${box.toFixed(1)}:1 in a ${frame.toFixed(1)}:1 frame, so it fills only ${Math.round(fills * 100)}% of it and shows small. Make it ${box > frame ? "taller" : "wider"}, closer to the frame's shape, keeping the elements the scene needs.`,
           ]
         : [];
     }),
