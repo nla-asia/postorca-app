@@ -378,7 +378,8 @@ module.exports = {
           const { filename, directory } = mediaBinary("ffmpeg");
           await run(
             filename,
-            ["-v", "error", "-i", file, "-vf", `fps=1000/${every},scale=1920:-2`, path.join(temporary, "%03d.png")],
+            // The bundled ffmpeg has no fps filter; an output rate samples the same way.
+            ["-v", "error", "-i", file, "-vf", "scale=1920:-2", "-r", String(1000 / every), path.join(temporary, "%03d.png")],
             { cwd: directory, signal: context.signal },
           );
           const stills = (await fs.readdir(temporary)).filter((name) => /^\d+\.png$/.test(name)).sort();
