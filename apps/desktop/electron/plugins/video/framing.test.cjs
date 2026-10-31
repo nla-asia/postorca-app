@@ -31,7 +31,7 @@ test("a focus with no edge nearby stays where it is", () => {
   assert.deepEqual(snapRegion(gray, width, height, focus), focus);
 });
 
-test("a close-up finds the named text and frames it with room, widening a narrow one", () => {
+test("a close-up finds the named text and frames it with room, never as a sliver", () => {
   const { textBox, closeUp } = require("./framing.cjs");
   const lines = [
     { text: "Total", x: 0.53, y: 0.57, width: 0.04, height: 0.03 },
@@ -49,10 +49,14 @@ test("a close-up finds the named text and frames it with room, widening a narrow
   assert.ok(region.x < 0.53 && region.x + region.width > 0.74);
   assert.ok(region.y < 0.57 && region.y + region.height > 0.6);
   assert.ok(region.width >= 1 / 3 - 1e-9);
-  // A wide row keeps its height: only a narrow box is widened toward the frame's shape.
-  assert.ok(region.height < 0.2, String(region.height));
+  // Never a sliver: a single row gets height around it, within the frame's shape.
+  assert.ok(region.height >= 0.2 - 1e-9, String(region.height));
+  const shape = (region.width * 1.6) / region.height;
+  assert.ok(shape >= 2.35 * 0.75 - 1e-6 && shape <= 2.35 * 1.5 + 1e-6, String(shape));
   const narrow = closeUp({ x: 0.8, y: 0.2, width: 0.05, height: 0.3 }, 1.6, 2.35);
   assert.ok((narrow.width * 1.6) / narrow.height >= 2.35 * 0.75 - 1e-6);
+  // Below the browser's bars.
+  assert.ok(closeUp({ x: 0.2, y: 0.15, width: 0.1, height: 0.03 }, 1.6, 2.35, 0.14).y >= 0.14);
 });
 
 test("a close-up's edges never cut a word", () => {

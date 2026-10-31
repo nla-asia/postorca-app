@@ -7,7 +7,7 @@ const { promisify } = require("node:util");
 const { app, nativeImage } = require("electron");
 const { mediaBinary } = require("../../tools/files.cjs");
 const render = require("./render.cjs");
-const { snapRegion, textBox, closeUp, wholeWords } = require("./framing.cjs");
+const { snapRegion, textBox, closeUp, wholeWords, appTop } = require("./framing.cjs");
 const { native } = require("../computer/native.cjs");
 
 const run = promisify(execFile);
@@ -203,7 +203,6 @@ function withAssets(args, context, run) {
         let size = null,
           clip = null,
           focus = scene.focus ?? null;
-        let words = null;
         if (media?.video) {
           const file = path.join(temporary, src);
           const info = await probeClip(file, context.signal);
@@ -238,27 +237,37 @@ function withAssets(args, context, run) {
               lines.push(
                 ...(await readText(file, ms, path.join(temporary, `scene-${index}-text.png`), context.signal)),
               );
-            words = lines;
             const found = textBox(lines, scene.focus_on);
             if (found.missing)
               throw new Error(
                 `Scene ${index + 1}: ${found.missing.map((name) => `"${name}"`).join(", ")} isn't on screen in that part of the clip. On screen: ${[...new Set(lines.map((line) => line.text))].slice(0, 60).join(" | ")}`,
               );
-            const [w, h] = (args.format ?? "9:16").split(":").map(Number);
-            focus = closeUp(found.box, info.width / info.height, (w / h) * (args.format === "9:16" || !args.format ? 1 : 1.3));
-          }
-          if (focus) {
             const { gray, width, height } = await grayPixels(
               path.join(temporary, poster),
               info.width,
               context.signal,
             );
-            // A close-up built from its text is already about right: snapping only
-            // tidies its edges, and looking far could reach the browser's bars.
-            focus = snapRegion(gray, width, height, focus, {
-              reach: scene.focus_on?.length ? 0.03 : 0.1,
-            });
-            if (words) focus = wholeWords(focus, words);
+            const [w, h] = (args.format ?? "9:16").split(":").map(Number);
+            const top = appTop(lines, gray, width, height);
+            focus = closeUp(
+              found.box,
+              info.width / info.height,
+              (w / h) * (args.format === "9:16" || !args.format ? 1 : 1.3),
+              top,
+            );
+            // Built from its text, it is about right: snapping tidies its edges, looking
+            // further sideways (past a sliver of sidebar) than up and down (where the
+            // browser's bars are).
+            focus = snapRegion(gray, width, height, focus, { reachX: 0.1, reachY: 0.03 });
+            focus = wholeWords(focus, lines);
+            if (focus.y < top) focus = { ...focus, y: top, height: focus.height - (top - focus.y) };
+          } else if (focus) {
+            const { gray, width, height } = await grayPixels(
+              path.join(temporary, poster),
+              info.width,
+              context.signal,
+            );
+            focus = snapRegion(gray, width, height, focus);
           }
         } else if (src)
           size = nativeImage

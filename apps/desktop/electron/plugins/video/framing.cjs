@@ -8,7 +8,13 @@
  * `reach` of the picture: onto an edge that cuts nothing, or else into the empty space
  * beside what it would cut, looking further when that is all inside one big element.
  */
-function snapRegion(gray, width, height, region, { reach = 0.1, contrast = 12 } = {}) {
+function snapRegion(
+  gray,
+  width,
+  height,
+  region,
+  { reach = 0.1, reachX = reach, reachY = reach, contrast = 12 } = {},
+) {
   const at = (x, y) => gray[y * width + x];
   // The line between pixels p-1 and p (columns or rows), over from..to along it: how
   // sharply the picture changes across it (the mean step between a few pixels either
@@ -42,7 +48,7 @@ function snapRegion(gray, width, height, region, { reach = 0.1, contrast = 12 } 
   // line, so the edge at least sits beside what it would cut; else where it was.
   function snap(vertical, position, from, to, outward) {
     const size = vertical ? width : height;
-    const range = Math.max(1, Math.round(reach * size));
+    const range = Math.max(1, Math.round((vertical ? reachX : reachY) * size));
     let edge = null,
       edgeScore = 0,
       gap = null;
@@ -147,27 +153,41 @@ function textBox(lines, names) {
 
 /**
  * A close-up around `box` (fractions of a picture `aspect` wide per unit tall): room
- * around the elements, at least a third of the picture's width so the app stays
- * recognisable, and no narrower than the space it fills (`frame`, width over height)
- * allows for showing it large. Kept inside the picture.
+ * around the elements, at least a third of the picture wide and a fifth tall so the
+ * element is seen in its place rather than as a sliver, and shaped toward the space it
+ * fills (`frame`, width over height) so it shows large. It stays below `top`, where the
+ * app starts under any browser bars, and inside the picture.
  */
-function closeUp(box, aspect, frame) {
-  // A little more room beside the text than above and below it, where a close-up
-  // would soon reach the next row (or the browser's bars).
+function closeUp(box, aspect, frame, top = 0) {
   let width = (box.width + 2 * 0.04) * aspect,
     height = box.height + 2 * 0.03;
   width = Math.max(width, aspect / 3);
-  // A tall, narrow box widens toward the frame's shape. A wide one stays as it is: on the
-  // stage a strip shows large, and growing it taller would reach past the app into
-  // whatever was recorded around it.
+  height = Math.max(height, 0.2);
   if (width / height < frame * 0.75) width = height * frame * 0.75;
+  if (width / height > frame * 1.5) height = width / (frame * 1.5);
   const w = Math.min(1, width / aspect),
-    h = Math.min(1, height);
+    h = Math.min(1 - top, height);
   const cx = box.x + box.width / 2,
     cy = box.y + box.height / 2;
   const x = Math.min(1 - w, Math.max(0, cx - w / 2)),
-    y = Math.min(1 - h, Math.max(0, cy - h / 2));
+    y = Math.min(1 - h, Math.max(top, cy - h / 2));
   return { x, y, width: w, height: h };
+}
+
+/**
+ * Where the app starts below a browser's bars: under the lowest line of text near the
+ * top that reads as an address (a URL, an IP, localhost), at the next clean edge.
+ * 0 when there is no address bar.
+ */
+function appTop(lines, gray, width, height) {
+  const address = lines.filter(
+    (line) =>
+      line.y < 0.3 &&
+      /:\/\/|\b\d{1,3}(\.\d{1,3}){3}\b|localhost|\.[a-z]{2,}\//i.test(line.text),
+  );
+  if (!address.length) return 0;
+  const below = Math.max(...address.map((line) => line.y + line.height)) + 0.01;
+  return snapRegion(gray, width, height, { x: 0, y: below, width: 1, height: 1 - below }).y;
 }
 
 /**
@@ -210,4 +230,4 @@ function wholeWords(region, lines) {
   return { x, y, width, height };
 }
 
-module.exports = { snapRegion, textBox, closeUp, wholeWords };
+module.exports = { snapRegion, textBox, closeUp, wholeWords, appTop };
