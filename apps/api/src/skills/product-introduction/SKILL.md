@@ -35,7 +35,7 @@ One message, short enough to review without scrolling back and forth:
 
 - **What it is** and **who it's for**, one line each.
 - **Format:** length, shape (16:9 for X, LinkedIn, YouTube; 9:16 for Reels, TikTok, Shorts), voiceover and captions. Follow the founder's request; otherwise around 30–45 seconds for the platform.
-- **Shots**, numbered, one per beat. For each: what's on screen (which screen and what happens), its on-screen text if it has any, and the voiceover line for it. The opening shot always has a short on-screen line naming the product, because many people watch with the sound off. The voiceover read in order is the whole script, about 2.5 words per second of video.
+- **Shots**, numbered, one per beat. For each: what's on screen (which screen and what happens), its on-screen text if it has any, and the voiceover line for it. On-screen text is a line the video adds over the shot, not text already in the app. The opening shot always has one, short and naming the product, because many people watch with the sound off. The voiceover read in order is the whole script, about 2.5 words per second of video.
 - **Assumptions:** what you chose and left out and why, in a line or two, so the founder can correct it quickly.
 
 End by asking the founder to approve it or say what to change.
