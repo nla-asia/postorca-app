@@ -471,9 +471,13 @@ const local = (url: string) => url.replace("//localhost:", "//127.0.0.1:");
 
 /** Code to script reads the project and makes nothing: no recording, video or media. */
 function scriptChecks(calls: any[]): EvalCheck[] {
-  const made = calls.filter((c) =>
+  const ok = calls.filter((c) => c.result && !c.result.error && !c.failed);
+  // What was made, not what was tried: a content task refuses to make anything early.
+  const made = ok.filter((c) =>
     /^(screen_record_|video_|media_(generate|edit)_)/.test(c.name),
   );
+  const saved = (name: string) =>
+    ok.some((c) => c.name === "save_content_file" && c.args?.name === name);
   return [
     {
       name: "Read the project before writing the script",
@@ -485,6 +489,10 @@ function scriptChecks(calls: any[]): EvalCheck[] {
       name: "Recorded and made nothing: the script comes first",
       passed: made.length === 0,
       details: made.map((c) => c.name),
+    },
+    {
+      name: "Saved the plan and the script in the task's folder",
+      passed: saved("plan.md") && saved("script.md"),
     },
   ];
 }

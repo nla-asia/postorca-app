@@ -293,6 +293,7 @@ export class EvalRunner {
           const task = await this.api(run, "/tasks", "POST", {
             kind: "work",
             title: entry.title.slice(0, 200),
+            ...(entry.work_type && { work_type: entry.work_type }),
           });
           run.task_id = task.id;
           await save();
