@@ -339,6 +339,28 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
       "The opening shot has a short on-screen line saying what it teaches, so it reads with the sound off, and it stays short (about 15–25 seconds).",
     ],
   },
+  // A round-up of what changed: Ledgerly's last two weeks hold five user-facing features
+  // (revenue chart, status filter, add a client in a modal, print to PDF, overdue), a
+  // one-cent fix, a dependency bump and pilot notes; the core is older than that.
+  {
+    id: "script-ledgerly-whats-new",
+    level: 3,
+    name: "What's-new script from the code repo (Ledgerly invoicing SaaS)",
+    app: "web",
+    url: "http://127.0.0.1:4130",
+    fixture_script: "scripts/evals/ledgerly-fixture.mjs",
+    script_only: true,
+    brief: `Can you make a short "what's new in Ledgerly" video covering the last two weeks, for LinkedIn? Around 30–40 sec, landscape, voiceover and captions. The code is in my projects and the app is running locally. ${noPublish}`,
+    typed: [],
+    min_clips: 0,
+    criteria: [
+      "The script is easy to review: what changed and who it helps, numbered shots with what's on screen, on-screen text and the voiceover line, the format, and what was assumed or left out.",
+      "It covers what users got in the last two weeks, from the commits: the revenue chart, filtering invoices by status, adding a client without leaving the page, printing or saving as PDF, and overdue invoices; at most a line for the totals fix. Nothing older (sign-in, the dashboard, the invoice form) presented as new, and no dependency bump.",
+      "It is chosen and ordered for the viewer, not as a changelog: each change shown working where a user meets it, in a sensible order, each with a plain line on what it does for them, every shot true to the code.",
+      "It is a straightforward update: the changes are the subject, with nothing private from the repo's notes (pilot numbers, tester feedback), no slogans, and nothing the code doesn't support.",
+      "The opening shot has a short on-screen line saying it's what's new in Ledgerly, so it reads with the sound off, and it fits about 30–40 seconds.",
+    ],
+  },
   // Script to video: starts from an approved script, fixed so recording runs compare.
   {
     id: "demo-tide-from-script",

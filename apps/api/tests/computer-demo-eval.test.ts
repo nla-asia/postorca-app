@@ -254,7 +254,7 @@ test("the idea-to-demo case carries its fixture and prerequisites", async () => 
 test("code to script and script to video are separate cases", async () => {
   const { builtinCases } = await import("../src/evals/shared/catalog.js");
   const cases = builtinCases();
-  for (const id of ["content-script-tide-intro", "content-script-streaks-intro", "content-script-ledgerly-intro", "content-script-ledgerly-feature-launch", "content-script-packlight-how-to"]) {
+  for (const id of ["content-script-tide-intro", "content-script-streaks-intro", "content-script-ledgerly-intro", "content-script-ledgerly-feature-launch", "content-script-packlight-how-to", "content-script-ledgerly-whats-new"]) {
     const entry = cases.find((c) => c.id === id)!;
     assert.equal(entry.turns.length, 1);
     assert.equal(entry.turns[0].video_case, undefined);
