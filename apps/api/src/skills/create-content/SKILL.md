@@ -7,7 +7,7 @@ description: Turn an idea the founder chose into a post in their voice, ask abou
 
 Turn one idea the founder chose into a post they can review and publish. The task gives you the idea (its reference, mechanism, hot topic and suggested angle) and may include a note from the founder. The note overrides the idea where they differ.
 
-**Product demos first.** If the idea has a **Demo plan**, it is a product demo: before anything else, read the `product-demo-capture` skill with read_skill and follow it to get the screenshots and clips. The post or video is built on those shots, and the founder's note may ask you to stop at the shots.
+**Product demos first.** If the idea has a **Demo plan**, it is a product demo: before anything else, read the `product-content-capture` skill with read_skill and follow it to get the screenshots and clips. The post or video is built on those shots, and the founder's note may ask you to stop at the shots.
 
 ## Requirements
 

@@ -25,7 +25,7 @@ export type DemoCase = {
   /** Code to script: the task ends at the script for the founder to approve, so nothing
    * is recorded or made, and the script is reviewed. */
   script_only?: boolean;
-  /** Text the demo has to type into the app, as regexes. product-demo-capture sets
+  /** Text the demo has to type into the app, as regexes. product-content-capture sets
    * the stage before recording, so this may happen on or off camera. */
   typed: string[];
   min_clips: number;

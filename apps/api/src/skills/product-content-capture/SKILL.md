@@ -1,15 +1,15 @@
 ---
-name: product-demo-capture
-description: Get the screenshots and screen recordings a product demo needs - from a demo plan to demo-ready shots - capturing what you can yourself and guiding the founder step by step for the rest, then hand them on to a screenshot post or a demo video.
+name: product-content-capture
+description: Record the screenshots and screen recordings that approved product content needs - from its plan and script to demo-ready shots - capturing what you can yourself and guiding the founder step by step for the rest, then hand them on to the post or the video (product-content-edit).
 ---
 
-# Product demo capture
+# Product content capture
 
 A demo idea comes with a demo plan: what to show, where it is in the product, and the steps. This skill gets the raw material for it: clean, demo-ready screenshots and short clips. Capture what you can yourself; for what you can't, give the founder a short step-by-step guide, because they can click easily but don't have your context. Then hand the shots on to the post or video.
 
 How to work the browser, the computer or the capture tools is in their own skills and tool descriptions. This skill is about what to capture, how it should look, and who captures it.
 
-A demo starts from a plan and a script the founder has approved. On a content task without one yet, write them first: `plan.md` (what it's for, who it's for, the format, what it shows and what you assumed or left out) and `script.md` (numbered shots with what's on screen, on-screen text and the voiceover line), saved with `save_content_file`; reply with the script and stop. When the founder approves it, record that with `approve_content_script`; capture and export wait for it.
+Capture starts from a plan and a script the founder has approved. If there isn't one yet, read `product-content-plan` with `read_skill` and write them first; record nothing until the founder approves.
 
 ## 1. Shot list
 
@@ -80,7 +80,7 @@ Look at every shot before using it: open screenshots with `read_file` (from the 
 
 Deliver each shot with create_artifact (kind image or video, content the file's ref) as soon as it is captured and checked, not all at the end: a turn has a limited number of actions, and a shot delivered early is never lost. Title it for its place in the demo ("2 – Payoff: idea in the Inbox"). Then continue to the content when the task asks for it:
 
-- **A demo video:** activate the video plugin, read its video-product-demo skill and build it from these shots.
+- **A demo video:** activate the video plugin, read its product-content-edit skill and build it from these shots.
 - **A screenshot post:** the screenshot (or two, before and after) plus the post text written with the create-content skill, built on the demo's angle.
 
 If shots are still missing, deliver what you have and end with the guide. When the founder replies that the files are saved, list the folder, check them, and continue.

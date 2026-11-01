@@ -119,7 +119,7 @@ const clipArgs = z
             focus: region
               .optional()
               .describe(
-                "Zoom into this region; coordinates are fractions of the original image or video frame. For a screen recording only this region shows, as large as it fits above the captions: leave out browser bars and the desktop, and include every element the scene needs. Its edges snap to the nearest real edge (the window, a sidebar, the line under a bar), so a close estimate lands clean.",
+                "Zoom into this region; coordinates are fractions of the original image or video frame. For a screen recording only this region shows, as large as it fits; its edges snap to the nearest clean edge of the app.",
               ),
             focus_on: z
               .array(z.string().trim().min(1).max(80))
@@ -127,13 +127,13 @@ const clipArgs = z
               .max(4)
               .optional()
               .describe(
-                "For a screen recording: zoom in on these pieces of text as they read on screen (a button's label, a total, a status), instead of a focus box. The close-up is built around them with room to spare, so name only the one or two things the line is about: text far apart makes a wide shot. A later scene on the same clip moves the camera to its own. Copy the text from the preview's screen_text.",
+                "For a screen recording: zoom in on these pieces of text as they read on screen, instead of a focus box; the close-up is built around them.",
               ),
             zoom: z
               .enum(["tight", "medium", "wide"])
               .optional()
               .describe(
-                "With focus_on: how much of the app the close-up keeps around the text. medium (the default) keeps about half the app, so the viewer sees where it sits; tight fills the frame with the element, for a detail that is the point on its own (a total, a badge); wide keeps most of the screen. Judge it in the preview.",
+                "With focus_on: how much of the app the close-up keeps around the text: tight, medium (the default, about half the app) or wide.",
               ),
             highlight: region
               .optional()
@@ -793,7 +793,7 @@ const clipTextArgs = z
 const clipText: PluginToolDefinition = {
   name: "video_clip_text",
   description:
-    "Read a screen recording's text over time (macOS desktop): what is on screen at the start, then each change, when text appears or goes, with boxes as fractions of the recording (the space focus and focus_on use). Give a saved video's ref, or the path of a recording in the working folder. Read each recording before planning a demo: a scene starts just before what its line is about appears, and zooms on it with focus_on.",
+    "Read a screen recording's text over time (macOS desktop): what is on screen at the start, then each change, when text appears or goes, with boxes as fractions of the recording. Takes a saved video's ref or the path of a recording in the working folder.",
   args: clipTextArgs,
   parameters: (({ $schema, ...rest }) => rest)(z.toJSONSchema(clipTextArgs)),
   runsOn: "server",
@@ -825,7 +825,7 @@ export const videoPlugin: PluginDefinition = {
     "Compose UGC and product-demo videos from images, recorded clips, text, voiceover, captions and optional music. Preview frames and export an MP4 on the founder's desktop; includes the media generation tools it needs.",
   skills: [
     "video-create",
-    "video-product-demo",
+    "product-content-edit",
     "video-pov-storytime",
     "video-build-log",
     "video-lesson",
@@ -837,7 +837,7 @@ export const videoPlugin: PluginDefinition = {
   tools: [
     videoTool(
       "video_preview_frames",
-      "Inspect still previews before exporting. Renders at most 8 chosen times; requires the desktop app. A frame on a screen recording also returns the text on screen (screen_text, macOS) with each line's box in the recording's own fractions, the space focus uses: aim a focus at the elements by these boxes rather than by eye.",
+      "Inspect still previews before exporting. Renders at most 8 chosen times; requires the desktop app. A frame on a screen recording also returns the text on screen (screen_text, macOS) with each line's box in the recording's fractions.",
       clipArgs
         .extend({
           times_seconds: z.array(z.number().min(0)).min(1).max(30),

@@ -3,7 +3,7 @@ name: video-create
 description: "Read for every short video: scripting, UGC shots, media tools, previews and MP4 delivery."
 ---
 
-Compose short videos from saved images, recorded clips, text, speech, captions and optional music. Check desktop_status and the video plugin's availability before generating assets for a desktop render. Default to native phone-style Reels/TikTok/Shorts; follow a requested landscape demo or verbatim brief instead of imposing UGC styling. Also read the skill for the video type: video-product-demo, video-pov-storytime, video-build-log, video-lesson, video-product-update, video-event-invite or video-post-to-video. Read video-music whenever using music.
+Compose short videos from saved images, recorded clips, text, speech, captions and optional music. Check desktop_status and the video plugin's availability before generating assets for a desktop render. Default to native phone-style Reels/TikTok/Shorts; follow a requested landscape demo or verbatim brief instead of imposing UGC styling. Also read the skill for the video type: product-content-edit, video-pov-storytime, video-build-log, video-lesson, video-product-update, video-event-invite or video-post-to-video. Read video-music whenever using music.
 
 Write the script before making images. Use first person, short everyday sentences and about three words per second: roughly 45 words for 15 seconds, 90 for 30. Prefer 15–30 seconds for Reels/TikTok, up to 45 for LinkedIn; stay below 60 unless requested, with an absolute limit of 90 seconds. If the first take is far too short, one new take may use more supplied material or speed 0.9, never filler.
 

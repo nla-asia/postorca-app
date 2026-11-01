@@ -450,7 +450,7 @@ test("video previews and exports use the real desktop transport, cached speech t
   assert.deepEqual(errors, []);
   const state = await loadPluginState(fixture.db, owner.taskId);
   assert.ok(state.tools.some((tool) => tool.name === "media_generate_speech"));
-  assert.ok(state.skills.some((skill) => skill.name === "video-product-demo"));
+  assert.ok(state.skills.some((skill) => skill.name === "product-content-edit"));
   const beforeCalls = calls.length;
   await assert.rejects(
     owner.call("video_export", {

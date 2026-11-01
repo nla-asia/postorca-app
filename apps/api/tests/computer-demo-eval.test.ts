@@ -60,7 +60,7 @@ test("a level 2 demo passes on recorded, on-camera work delivered as clips", () 
     failed(gradeDemoCapture(entry, { status: "completed", calls, artifacts })),
     [],
   );
-  // Setting the stage off camera is fine (product-demo-capture does that), but the
+  // Setting the stage off camera is fine (product-content-capture does that), but the
   // recording must still show the app in use, and missing text still fails.
   const offCamera = recorded([[], []]);
   offCamera.splice(2, 0, {
