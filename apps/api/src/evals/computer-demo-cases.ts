@@ -54,12 +54,6 @@ const videoReview = [
 const introRequest = (product: string, format = "for LinkedIn? Around 30 sec, landscape") =>
   `I haven't posted anything about ${product} yet. Can you make a launch video introducing the whole product ${format}, voiceover and captions. The code is in my projects and the app is running locally; record it yourself. ${noPublish}`;
 const reel = "as an Instagram reel? Around 30 sec, portrait";
-const scriptReview = (product: string, flows: string) => [
-  `The script is easy to review: what ${product} is and who it's for, numbered shots with what's on screen, on-screen text and the voiceover line, the format, and what was assumed or left out.`,
-  `It introduces the whole product, not only the latest commit: its core flows in the order a new user meets them (${flows}), each true to the code.`,
-  "It is a straightforward product demo, like a product page introducing it: the product is the subject, with no tester feedback, bug fixes or backstory, no slogans, and nothing the code doesn't support.",
-  "The opening shot has a short on-screen line naming the product, so it reads with the sound off.",
-];
 
 export const demoCases: DemoCase[] = [
   {
@@ -73,12 +67,15 @@ export const demoCases: DemoCase[] = [
     brief: introRequest("Packlight", reel),
     typed: [],
     min_clips: 0,
+    // What this script has to get right for this app and brief, checkable by reading it.
     criteria: [
-      ...scriptReview(
-        "Packlight",
-        "choosing a trip, packing checkboxes and progress, adding an item, previewing the list, sharing the list on iPhone",
-      ),
-      "It plans where each shot is recorded: the web version can show the shared flows, and native sharing needs the iPhone app. It invents no backend, accounts, reminders or camera features.",
+      "The first shot says what Packlight is in plain words, a packing checklist for a trip, naming Packlight on screen and in the voiceover.",
+      "It starts where a new user starts: the list of trips, then opening one.",
+      "It shows packing working: an item ticked off and the progress going up (for example 2 of 6 packed to 3 of 6, with the bar moving).",
+      "It shows adding your own item to the list.",
+      "It ends on sharing the list from the iPhone, the iOS share sheet opening, planned in the iPhone Simulator because the web version has no Share button. Previewing the list is optional.",
+      "Only what Packlight does: no accounts, syncing, reminders, bookings, saved data or camera (it has none; trip dates are labels), and no developer language.",
+      "It fits a 30-second portrait reel: about 4–6 shots, roughly 60–80 words of voiceover, one thing per shot.",
     ],
   },
   // Script to video on a mobile app, two ways: through its web version, and in the
@@ -264,7 +261,16 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
     brief: introRequest("Tide"),
     typed: [],
     min_clips: 0,
-    criteria: scriptReview("Tide", "such as adding a dated task, Today and Upcoming, quick add, checking off"),
+    // The direction and flow this script needs; wording is the script's own.
+    criteria: [
+      "The first shot says what Tide is in plain words, a calm todo app, naming Tide on screen and in the voiceover.",
+      "It opens on Today: the day's tasks, with an overdue one standing out.",
+      "Quick add is the heart of it: typing one sentence with a date, time and project, seeing them picked up as you type, and the dated task it becomes.",
+      "It shows checking a task off and where finished tasks go.",
+      "It shows Upcoming for what's coming, with project tags visible; adding from anywhere with a key is optional.",
+      "Only what Tide does: no reminders, notifications, syncing, accounts or sharing; nothing from the beta notes (tester counts or results), and no developer language.",
+      "It fits a 30-second landscape video: about 4–6 shots, roughly 60–80 words of voiceover, one thing per shot.",
+    ],
   },
   {
     id: "script-streaks-intro",
@@ -277,7 +283,16 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
     brief: introRequest("Streaks"),
     typed: [],
     min_clips: 0,
-    criteria: scriptReview("Streaks", "such as adding a habit, checking in, the streak count, the weekly recap"),
+    // The direction and flow this script needs; wording is the script's own.
+    criteria: [
+      "The first shot says what Streaks is in plain words, tracking small daily habits and keeping your streaks going, naming Streaks on screen and in the voiceover.",
+      "It starts on your habits and their streaks, so the idea reads at a glance.",
+      "Checking in is the core: checking in on a habit and its streak going up.",
+      "It shows adding a habit of your own.",
+      "It ends on the weekly recap, your week at a glance ready to copy and share, as the payoff rather than the subject.",
+      "Only what Streaks does: no reminders, notifications, accounts, syncing, social feed or stats beyond the recap; nothing from the beta notes or the time-zone fix, and no developer language.",
+      "It fits a 30-second landscape video: about 4–6 shots, roughly 60–80 words of voiceover, one thing per shot.",
+    ],
   },
   // A richer product than a list: sign in, a dashboard with a chart, invoices with line
   // items and live totals, status changes, a filter and a modal. The script has to pick
@@ -293,7 +308,15 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
     brief: introRequest("Ledgerly"),
     typed: [],
     min_clips: 0,
-    criteria: scriptReview("Ledgerly", "such as the dashboard, creating an invoice with line items, sending it and recording the payment"),
+    // The direction and flow this script needs; wording is the script's own.
+    criteria: [
+      "The first shot says what Ledgerly is in plain words, invoicing for freelancers and small studios, naming Ledgerly on screen and in the voiceover.",
+      "It follows the main journey: an invoice for a client with line items and the total adding up, marked as sent, and the payment recorded when it comes in.",
+      "It shows the overview a freelancer cares about, who owes them what (outstanding, paid, overdue), at the start or as the payoff.",
+      "It chooses rather than tours: sign-in happens off camera, and the extras (chart, filter, adding a client, print to PDF) get a glance at most or are left out.",
+      "Only what Ledgerly does: it doesn't claim to email invoices or take payments (sent and paid are statuses you set), and there are no bank links, integrations or accounts; nothing from the pilot notes or the cent fix, and no developer language.",
+      "It fits a 30-second landscape video: about 4–6 shots, roughly 60–80 words of voiceover, one thing per shot.",
+    ],
   },
   // Not every video is a product introduction. A feature launch is about one change: the
   // latest commit adds overdue invoices, among a dependency bump, a one-cent fix and an
@@ -310,11 +333,13 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
     typed: [],
     min_clips: 0,
     criteria: [
-      "The script is easy to review: the feature and who it helps, numbered shots with what's on screen, on-screen text and the voiceover line, the format, and what was assumed or left out.",
-      "It announces the feature that just shipped, found in the latest commits: overdue invoices, a sent invoice past its due date showing as Overdue, on the dashboard too. Not the whole product, not an older feature, and not the dependency bump or the cent fix.",
-      "It shows the feature where a user meets it and why it matters (seeing who hasn't paid), with only enough of Ledgerly around it to place it, every shot true to the code.",
-      "It is a straightforward feature announcement: the feature is the subject, with nothing private from the repo's notes (pilot numbers, tester feedback), no slogans, and nothing the code doesn't support.",
-      "The opening shot has a short on-screen line naming what's new, so it reads with the sound off, and it fits about 20 seconds.",
+      "The first shot says what's new in plain words, Ledgerly now shows which invoices are overdue, naming Ledgerly and the feature on screen and in the voiceover.",
+      "It gives the reason in the user's terms: seeing at a glance who hasn't paid you on time, without the pilot numbers.",
+      "It shows where a user meets it first: the Overdue card on the dashboard, with the amount and how many invoices are past due.",
+      "It shows an overdue invoice itself: the Overdue badge in the list or the Overdue filter narrowing to them (one is enough).",
+      "It makes clear this happens on its own once a sent invoice passes its due date, and doesn't claim reminders, emails to clients or late fees (Ledgerly has none).",
+      "Only the feature: not a tour of Ledgerly, nothing about the cent fix, the dependency bump or older features presented as new; nothing from the pilot notes, and no developer language.",
+      "It fits about 20 seconds of landscape video: roughly 3–4 shots and 40–55 words of voiceover, one thing per shot.",
     ],
   },
   // A how-to teaches one task, step by step. Sharing a packing list is iPhone-only: the
@@ -332,11 +357,13 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
     typed: [],
     min_clips: 0,
     criteria: [
-      "The script is easy to review: what it teaches and for whom, numbered shots with what's on screen, on-screen text and the voiceover line, the format, and what was assumed or left out.",
-      "It teaches the one task, sharing a packing list, in the steps a user takes in order (open the trip, tap Share packing list, choose where to send it in the share sheet), each true to the code, and nothing else about the product.",
-      "It is shown on the iPhone, where the Share button and the share sheet are; the web version has neither.",
-      "It is a how-to, not an ad: plain instructions to the viewer, one step per shot, no slogans and nothing the app doesn't do.",
-      "The opening shot has a short on-screen line saying what it teaches, so it reads with the sound off, and it stays short (about 15–25 seconds).",
+      "The first shot says what it teaches, how to share your packing list in Packlight, on screen and in the voiceover.",
+      "It shows the steps in the order a user takes them: open the trip, tap Share packing list, and the iOS share sheet opens to pick where to send it (Messages, Mail and so on).",
+      "It shows or says what the other person gets: the trip with its items, the packed ones ticked.",
+      "It is shown on the iPhone, planned in the iPhone Simulator, because the web version has no Share button.",
+      "Only the steps the task needs: no Preview, adding items or ticking things off as steps, and no product introduction beyond naming Packlight.",
+      "Plain instructions to the viewer (\"open your trip, tap…\") that claim nothing the app doesn't do: the list is sent as a copy, with no live shared list, inviting companions or accounts; no developer language.",
+      "It fits a short portrait reel: about 15–25 seconds, 3–5 shots and roughly 35–60 words, one step per shot.",
     ],
   },
   // A round-up of what changed: Ledgerly's last two weeks hold five user-facing features
@@ -354,11 +381,13 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
     typed: [],
     min_clips: 0,
     criteria: [
-      "The script is easy to review: what changed and who it helps, numbered shots with what's on screen, on-screen text and the voiceover line, the format, and what was assumed or left out.",
-      "It covers what users got in the last two weeks, from the commits: the revenue chart, filtering invoices by status, adding a client without leaving the page, printing or saving as PDF, and overdue invoices; at most a line for the totals fix. Nothing older (sign-in, the dashboard, the invoice form) presented as new, and no dependency bump.",
-      "It is chosen and ordered for the viewer, not as a changelog: each change shown working where a user meets it, in a sensible order, each with a plain line on what it does for them, every shot true to the code.",
-      "It is a straightforward update: the changes are the subject, with nothing private from the repo's notes (pilot numbers, tester feedback), no slogans, and nothing the code doesn't support.",
-      "The opening shot has a short on-screen line saying it's what's new in Ledgerly, so it reads with the sound off, and it fits about 30–40 seconds.",
+      "The first shot says it's what's new in Ledgerly, on screen and in the voiceover.",
+      "It covers the five changes users got, each shown working: the revenue chart, filtering invoices by status, adding a client without leaving the page, Print / PDF, and overdue invoices; if one is left out, the assumptions say why.",
+      "Each change is shown where a user meets it, with a plain line on what it does for them (seeing revenue month by month, finding just the unpaid invoices, and so on).",
+      "It is ordered for the viewer, not by commit date: for example leading with what matters most, or grouping changes by the screen they're on.",
+      "The totals fix gets at most a plain line; nothing on the dependency bump, and nothing older (sign-in, the dashboard cards, the invoice form) presented as new.",
+      "It claims nothing Ledgerly doesn't do (PDF is through printing; nothing is emailed or paid online); nothing from the pilot notes, and no developer language.",
+      "It fits 30–40 seconds of landscape video: about 6–8 shots and 75–100 words of voiceover, one change per shot.",
     ],
   },
   // Script to video: starts from an approved script, fixed so recording runs compare.
@@ -405,7 +434,41 @@ You sent me this script and I approved it, go ahead and make the video:
     brief: introRequest("Quill"),
     typed: [],
     min_clips: 0,
-    criteria: scriptReview("Quill", "such as writing a note with the live preview, finding one with search, a new note from the File menu, pinning, Settings with the dark theme"),
+    // The direction and flow this script needs; wording is the script's own.
+    criteria: [
+      "The first shot says what Quill is in plain words, quiet notes for your desktop written in Markdown and formatted as you type, naming Quill on screen and in the voiceover.",
+      "Writing is the heart of it: typing in Markdown and seeing it formatted beside it, live.",
+      "It shows finding and keeping notes: the notes in the sidebar, with search narrowing them or pinning keeping a few at the top (one is enough).",
+      "It chooses rather than tours: a new note, Settings (text size, dark theme) and the word count get a glance at most or are left out.",
+      "It is shown as the Mac app it is, planned in its desktop window, not a browser.",
+      "Only what Quill does: no syncing, cloud, accounts, sharing, collaboration or mobile app (notes stay on this computer); nothing from the tester feedback or the preview fix, and no developer language (Markdown is fine: it's what users write in).",
+      "It fits a 30-second landscape video: about 4–6 shots, roughly 60–80 words of voiceover, one thing per shot.",
+    ],
+  },
+  // PostOrca's own repository: a real product with many features and plenty of internal
+  // material, where choosing the journeys that matter is the whole job. The running app
+  // is the dev desktop; recording it waits for a separate demo build.
+  {
+    id: "script-postorca-intro",
+    level: 3,
+    name: "Product introduction script from the code repo (PostOrca itself)",
+    app: "desktop",
+    fixture_script: "scripts/evals/postorca-fixture.mjs",
+    script_only: true,
+    brief: introRequest("PostOrca", "for X and LinkedIn? Around 45–60 sec, landscape"),
+    typed: [],
+    min_clips: 0,
+    // The direction and flow this script needs; wording is the script's own.
+    criteria: [
+      "The first shot says what PostOrca is in plain words, a desktop app whose agent, Orca, helps builders grow their personal brand while they keep building, naming PostOrca on screen and in the voiceover.",
+      "It finds the core loop and builds on it: Orca knows your brand, Orca does the work (ideas, drafts, images, video), and you review it in the Inbox.",
+      "It shows two or three journeys, each in its own introduced section rather than mixed, for example asking Orca in chat and the result landing in the Inbox, routines as the work Orca does for you every day on its own (for example, keeping track of how your posts do or noticing what changed in your projects), or the Brand Profile Orca learns from.",
+      "It chooses rather than tours: connectors, the browser extension, computer use, the Calendar, Posts, credits and plans get a glance at most or are left out.",
+      "The founder stays in charge: they review what Orca made, and it doesn't claim PostOrca posts or grows the audience on its own (no follower or growth promises).",
+      "In the product owner's public voice: features described by what they do for you, not how or where they run (servers, running while the app is closed); nothing internal (eval docs, the git workflow, what share of the price goes to AI, model or provider names), and no developer language (Electron, API, MCP, agent loop).",
+      "It is planned in the desktop app's own window, on its real screens.",
+      "It fits 45–60 seconds of landscape video: about 7–10 shots and 110–150 words of voiceover, one thing per shot.",
+    ],
   },
   // Script to video on a richer app: sign in off camera, a dropdown, line items added and
   // typed into, live totals and status buttons, all on camera.

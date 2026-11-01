@@ -342,7 +342,10 @@ Two separate evals use it, matching the product:
   founder with nothing posted asks for a video introducing the whole product. The agent
   reads the code and replies with a script only: what it is, numbered shots with
   on-screen text and voiceover, format and assumptions. It records nothing. Two apps,
-  so a skill fitted to one shows. The observer judges the script as the founder.
+  so a skill fitted to one shows. The observer judges the script as the founder, against
+  criteria written for that product and task: the journey or change that matters, what
+  the product really does, and what has to stay out. They set direction and flow, not
+  wording.
 - `content-script-ledgerly-intro`: the same on Ledgerly (`scripts/evals/ledgerly-fixture.mjs`,
   port 4130), an invoicing SaaS with sign-in (local demo login in its README), a
   dashboard chart, invoices with line items and live totals, status changes, a status
@@ -353,6 +356,13 @@ Two separate evals use it, matching the product:
   and recording it take computer use. Prepare runs it as its own "Quill" app, a renamed
   and re-signed copy of the repo's Electron, from a fresh data folder. Add
   `~/PostOrca Evals/quill` to the founder's Brand Profile projects once.
+- `content-script-postorca-intro`: the same on PostOrca itself (`scripts/evals/postorca-fixture.mjs`),
+  its repository frozen at a develop commit from before this eval, with its full history.
+  A real product with many features and plenty of internal material (eval docs, the git
+  workflow, credit economics, model providers), so the script has to understand the whole
+  product and choose its main journeys. The running app is the dev desktop; Orca looks at
+  it and records nothing. Add `~/PostOrca Evals/postorca` to the founder's Brand Profile
+  projects once.
 - `content-script-ledgerly-feature-launch` (code to script, a feature launch): "I just
   shipped a new feature", a short LinkedIn announcement. The latest Ledgerly commit
   adds overdue invoices, next to a dependency bump, a one-cent fix and an older feature
