@@ -295,6 +295,28 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
     min_clips: 0,
     criteria: scriptReview("Ledgerly", "such as the dashboard, creating an invoice with line items, sending it and recording the payment"),
   },
+  // Not every video is a product introduction. A feature launch is about one change: the
+  // latest commit adds overdue invoices, among a dependency bump, a one-cent fix and an
+  // older feature, with pilot notes saying why it was asked for.
+  {
+    id: "script-ledgerly-feature-launch",
+    level: 3,
+    name: "Feature launch script from the code repo (Ledgerly invoicing SaaS)",
+    app: "web",
+    url: "http://127.0.0.1:4130",
+    fixture_script: "scripts/evals/ledgerly-fixture.mjs",
+    script_only: true,
+    brief: `I just shipped a new feature in Ledgerly. Can you make a short video announcing it for LinkedIn? Around 20 sec, landscape, voiceover and captions. The code is in my projects and the app is running locally. ${noPublish}`,
+    typed: [],
+    min_clips: 0,
+    criteria: [
+      "The script is easy to review: the feature and who it helps, numbered shots with what's on screen, on-screen text and the voiceover line, the format, and what was assumed or left out.",
+      "It announces the feature that just shipped, found in the latest commits: overdue invoices, a sent invoice past its due date showing as Overdue, on the dashboard too. Not the whole product, not an older feature, and not the dependency bump or the cent fix.",
+      "It shows the feature where a user meets it and why it matters (seeing who hasn't paid), with only enough of Ledgerly around it to place it, every shot true to the code.",
+      "It is a straightforward feature announcement: the feature is the subject, with nothing private from the repo's notes (pilot numbers, tester feedback), no slogans, and nothing the code doesn't support.",
+      "The opening shot has a short on-screen line naming what's new, so it reads with the sound off, and it fits about 20 seconds.",
+    ],
+  },
   // Script to video: starts from an approved script, fixed so recording runs compare.
   {
     id: "demo-tide-from-script",

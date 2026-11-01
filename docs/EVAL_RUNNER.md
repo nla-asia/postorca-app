@@ -353,6 +353,12 @@ Two separate evals use it, matching the product:
   and recording it take computer use. Prepare runs it as its own "Quill" app, a renamed
   and re-signed copy of the repo's Electron, from a fresh data folder. Add
   `~/PostOrca Evals/quill` to the founder's Brand Profile projects once.
+- `content-script-ledgerly-feature-launch` (code to script, a feature launch): "I just
+  shipped a new feature", a short LinkedIn announcement. The latest Ledgerly commit
+  adds overdue invoices, next to a dependency bump, a one-cent fix and an older feature
+  (print to PDF), with pilot notes saying why it was asked for. The script has to
+  announce that one feature, not the product or the week's other commits, and keep the
+  notes' private numbers out.
 - `content-demo-quill-from-script`: script to video on Quill, from an approved script, all
   through computer use: typing with the live preview, the File menu, search, pinning
   and the Settings window.
