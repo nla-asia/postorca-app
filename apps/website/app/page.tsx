@@ -4,11 +4,14 @@ import {
   ArrowUpRight,
   CalendarDays,
   Check,
+  Clapperboard,
   FileText,
   Globe2,
   Inbox,
   MessageSquare,
+  Monitor,
   Search,
+  Smartphone,
   Sparkles,
 } from "lucide-react";
 import { Mark } from "../components/brand";
@@ -20,19 +23,23 @@ import { settings } from "../../api/src/settings";
 const questions = [
   [
     "What is PostOrca?",
-    "PostOrca is a desktop app built around Orca, an AI agent focused on your personal brand. Work with Orca on content ideas, drafts, and relevant conversations, with your brand context in one place.",
+    "PostOrca is a desktop app built around Orca, an AI agent that turns what you build into product content: launch videos, feature announcements, how-tos and what's-new round-ups, made from your code and your real app.",
+  ],
+  [
+    "What can Orca record?",
+    "Web apps in your browser, Mac apps, and iPhone apps in the iOS Simulator. Orca records your real app, so what viewers see is what your product does.",
   ],
   [
     "Will it sound like me?",
-    "Brand setup happens through a conversation with Orca. Share what you're building, who you're speaking to, and the topics and tone that feel right. You can give feedback on each piece of work and keep refining the direction.",
+    "Orca learns what you're building, who it's for and how you talk. Every video starts as a script you approve, and you can change anything with a reply.",
   ],
   [
-    "Does Orca publish automatically?",
-    "Publishing is not connected yet. Orca prepares work for your review. During onboarding, you can record how you eventually want content published—manually, through a browser, or through a specific tool.",
+    "Does Orca post for me?",
+    "No. Orca prepares the work for your review: the plan, the script and the finished video, all in one folder for each piece of content. You decide what goes out and where.",
   ],
   [
-    "How do scheduled tasks work?",
-    "Use a routine for recurring work, or schedule a task once from Calendar. Scheduling runs on the server. When a task needs your browser, the desktop app and browser connection need to be available.",
+    "What are routines?",
+    "Work Orca does for you every day on its own, like checking what changed in your projects or how your posts did. You can also schedule a task once from Calendar.",
   ],
   [
     "Which apps can I connect?",
@@ -77,7 +84,7 @@ export default function Home() {
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero-eyebrow">
             <span className="status-dot" />
-            Your personal brand agent
+            From your code to launch videos
           </div>
           <h1 id="hero-title">
             Meet{" "}
@@ -87,9 +94,9 @@ export default function Home() {
             Orca.
           </h1>
           <p className="hero-copy">
-            You keep building. Orca keeps your story moving.
-            <br className="desktop-break" /> An AI partner for ideas, drafts,
-            and conversations—in your voice.
+            You ship it. Orca shows it.
+            <br className="desktop-break" /> Launch videos, feature
+            announcements and how-tos, made from your code.
           </p>
           <div className="hero-actions">
             <a href="#product" className="button button-dark">
@@ -104,7 +111,7 @@ export default function Home() {
           <div className="product-stage" id="product">
             <ProductDemo />
             <p className="demo-caption">
-              One agent. A little less on your plate.
+              One agent. From your code to a finished video.
               <span>
                 Explore the app above <ArrowUpRight size={12} />
               </span>
@@ -116,17 +123,17 @@ export default function Home() {
           aria-labelledby="intro-title"
         >
           <div className="section-kicker">
-            Built for the founder behind the company
+            Built for the founder behind the product
           </div>
           <h2 id="intro-title">
-            You have something to say.
+            You shipped something.
             <br />
-            <span>Make room to say it.</span>
+            <span>Show it.</span>
           </h2>
           <p>
-            Between shipping, talking to customers, and everything in between,
-            showing up can become another job. Orca helps turn the work you're
-            already doing into a presence that feels like you.
+            Every feature deserves to be seen, but planning, recording and
+            editing a video is another job. Orca turns what you built into
+            content people can watch, starting from the code you already wrote.
           </p>
         </section>
         <section
@@ -137,30 +144,31 @@ export default function Home() {
           <div className="section-heading">
             <div>
               <div className="section-kicker">
-                From a thought to something worth sharing
+                From code to a finished video
               </div>
-              <h2 id="workflow-title">A partner for the work.</h2>
+              <h2 id="workflow-title">Plan, script, video.</h2>
             </div>
             <p>
               Give Orca a little direction.
               <br />
-              Come back to work you can review.
+              Come back to a video you can review.
             </p>
           </div>
           <div className="feature-grid">
             <article className="feature feature-large">
               <div className="feature-copy">
                 <span className="feature-number">
-                  01 / GET TO KNOW EACH OTHER
+                  01 / LEARN THE PRODUCT
                 </span>
                 <h3>
-                  A conversation.
+                  Your code.
                   <br />
-                  Your point of view.
+                  Your real app.
                 </h3>
                 <p>
-                  Tell Orca what you're building, the topics you care about, and
-                  where you want to show up. Your point of view comes first.
+                  Orca reads your project and recent commits, then opens the
+                  running app: a web app, a Mac app, or an iPhone app in the
+                  Simulator.
                 </p>
               </div>
               <div className="onboarding-visual">
@@ -170,63 +178,29 @@ export default function Home() {
                   </span>
                   Orca
                 </div>
-                <h4>What would you like to share more about?</h4>
+                <h4>What should the video show?</h4>
                 <div className="topic selected">
                   <span>
                     <Check size={12} />
                   </span>
-                  Building in public
+                  The whole product
                 </div>
                 <div className="topic selected">
                   <span>
                     <Check size={12} />
                   </span>
-                  Lessons from being a founder
+                  The feature you just shipped
                 </div>
                 <div className="topic">
                   <span />
-                  The things I'm learning
+                  A how-to users asked for
                 </div>
                 <div className="visual-footer">
-                  Your own answer is always welcome.
+                  Or say it in your own words.
                   <span>
                     <ArrowRight size={16} />
                   </span>
                 </div>
-              </div>
-            </article>
-            <article className="feature feature-small">
-              <div className="research-visual">
-                <div className="research-orbit">
-                  <div className="orbit-line line-one" />
-                  <div className="orbit-line line-two" />
-                  <span className="orbit-center">
-                    <Mark />
-                  </span>
-                  <span className="orbit-app app-x">𝕏</span>
-                  <span className="orbit-app app-threads">@</span>
-                  <span className="orbit-app app-web">
-                    <Globe2 size={21} />
-                  </span>
-                  <span className="orbit-app app-search">
-                    <Search size={21} />
-                  </span>
-                </div>
-              </div>
-              <div className="feature-copy">
-                <span className="feature-number">
-                  02 / FIND THE STARTING POINT
-                </span>
-                <h3>
-                  Good ideas are already
-                  <br />
-                  all around you.
-                </h3>
-                <p>
-                  Discover topics and conversations relevant to your work. Find
-                  a point of view worth adding, rather than another trend to
-                  chase.
-                </p>
               </div>
             </article>
             <article className="feature feature-small">
@@ -235,16 +209,16 @@ export default function Home() {
                   <span className="asia-avatar">
                     <Mark />
                   </span>
-                  <strong>Your launch story</strong>
+                  <strong>Launch video · script</strong>
                   <span className="tiny-status">For review</span>
                 </div>
                 <p>
-                  "The most useful thing I learned this week wasn't in the
-                  roadmap…"
+                  "Meet Ledgerly, invoicing for freelancers and small
+                  studios…"
                 </p>
                 <div className="visual-artifact">
                   <FileText size={15} />
-                  Content draft
+                  script.md
                   <ArrowUpRight size={13} />
                 </div>
                 <footer>
@@ -259,32 +233,65 @@ export default function Home() {
                 </footer>
               </div>
               <div className="feature-copy">
-                <span className="feature-number">03 / MAKE IT YOURS</span>
+                <span className="feature-number">02 / APPROVE THE SCRIPT</span>
                 <h3>
-                  Finished work.
+                  Nothing is recorded
                   <br />
-                  Your final say.
+                  until you say go.
                 </h3>
                 <p>
-                  Ideas, drafts, and research land in your Inbox. Review the
-                  work, leave feedback, or approve it when it feels right.
+                  A plan and a shot-by-shot script, in plain words. Change
+                  anything with a reply, then approve it.
+                </p>
+              </div>
+            </article>
+            <article className="feature feature-small">
+              <div className="research-visual">
+                <div className="research-orbit">
+                  <div className="orbit-line line-one" />
+                  <div className="orbit-line line-two" />
+                  <span className="orbit-center">
+                    <Mark />
+                  </span>
+                  <span className="orbit-app app-x"><Monitor size={21} /></span>
+                  <span className="orbit-app app-threads"><Smartphone size={21} /></span>
+                  <span className="orbit-app app-web">
+                    <Globe2 size={21} />
+                  </span>
+                  <span className="orbit-app app-search">
+                    <Clapperboard size={21} />
+                  </span>
+                </div>
+              </div>
+              <div className="feature-copy">
+                <span className="feature-number">
+                  03 / RECORD AND EDIT
+                </span>
+                <h3>
+                  Your real app,
+                  <br />
+                  edited for you.
+                </h3>
+                <p>
+                  Orca records each shot, frames it on what matters, and adds
+                  voiceover and captions. The plan, script, recordings and
+                  finished MP4 land in one folder.
                 </p>
               </div>
             </article>
             <article className="feature feature-large routine-feature">
               <div className="feature-copy">
                 <span className="feature-number">
-                  04 / KEEP A LITTLE MOMENTUM
+                  04 / EVERY DAY, ON ITS OWN
                 </span>
                 <h3>
-                  Consistency,
+                  Ideas from
                   <br />
-                  without the calendar guilt.
+                  what you shipped.
                 </h3>
                 <p>
-                  Give recurring work a routine, or schedule a task for a
-                  specific time. Keep your attention on building, with a place
-                  to pick up where you left off.
+                  Routines are work Orca does for you every day on its own, like
+                  checking what changed in your projects or how your posts did.
                 </p>
               </div>
               <div className="rhythm-visual">
@@ -307,7 +314,7 @@ export default function Home() {
                     <Search size={15} />
                   </span>
                   <div>
-                    Find your next conversation
+                    What changed in your projects
                     <small>Every weekday · 09:00</small>
                   </div>
                   <span className="status-dot" />
@@ -317,7 +324,7 @@ export default function Home() {
                     <Sparkles size={15} />
                   </span>
                   <div>
-                    A few ideas for next week<small>Monday · 10:00</small>
+                    How your posts did<small>Monday · 10:00</small>
                   </div>
                   <span className="status-dot" />
                 </div>
@@ -328,11 +335,11 @@ export default function Home() {
         <section className="quiet-section section-shell">
           <Mark />
           <div>
-            <h2>Your voice is the whole point.</h2>
+            <h2>Your product is the whole point.</h2>
             <p>
-              Orca brings the starting points. You bring the perspective.
+              Orca does the recording and editing. You decide what it says.
               <br />
-              Together, turn everyday work into a story only you could tell.
+              Every video is planned with you and shows your real app.
             </p>
           </div>
         </section>
@@ -364,13 +371,13 @@ export default function Home() {
           <div className="download-logo">
             <Mark />
           </div>
-          <span className="section-kicker">A little momentum, every day.</span>
+          <span className="section-kicker">Ship it. Show it.</span>
           <h2>
             Keep building.
             <br />
-            Let your story catch up.
+            Let your videos catch up.
           </h2>
-          <p>A personal brand partner, right on your desktop.</p>
+          <p>From your code to launch videos, right on your desktop.</p>
           {download ? (
             <a href={download} className="button button-dark">
               Download for macOS
@@ -392,7 +399,7 @@ export default function Home() {
           <Mark />
           <span>PostOrca</span>
         </a>
-        <span>Personal Brand Agent</span>
+        <span>Product Content Agent</span>
         <nav aria-label="Footer">
           <a href="#product">The app</a>
           <a href="#pricing">Pricing</a>

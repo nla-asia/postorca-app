@@ -174,7 +174,7 @@ export default function Routines({
             })()}
           </strong>
           <span>
-            Orca runs these on the server, even when this app is closed.
+            Work Orca does for you on its own, on a schedule.
           </span>
         </div>
         <Button variant="primary" onClick={() => setEditing("new")}>
