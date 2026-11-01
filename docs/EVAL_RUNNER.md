@@ -359,6 +359,10 @@ Two separate evals use it, matching the product:
   (print to PDF), with pilot notes saying why it was asked for. The script has to
   announce that one feature, not the product or the week's other commits, and keep the
   notes' private numbers out.
+- `content-script-packlight-how-to` (code to script, a how-to): users asked how to share
+  their packing list; a short how-to reel. It teaches one task in order, and sharing is
+  iPhone-only (the web version shows a line pointing to the app instead of the button),
+  so the steps have to be shown on the phone.
 - `content-demo-quill-from-script`: script to video on Quill, from an approved script, all
   through computer use: typing with the live preview, the File menu, search, pinning
   and the Settings window.
