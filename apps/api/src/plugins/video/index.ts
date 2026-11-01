@@ -44,7 +44,7 @@ const clipArgs = z
             video_file: file
               .optional()
               .describe(
-                "Saved video ref (a recorded clip), played muted instead of an image.",
+                "Saved video ref (a recorded clip), played instead of an image, muted unless sound is set.",
               ),
             start_seconds: z
               .number()
@@ -68,6 +68,12 @@ const clipArgs = z
               .max(10)
               .optional()
               .describe("Clip only: freeze the last frame this long."),
+            sound: z
+              .boolean()
+              .optional()
+              .describe(
+                "Clip only: play it with its own sound, such as a finished video shown whole. The voiceover pauses for it and picks up with the next scene's says.",
+              ),
             text: z
               .string()
               .trim()
@@ -158,10 +164,11 @@ const clipArgs = z
               (scene.start_seconds ??
                 scene.end_seconds ??
                 scene.speed ??
-                scene.hold_seconds) === undefined,
+                scene.hold_seconds ??
+                scene.sound) === undefined,
             {
               message:
-                "start_seconds, end_seconds, speed and hold_seconds apply only to a video_file scene.",
+                "start_seconds, end_seconds, speed, hold_seconds and sound apply only to a video_file scene.",
             },
           )
           .refine(
@@ -485,48 +492,105 @@ export function transcriptWithScript(
 const spokenWord = (text: string) =>
   text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 
-/** Moves each scene that declares `says` to the moment those words are spoken. */
+/**
+ * Moves each scene that declares `says` to the moment those words are spoken. A clip
+ * scene with its own sound pauses the voiceover: the voice stops after the words before
+ * it and resumes with the next scene's words once the clip has played; each such pause
+ * is added to `pauses` (voiceover time, length), and later scenes start that much later.
+ */
 export function alignScenes(
-  scenes: { says?: string }[],
+  scenes: { says?: string; sound?: boolean }[],
   durations: number[],
   transcript: Transcript,
+  pauses: { at_ms: number; ms: number }[] = [],
 ) {
   const words = (transcript.words ?? []).filter((w) => w.type === "word");
   const spoken = words.map((w) => spokenWord(w.text));
   const aligned = [...durations];
+  // Each scene's start in the video.
+  const starts: number[] = [];
   let from = 0;
-  let elapsed = 0;
+  let shift = 0;
+  const tooShort = (index: number, ms: number, target: number) =>
+    new HttpError(
+      400,
+      `Scene ${index} would last ${(ms / 1000).toFixed(2)} s because scene ${index + 1}'s words start at ${(target / 1000).toFixed(1)} s; a scene needs at least 0.5 s. Remove a scene or say something earlier.`,
+    );
   scenes.forEach((scene, index) => {
-    if (scene.says) {
-      const wanted = scene.says.split(/\s+/).map(spokenWord).filter(Boolean);
-      let at = -1;
-      for (let i = from; at < 0 && i + wanted.length <= spoken.length; i++)
-        if (wanted.every((word, n) => spoken[i + n] === word)) at = i;
-      if (at < 0)
-        throw new HttpError(
-          400,
-          `Scene ${index + 1} says "${scene.says}", which is not spoken after the previous scene's words. Quote the voiceover exactly and keep scenes in spoken order. It says: ${voiceoverLines(
-            transcript,
-          )
-            .map((line) => line.text)
-            .join(" ")}`,
-        );
-      from = at + wanted.length;
-      const target = Math.round((words[at].start ?? 0) * 1000);
-      if (index > 0) {
-        const previous = aligned[index - 1] + target - elapsed;
-        if (previous < 500)
-          throw new HttpError(
-            400,
-            `Scene ${index} would last ${(previous / 1000).toFixed(2)} s because scene ${index + 1}'s words start at ${(target / 1000).toFixed(1)} s; a scene needs at least 0.5 s. Remove a scene or say something earlier.`,
-          );
-        aligned[index - 1] = previous;
-        elapsed = target;
+    if (scene.sound && scene.says)
+      throw new HttpError(
+        400,
+        `Scene ${index + 1} plays with its own sound, so nothing is said over it; put says on the scene after it, where the voiceover picks up.`,
+      );
+    if (scenes[index - 1]?.sound && !scene.says)
+      throw new HttpError(
+        400,
+        `Scene ${index + 1} follows a clip with its own sound; give it says with the words the voiceover picks up with.`,
+      );
+    starts[index] = index ? starts[index - 1] + aligned[index - 1] : 0;
+    if (!scene.says) return;
+    const wanted = scene.says.split(/\s+/).map(spokenWord).filter(Boolean);
+    let at = -1;
+    for (let i = from; at < 0 && i + wanted.length <= spoken.length; i++)
+      if (wanted.every((word, n) => spoken[i + n] === word)) at = i;
+    if (at < 0)
+      throw new HttpError(
+        400,
+        `Scene ${index + 1} says "${scene.says}", which is not spoken after the previous scene's words. Quote the voiceover exactly and keep scenes in spoken order. It says: ${voiceoverLines(
+          transcript,
+        )
+          .map((line) => line.text)
+          .join(" ")}`,
+      );
+    from = at + wanted.length;
+    const spokenAt = Math.round((words[at].start ?? 0) * 1000);
+    const sound = index - 1;
+    if (scenes[sound]?.sound) {
+      // The clip starts where the voice stops, after the last word before these.
+      const stopsAt = at > 0 ? Math.round((words[at - 1].end ?? 0) * 1000) : 0;
+      const clipStart = stopsAt + shift;
+      if (sound > 0) {
+        const previous = clipStart - starts[sound - 1];
+        if (previous < 500) throw tooShort(sound, previous, clipStart);
+        aligned[sound - 1] = previous;
       }
+      starts[sound] = clipStart;
+      pauses.push({ at_ms: stopsAt, ms: aligned[sound] });
+      shift += aligned[sound];
+      // The clip plays whole, then holds its last frame until the voice picks up.
+      aligned[sound] = spokenAt + shift - clipStart;
+    } else if (index > 0) {
+      const previous = spokenAt + shift - starts[index - 1];
+      if (previous < 500) throw tooShort(index, previous, spokenAt + shift);
+      aligned[index - 1] = previous;
     }
-    elapsed += aligned[index];
+    if (index > 0) starts[index] = spokenAt + shift;
   });
   return aligned;
+}
+
+/** The transcript as heard in the video: words after each voiceover pause come that much later. */
+export function pausedTranscript(
+  transcript: Transcript,
+  pauses: { at_ms: number; ms: number }[],
+): Transcript {
+  if (!pauses.length) return transcript;
+  const later = (seconds: number | null | undefined) =>
+    seconds === undefined || seconds === null
+      ? seconds
+      : seconds +
+        pauses
+          .filter((pause) => seconds * 1000 >= pause.at_ms)
+          .reduce((sum, pause) => sum + pause.ms, 0) /
+          1000;
+  return {
+    ...transcript,
+    words: transcript.words?.map((word) => ({
+      ...word,
+      start: later(word.start),
+      end: later(word.end),
+    })),
+  };
 }
 
 function voiceoverLines(transcript: Transcript) {
@@ -584,7 +648,7 @@ async function prepare(context: PluginContext, clip: Clip) {
       : undefined,
   );
   const heard = voice ? await transcriptFor(context, voice) : undefined;
-  const transcript =
+  const spoken =
     heard && clip.voiceover_script
       ? transcriptWithScript(heard, clip.voiceover_script)
       : heard;
@@ -592,9 +656,11 @@ async function prepare(context: PluginContext, clip: Clip) {
     (scene, index) =>
       clips[index]?.duration_ms ?? Math.round(scene.duration_seconds! * 1000),
   );
-  const durations = transcript
-    ? alignScenes(clip.scenes, planned, transcript)
+  const pauses: { at_ms: number; ms: number }[] = [];
+  const durations = spoken
+    ? alignScenes(clip.scenes, planned, spoken, pauses)
     : planned;
+  const transcript = spoken && pausedTranscript(spoken, pauses);
   const originalMs = durations.reduce((sum, value) => sum + value, 0);
   const speechMs = transcript
     ? Math.max(0, ...(transcript.words ?? []).map((word) => word.end ?? 0)) *
@@ -638,6 +704,7 @@ async function prepare(context: PluginContext, clip: Clip) {
           start_ms: clips[index].start_ms,
           end_ms: clips[index].end_ms,
           speed: clips[index].speed,
+          sound: scene.sound,
         }),
         // A screen recording sits on the stage in every format, clear of the title and
         // captions; a bare one (no device frame) is shown whole, never cropped.
@@ -649,6 +716,7 @@ async function prepare(context: PluginContext, clip: Clip) {
         highlight: scene.highlight,
       })),
       voiceover_file: voice,
+      voiceover_pauses: pauses.length ? pauses : undefined,
       music: clip.music && {
         file: music,
         volume: clip.music.volume ?? (voice ? 0.15 : 0.6),

@@ -224,7 +224,7 @@ function withAssets(args, context, run) {
             context.signal,
           );
           size = info;
-          clip = { startMs, endMs, speed: scene.speed ?? 1, poster };
+          clip = { startMs, endMs, speed: scene.speed ?? 1, sound: scene.sound === true, poster };
           if (scene.focus_on?.length) {
             if (process.platform !== "darwin")
               throw new Error(
@@ -324,6 +324,10 @@ function withAssets(args, context, run) {
         scenes,
         format: args.format ?? "9:16",
         voiceover,
+        voiceoverPauses: (args.voiceover_pauses ?? []).map((pause) => ({
+          atMs: pause.at_ms,
+          ms: pause.ms,
+        })),
         music,
         captions: args.transcript
           ? render.captionsFromTranscript(args.transcript)
