@@ -419,7 +419,7 @@ apps.
 
 Programmatic checks come from the product task: the app was opened, the screen was
 checked before recording, enough clips were recorded with the app in use, and the
-requested text was typed in the app (on or off camera: product-demo-capture sets the
+requested text was typed in the app (on or off camera: product-content-capture sets the
 stage before recording). Level 2 requires the clips as video artifacts; the
 Content demo videos require a narrated `video_export` built from those clips, plus
 the standard video checks. Clip quality and the app's final state are reviewed by the observer; these

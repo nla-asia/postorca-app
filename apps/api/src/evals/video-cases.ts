@@ -140,7 +140,7 @@ export const videoCases: VideoCase[] = [
     expect: {
       exports: 1,
       seconds: [15, 32],
-      skill: "video-product-demo",
+      skill: "product-content-edit",
       mustInclude: ["Weekly Founder Digest|digest", "autopilotstartup\\.com"],
     },
   },
@@ -167,7 +167,7 @@ export const videoCases: VideoCase[] = [
     expect: {
       exports: 1,
       seconds: [15, 32],
-      skill: "video-product-demo",
+      skill: "product-content-edit",
       mustInclude: ["Cold Turkey", "getcoldturkey\\.com"],
       screens: { folder: "cold-turkey", min: 3, contain: true, focus: true },
       formats: ["16:9", "1:1", "4:5"],
@@ -183,7 +183,7 @@ export const videoCases: VideoCase[] = [
     expect: {
       exports: 1,
       seconds: [12, 25],
-      skill: "video-product-demo",
+      skill: "product-content-edit",
       mustInclude: ["Google Keep|Keep"],
       screens: { folder: "google keep", min: 2 },
     },
