@@ -16,7 +16,7 @@ const path = require("node:path");
 const { execFile, spawn } = require("node:child_process");
 const { randomUUID } = require("node:crypto");
 const { promisify } = require("node:util");
-const { mediaBinary } = require("./files.cjs");
+const { mediaBinary, saveToContentFolder } = require("./files.cjs");
 
 const run = promisify(execFile);
 const MAX_RECORD_SECONDS = 180;
@@ -400,7 +400,7 @@ function createScreenTools({
     return { id: recording.id, target, max_seconds: maxSeconds };
   };
 
-  const stop = async ({ id }, context) => {
+  const stop = async ({ id, content_folder }, context) => {
     const recording = typeof id === "string" && recordings.get(id);
     if (!recording)
       throw new Error("No recording with that id: it was already saved, or the desktop app restarted.");
@@ -416,10 +416,14 @@ function createScreenTools({
     const data = await fs.readFile(file);
     // A failed upload keeps the clip, so stopping again retries it.
     const key = await context.upload(data, "video/mp4");
+    const saved = content_folder
+      ? await saveToContentFolder(path.join(content_folder, "Recordings"), "recording.mp4", data).catch(() => null)
+      : null;
     recordings.delete(id);
     await fs.rm(recording.dir, { recursive: true, force: true });
     return {
       id,
+      ...(saved && { saved_to: saved }),
       target: recording.target,
       duration_seconds: info.duration_seconds || Math.round(recording.seconds * 10) / 10,
       width: info.width,

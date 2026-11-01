@@ -335,8 +335,29 @@ const writeContentFile = {
   },
 };
 
+// A copy of a recording or an export in a content task's folder, so everything for one
+// piece of content sits together. A name already taken gets a number.
+async function saveToContentFolder(folder, name, data) {
+  const base = workingFolder();
+  const parts = String(folder ?? "").split(/[\\/]+/).filter(Boolean);
+  if (!base || !parts.length || path.isAbsolute(String(folder)) || parts.some((part) => part === ".." || part === "."))
+    return null;
+  const root = await fs.realpath(base);
+  const dir = path.join(root, ...parts);
+  await fs.mkdir(dir, { recursive: true });
+  const real = await fs.realpath(dir);
+  if (real !== root && !real.startsWith(root + path.sep)) return null;
+  const ext = path.extname(name);
+  const stem = name.slice(0, name.length - ext.length).replace(/[^\w .-]+/g, "").trim().slice(0, 80) || "video";
+  let file = path.join(real, stem + ext);
+  for (let n = 2; await fs.stat(file).then(() => true, () => false); n++) file = path.join(real, `${stem} ${n}${ext}`);
+  await fs.writeFile(file, data);
+  return file;
+}
+
 module.exports = {
   write_content_file: writeContentFile,
+  saveToContentFolder,
   mediaBinary,
   list_dir: listDir,
   read_file: readFile,

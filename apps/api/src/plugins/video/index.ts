@@ -11,6 +11,7 @@ import { brandColors } from "../../repositories/brand.js";
 import { brandColorsSchema } from "../../schemas/brand.js";
 import { filePath } from "../../storage.js";
 import { loadSkill } from "../../skills/load.js";
+import { contentFolder } from "../../tools/content.js";
 import { mediaPlugin, ownedBlob, ownedFile } from "../media/index.js";
 import type {
   PluginContext,
@@ -739,6 +740,7 @@ function videoTool(
         if (!preview && tail > 5)
           throw new HttpError(400, `${silentTail(tail * 1000, 0)} Fix it, preview, then export.`);
         const times: number[] = preview ? times_seconds.slice(0, 8) : [];
+        const folder = preview ? null : await contentFolder(context);
         const result = await callDesktop(
           context,
           name,
@@ -747,7 +749,7 @@ function videoTool(
             ...render,
             ...(preview
               ? { times_ms: times.map((time) => time * 1000) }
-              : { title }),
+              : { title, ...(folder && { content_folder: folder }) }),
           },
         );
         return {
