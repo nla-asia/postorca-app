@@ -147,6 +147,21 @@ test("a window that can't be recorded fails the start with a clear message", asy
   assert.equal(indicator.shown, 0);
 });
 
+test("window recording preserves native focus errors without starting a recorder", async () => {
+  const { calls, spawnProcess } = fakeSpawn();
+  const indicator = fakeIndicator();
+  const tools = createScreenTools({
+    platform: "darwin", access: () => "granted", spawnProcess, indicator,
+    raiseWindow: async () => { throw new Error("Grant Accessibility permission to PostOrca in System Settings."); },
+  });
+  await assert.rejects(
+    tools.screen_record_start.run({ target: { type: "window", window_id: 42 } }),
+    /^Error: Grant Accessibility permission to PostOrca in System Settings\.$/,
+  );
+  assert.equal(calls.length, 0);
+  assert.equal(indicator.shown, 0);
+});
+
 test("recordings become H.264 MP4s with the bundled ffmpeg", async () => {
   const copied = await toMp4(h264Mov, path.join(dir, "copied.mp4"));
   assert.deepEqual(await probe(copied), { codec: "h264", width: 64, height: 40, duration_seconds: 2 });
@@ -222,7 +237,7 @@ test("recording a window brings it to the front first, and refuses if it can't",
   });
   await assert.rejects(
     failing.screen_record_start.run({ target }),
-    /could not be brought to the front/,
+    /cannot be told apart/,
   );
   assert.deepEqual(order, []);
 
