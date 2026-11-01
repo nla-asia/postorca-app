@@ -100,7 +100,7 @@ export const contentTools: Tool[] = [
     definition: {
       name: "save_content_file",
       description:
-        "On a content task, save its plan (plan.md: what the content is for, who it's for, the format, what it shows and what was assumed or left out) or its script (script.md: numbered shots with what's on screen, on-screen text and the voiceover line) into the task's folder in the founder's working folder. The first save creates the folder. Both come before any content is made; saving the script asks for the founder's approval again. Needs the desktop app.",
+        "On a content task, save its plan (plan.md: what the content is for, who it's for, the format, what it shows and what was assumed or left out) or its script (script.md: numbered shots with what's on screen, on-screen text and the voiceover line) into the task's folder in the founder's working folder. The first save creates the folder. Both come before any content is made; saving the script asks for the founder's approval again. The script is public: write it as the product's owner speaking to its users, about what they can do and why it helps them, in their words. Internal material (pilot or beta feedback, user counts, notes, plans) and how the product is built (commits, code, technical terms) are only for choosing what to show, never in what viewers see or hear. Needs the desktop app.",
       parameters: object(
         {
           name: { type: "string", enum: ["plan.md", "script.md"] },
