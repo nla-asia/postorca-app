@@ -172,6 +172,8 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
           : { brief: c.brief },
       ],
       criteria: criteria(c.criteria),
+      // Code to script is the first stage of a content task.
+      ...(c.script_only && { work_type: "content" as const }),
       demo: c,
       ...(c.fixture_script
         ? { fixture: fixture(c.fixture_script) }

@@ -258,6 +258,8 @@ test("code to script and script to video are separate cases", async () => {
     const entry = cases.find((c) => c.id === id)!;
     assert.equal(entry.turns.length, 1);
     assert.equal(entry.turns[0].video_case, undefined);
+    // Code to script is the first stage of a content task.
+    assert.equal(entry.work_type, "content");
     assert.ok(!entry.prerequisites.includes("media_providers_ready"));
   }
   const video = cases.find((c) => c.id === "content-demo-tide-from-script")!;
@@ -267,17 +269,21 @@ test("code to script and script to video are separate cases", async () => {
 
 test("code to script reads the project and records nothing", () => {
   const entry = demo("script-tide-intro");
-  const call = (name: string, result: any = {}) => ({ name, args: {}, result });
-  const script = [call("read_file"), call("browser_open", { tab: "t1" })];
+  const call = (name: string, result: any = {}, args: any = {}) => ({ name, args, result });
+  const saves = ["plan.md", "script.md"].map((name) => call("save_content_file", { path: name }, { name }));
+  const script = [call("read_file"), call("browser_open", { tab: "t1" }), ...saves];
   const names = (calls: any[]) =>
     failed(gradeDemoCapture(entry, { status: "completed", calls, artifacts: [] }));
   assert.deepEqual(names(script), []);
   assert.deepEqual(names([...script, call("screen_record_start", { id: "a" })]), [
     "Recorded and made nothing: the script comes first",
   ]);
-  assert.deepEqual(names([call("browser_open", { tab: "t1" })]), [
+  // A content task refuses recording before approval: trying isn't making.
+  assert.deepEqual(names([...script, call("screen_record_start", { error: "approve first" })]), []);
+  assert.deepEqual(names([call("browser_open", { tab: "t1" }), ...saves]), [
     "Read the project before writing the script",
   ]);
+  assert.deepEqual(names(script.slice(0, 3)), ["Saved the plan and the script in the task's folder"]);
 });
 
 test("a local web app opened as localhost counts as opened", () => {

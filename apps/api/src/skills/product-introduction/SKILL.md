@@ -40,7 +40,7 @@ One message, short enough to review without scrolling back and forth:
 - **Shots**, numbered, one per beat. For each: what's on screen (which screen and what happens), its on-screen text if it has any, and the voiceover line for it. On-screen text is a line the video adds over the shot, not text already in the app. The opening shot always has one, short and naming the product, because many people watch with the sound off. The voiceover read in order is the whole script, about 2.5 words per second of video.
 - **Assumptions:** what you chose and left out and why, in a line or two, so the founder can correct it quickly.
 
-End by asking the founder to approve it or say what to change.
+On a content task, save the plan (what the video is for, who it's for, the format and what you assumed or left out) and the script with `save_content_file` as `plan.md` and `script.md`, then reply with the script. End by asking the founder to approve it or say what to change.
 
 **The story is a straightforward product demo:** name the product and say in one line what it does, then show the core flows working, each with a plain line on what the viewer sees, and close on the product's name. Say it the way a product page introduces a product ("Introducing [product]…" fits a launch). The product is the subject, not how it came about: no user research, feedback numbers, complaints or backstory; those belong in posts about one feature or moment. No slogans, abstract concepts or features it doesn't have, and no tour of every button: three or four flows done well.
 
@@ -48,7 +48,7 @@ End by asking the founder to approve it or say what to change.
 
 When the founder replies:
 
-- **Apply every change** they asked for. If they rewrite the story, show the new script and wait for approval again; otherwise go ahead.
+- **Apply every change** they asked for. If they rewrite the story, show the new script and wait for approval again; otherwise go ahead. On a content task, save the updated `script.md` and record their approval with `approve_content_script`, quoting them; recording and exporting wait for it.
 - **Capture:** read the `product-demo-capture` skill with `read_skill` and follow it, with the approved shots as its demo plan: one clip per flow, each starting from a clean, ready screen.
 - **Edit:** activate the video plugin, read its `video-product-demo` skill and build the video from the clips, with the approved voiceover as `voiceover_script`, each scene starting on its line and showing its on-screen text. The founder's requested length and format win over that skill's defaults.
 - **Check and deliver** as those skills say. In the final message, say in a line what changed from the approved script, if anything had to.

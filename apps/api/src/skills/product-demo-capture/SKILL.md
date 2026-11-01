@@ -9,6 +9,8 @@ A demo idea comes with a demo plan: what to show, where it is in the product, an
 
 How to work the browser, the computer or the capture tools is in their own skills and tool descriptions. This skill is about what to capture, how it should look, and who captures it.
 
+A demo starts from a plan and a script the founder has approved. On a content task without one yet, write them first: `plan.md` (what it's for, who it's for, the format, what it shows and what you assumed or left out) and `script.md` (numbered shots with what's on screen, on-screen text and the voiceover line), saved with `save_content_file`; reply with the script and stop. When the founder approves it, record that with `approve_content_script`; capture and export wait for it.
+
 ## 1. Shot list
 
 From the demo plan, list every shot, in the order the demo shows them. For each:

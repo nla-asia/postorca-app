@@ -110,6 +110,8 @@ export const caseSchema = z
     platform: z.enum(["win32", "darwin"]).optional(),
     /** 1: tool health check. 2: one process. 3: real-world end-to-end work. */
     level: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+    /** A content task: plan, then a script the founder approves, then the content. */
+    work_type: z.enum(["general", "content"]).optional(),
     /** Run as a real routine ("Run now"); the single turn's brief is its instructions. */
     routine: z
       .object({

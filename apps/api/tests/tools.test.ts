@@ -686,3 +686,40 @@ test("create_reply delivers one validated reply card", async () => {
   ])
     await assert.rejects(run(context, "create_reply", bad));
 });
+
+test("a content task makes nothing until its plan and script are saved and the founder approves", async () => {
+  const userId = await account();
+  const { task, turn } = await createWorkTask(fixture.db, userId, "Overdue launch", "Make it", undefined, "content");
+  const context = { userId, taskId: task.id as string, turnId: turn.id as string };
+  // Before a plan and a script, recording and exporting are refused.
+  for (const name of ["screen_record_start", "video_export", "media_generate_speech"])
+    await assert.rejects(run(context, name, {}), { status: 409, message: /plan and a script/ });
+  // Saving needs the desktop; the task records the save (as the desktop's answer would).
+  await assert.rejects(run(context, "save_content_file", { name: "plan.md", text: "# Plan" }), { status: 503 });
+  await fixture.db.query(
+    "UPDATE tasks SET content_dir='Content/Overdue launch', plan_saved_at=now(), script_saved_at=now(), script_turn_id=$2 WHERE id=$1",
+    [context.taskId, context.turnId],
+  );
+  await assert.rejects(run(context, "screen_record_start", {}), { status: 409, message: /hasn't approved/ });
+  // The turn that wrote the script can't approve it; a later founder reply can.
+  await assert.rejects(run(context, "approve_content_script", { founder_words: "Looks good" }), {
+    status: 409,
+    message: /hasn't replied/,
+  });
+  await completeTurn(fixture.db, context.turnId);
+  const reply = await createTurn(fixture.db, userId, context.taskId, "Looks good, go ahead");
+  const next = { ...context, turnId: reply.id as string };
+  assert.deepEqual(await run(next, "approve_content_script", { founder_words: "Looks good, go ahead" }), {
+    approved: true,
+  });
+  // Approved: the call reaches the desktop (not connected here) instead of the gate.
+  await assert.rejects(run(next, "screen_record_start", { target: { type: "screen" } }), { status: 503 });
+
+  // Other tasks are not affected, and have no plan or script.
+  const general = await workContext(userId);
+  await assert.rejects(run(general, "screen_record_start", { target: { type: "screen" } }), { status: 503 });
+  await assert.rejects(run(general, "save_content_file", { name: "plan.md", text: "x" }), {
+    status: 400,
+    message: /Only a content task/,
+  });
+});

@@ -178,13 +178,14 @@ export async function createWorkTask(
   title: string,
   instructions: string,
   platform?: string,
+  workType: "general" | "content" = "general",
 ) {
   return transaction(db, async (client) => {
     const {
       rows: [task],
     } = await client.query(
-      "INSERT INTO tasks(user_id,kind,title,platform) VALUES ($1,'work',$2,$3) RETURNING *",
-      [userId, title, platform ?? null],
+      "INSERT INTO tasks(user_id,kind,title,platform,work_type) VALUES ($1,'work',$2,$3,$4) RETURNING *",
+      [userId, title, platform ?? null, workType],
     );
     const turn = await createTurnInTransaction(
       client,
@@ -262,6 +263,7 @@ export async function createTask(
   userId: string,
   kind: TaskKind,
   title: string,
+  workType: "general" | "content" = "general",
 ) {
   // Agent chat and onboarding are one conversation per founder; reuse it.
   const {
@@ -273,8 +275,8 @@ export async function createTask(
           [userId, kind, title],
         )
       : await db.query(
-          "INSERT INTO tasks(user_id,kind,title) VALUES ($1,'work',$2) RETURNING *",
-          [userId, title],
+          "INSERT INTO tasks(user_id,kind,title,work_type) VALUES ($1,'work',$2,$3) RETURNING *",
+          [userId, title, workType],
         );
   return task;
 }
