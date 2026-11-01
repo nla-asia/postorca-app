@@ -363,6 +363,11 @@ Two separate evals use it, matching the product:
   their packing list; a short how-to reel. It teaches one task in order, and sharing is
   iPhone-only (the web version shows a line pointing to the app instead of the button),
   so the steps have to be shown on the phone.
+- `content-script-ledgerly-whats-new` (code to script, a round-up): "what's new in
+  Ledgerly" for the last two weeks. Five user-facing features fall in that window
+  (revenue chart, status filter, add a client in a modal, print to PDF, overdue), with a
+  one-cent fix, a dependency bump and pilot notes; the core is older. The script picks
+  and orders the features for viewers, not as a changelog.
 - `content-demo-quill-from-script`: script to video on Quill, from an approved script, all
   through computer use: typing with the live preview, the File menu, search, pinning
   and the Settings window.
