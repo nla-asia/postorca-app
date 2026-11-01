@@ -5,7 +5,7 @@ const os = require("node:os");
 const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
 const { app, nativeImage } = require("electron");
-const { mediaBinary, allowed } = require("../../tools/files.cjs");
+const { mediaBinary, allowed, saveToContentFolder } = require("../../tools/files.cjs");
 const render = require("./render.cjs");
 const { snapRegion, textBox, closeUp, wholeWords, appTop } = require("./framing.cjs");
 const { native } = require("../computer/native.cjs");
@@ -470,7 +470,11 @@ module.exports = {
           });
           const data = await fs.readFile(filename);
           const file = await context.upload(data, "video/mp4");
+          const saved = args.content_folder
+            ? await saveToContentFolder(args.content_folder, `${args.title || "video"}.mp4`, data).catch(() => null)
+            : null;
           return {
+            ...(saved && { saved_to: saved }),
             width: result.width,
             height: result.height,
             fps: result.fps,

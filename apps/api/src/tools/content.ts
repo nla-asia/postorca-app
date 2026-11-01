@@ -43,6 +43,15 @@ async function contentTask(context: ToolContext) {
 }
 
 /**
+ * A content task's folder in the working folder, once its plan or script is saved there:
+ * recordings and exports are copied into it too. Null on other tasks.
+ */
+export async function contentFolder(context: ToolContext) {
+  const task = await contentState(context.db, context.userId, context.taskId);
+  return task.work_type === "content" ? task.content_dir : null;
+}
+
+/**
  * Tools that make the content itself: they wait for an approved script. Screenshots
  * don't: they are how a native app or the Simulator is looked at before the script.
  */
