@@ -24,11 +24,13 @@ Read the project in the founder's Brand Profile projects (`list_dir`, `read_file
 
 Then open the running app (the README's address) and look at the screens the content will show, without recording, so the script matches what is really there. If it isn't running, say which command starts it and ask the founder to start it. **A mobile app is shown on the phone,** where people use it: check whether it runs in the iOS Simulator (`list_capture_targets`, the project's scripts or README) and look at it there. Anything only the phone does, such as the share sheet, the camera or notifications, is shown on the phone, never left out because the web version lacks it.
 
+**Understand the whole product before choosing anything.** A real product has many features, screens and settings; the content can't show them all and shouldn't try. Work out what the product is for and the few journeys that deliver it: the paths a user takes from a need to the product doing its job. Then choose what matters for this piece of content and leave the rest out, however much of it there is.
+
 ## 2. What the content is
 
 Each kind has its own subject; keep to it:
 
-- **Introduction** (the whole product, often a first post): what it is, who it's for, and its 3–4 core flows in the order a new user meets them, ending on the payoff. Not the latest change.
+- **Introduction** (the whole product, often a first post): what it is, who it's for, and the journey that matters most to a new user, step by step in the order they meet it, ending on the payoff. When the product has more than one main journey, give each its own section, introduced so the viewer knows what's next, rather than mixing them; keep to the two or three that matter most. Not the latest change, and not a tour of every feature.
 - **Feature launch** (something just shipped): that one change, found in the latest commits, where a user meets it and why it helps them, with only enough of the product around it to place it. Chores and internal fixes aren't features.
 - **How-to** (a task users asked about): that one task in the steps a user takes, in order, speaking to the viewer ("tap Share…"). Only the steps the task needs.
 - **What's new** (a period's changes): the changes users got in that period, chosen and ordered for the viewer, each shown working with what it does for them. Not a changelog, and nothing older presented as new.
