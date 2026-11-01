@@ -694,6 +694,8 @@ test("a content task makes nothing until its plan and script are saved and the f
   // Before a plan and a script, recording and exporting are refused.
   for (const name of ["screen_record_start", "video_export", "media_generate_speech"])
     await assert.rejects(run(context, name, {}), { status: 409, message: /plan and a script/ });
+  // Looking is fine before the script: a screenshot reaches the desktop (not connected here).
+  await assert.rejects(run(context, "screen_capture", { target: { type: "screen" } }), { status: 503 });
   // Saving needs the desktop; the task records the save (as the desktop's answer would).
   await assert.rejects(run(context, "save_content_file", { name: "plan.md", text: "# Plan" }), { status: 503 });
   await fixture.db.query(

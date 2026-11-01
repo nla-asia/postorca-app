@@ -42,9 +42,11 @@ async function contentTask(context: ToolContext) {
   return task;
 }
 
-/** Tools that make the content itself: they wait for an approved script. */
+/**
+ * Tools that make the content itself: they wait for an approved script. Screenshots
+ * don't: they are how a native app or the Simulator is looked at before the script.
+ */
 export const contentProduction = new Set([
-  "screen_capture",
   "screen_record_start",
   "video_export",
   "media_generate_speech",
