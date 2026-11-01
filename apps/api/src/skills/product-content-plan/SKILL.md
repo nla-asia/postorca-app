@@ -32,7 +32,7 @@ Each kind has its own subject; keep to it:
 
 - **Introduction** (the whole product, often a first post): what it is, who it's for, and the journey that matters most to a new user, step by step in the order they meet it, ending on the payoff. When the product has more than one main journey, give each its own section, introduced so the viewer knows what's next, rather than mixing them; keep to the two or three that matter most. Not the latest change, and not a tour of every feature.
 - **Feature launch** (something just shipped): that one change, found in the latest commits, where a user meets it and why it helps them, with only enough of the product around it to place it. Chores and internal fixes aren't features.
-- **How-to** (a task users asked about): that one task in the steps a user takes, in order, speaking to the viewer ("tap Share…"). Only the steps the task needs.
+- **How-to** (a task users asked about): that one task in the steps a user takes, in order, speaking to the viewer ("open…, tap…"). Only the steps the task can't be done without: a useful detour along the way, such as checking something first or an extra screen at the end, is still a detour, so leave it out.
 - **What's new** (a period's changes): the changes users got in that period, chosen and ordered for the viewer, each shown working with what it does for them. Not a changelog, and nothing older presented as new.
 
 ## 3. The script is public
