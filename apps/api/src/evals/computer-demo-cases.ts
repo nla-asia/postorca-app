@@ -317,6 +317,28 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
       "The opening shot has a short on-screen line naming what's new, so it reads with the sound off, and it fits about 20 seconds.",
     ],
   },
+  // A how-to teaches one task, step by step. Sharing a packing list is iPhone-only: the
+  // web version shows a line pointing to the iPhone app instead of the button, so the
+  // steps have to be shown on the phone.
+  {
+    id: "script-packlight-how-to",
+    level: 3,
+    name: "How-to script from the code repo (Packlight React Native app)",
+    app: "web",
+    url: "http://127.0.0.1:4140",
+    fixture_script: "scripts/evals/packlight-fixture.mjs",
+    script_only: true,
+    brief: `A few Packlight users asked how to share their packing list with whoever they're travelling with. Can you make a quick how-to video for it, as an Instagram reel? Short, portrait, voiceover and captions. The code is in my projects and the app is running locally. ${noPublish}`,
+    typed: [],
+    min_clips: 0,
+    criteria: [
+      "The script is easy to review: what it teaches and for whom, numbered shots with what's on screen, on-screen text and the voiceover line, the format, and what was assumed or left out.",
+      "It teaches the one task, sharing a packing list, in the steps a user takes in order (open the trip, tap Share packing list, choose where to send it in the share sheet), each true to the code, and nothing else about the product.",
+      "It is shown on the iPhone, where the Share button and the share sheet are; the web version has neither.",
+      "It is a how-to, not an ad: plain instructions to the viewer, one step per shot, no slogans and nothing the app doesn't do.",
+      "The opening shot has a short on-screen line saying what it teaches, so it reads with the sound off, and it stays short (about 15–25 seconds).",
+    ],
+  },
   // Script to video: starts from an approved script, fixed so recording runs compare.
   {
     id: "demo-tide-from-script",
