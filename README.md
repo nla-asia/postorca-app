@@ -1,8 +1,8 @@
 # PostOrca
 
-**A personal brand agent for builders.**
+**From your code to launch videos. You ship it. Orca shows it.**
 
-PostOrca is a desktop app with an AI agent, Orca, that helps founders and builders grow their personal brand while they keep building. Orca learns your brand (what you're building, your audience, your voice), then researches ideas, finds conversations to join, and drafts posts, images, audio and video for X, LinkedIn, Threads, Instagram and Facebook. Work runs on a schedule in the background and lands in your Inbox for review.
+PostOrca is a desktop app with an AI agent, Orca, that turns what you build into product content: launch videos, feature announcements, how-tos and what's-new round-ups. Orca reads your project and recent commits, opens the running app (a web app, a Mac app or an iPhone app in the Simulator) and writes a plan and a shot-by-shot script. Once you approve it, Orca records your real app and edits the video, with voiceover and captions, for X, LinkedIn, Instagram and more. The plan, script, recordings and video for each piece of content land in one folder.
 
 ## Preview
 
@@ -16,10 +16,11 @@ PostOrca is a desktop app with an AI agent, Orca, that helps founders and builde
 
 ## Features
 
+- **Product content**: ask for a launch video, a feature announcement, a how-to or a what's-new round-up. Orca plans it from your code, you approve the script, and Orca records and edits the video.
 - **Agent**: chat with Orca, who onboards you, edits your Brand Profile and does work on request.
 - **Inbox**: review, edit, approve or follow up on everything Orca produces.
 - **Calendar**: schedule one-time tasks.
-- **Routines**: recurring work such as daily content ideas and weekly strategy research. They run on the server even when the app is closed.
+- **Routines**: work Orca does for you every day on its own, like checking what changed in your projects or how your posts did.
 - **Brand Profile**: your audience, voice, colours, social links and project folders.
 - **Tools**: browser control through your own browser, computer use on macOS and Windows, media creation (images, voice, music, video), and Gmail/Google Drive connectors.
 

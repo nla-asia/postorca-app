@@ -2,15 +2,15 @@ import type { Metadata } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://orca.atpa.site"),
-  title: "PostOrca — Your personal brand, with a partner",
+  title: "PostOrca — From your code to launch videos",
   description:
-    "Meet Orca, your personal brand agent. Find ideas, draft in your own voice, and build a consistent presence while you keep building your startup.",
+    "Orca reads your project, writes the script for a launch video, a feature announcement or a how-to, and once you approve it, records your real app and edits the video.",
   alternates: { canonical: "/" },
   icons: { icon: "/icon.svg" },
   openGraph: {
-    title: "Meet Orca. Your personal brand, with a partner.",
+    title: "Meet Orca. You ship it. Orca shows it.",
     description:
-      "Meet Orca, your personal brand agent. Find ideas, draft in your own voice, and build a consistent presence while you keep building your startup.",
+      "Orca reads your project, writes the script for a launch video, a feature announcement or a how-to, and once you approve it, records your real app and edits the video.",
     type: "website",
     url: "https://orca.atpa.site",
   },
