@@ -198,3 +198,245 @@
   font-size: 13px;
   overflow-wrap: anywhere;
 }
+
+/* Visual refinement only; profile sections and editing behavior are unchanged. */
+.brand-page {
+  max-width: 1040px;
+  padding: 32px 40px;
+  scrollbar-gutter: stable both-edges;
+}
+
+.brand-page .brand-page-heading {
+  font-size: 24px;
+  line-height: 1.4;
+  letter-spacing: -0.5px;
+}
+
+.brand-page .preview-note {
+  margin: 8px 0 28px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.brand-page .brand-layout {
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.brand-page .brand-tabs {
+  padding: 0;
+  gap: 24px;
+}
+
+.brand-page .brand-tabs button {
+  padding: 12px 0 16px;
+  gap: 7px;
+  font-size: 13px;
+}
+
+.brand-page .brand-tabs button.selected {
+  font-weight: 600;
+}
+
+.brand-page .brand-tabs button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.brand-page .brand-content {
+  padding: 8px 0 0;
+}
+
+.brand-page .brand-values {
+  margin: 0;
+  gap: 0;
+}
+
+.brand-page .brand-values > div {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  column-gap: 28px;
+  row-gap: 8px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand-page .brand-values > div:last-child {
+  border-bottom: 0;
+}
+
+.brand-page .brand-values dt {
+  margin: 0;
+  color: var(--secondary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.7;
+}
+
+.brand-page .brand-values dd {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.brand-page .brand-color {
+  gap: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+.brand-page .brand-swatch {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-color: var(--strong-line);
+  border-radius: 7px;
+}
+
+.brand-page .brand-links {
+  gap: 0;
+}
+
+.brand-page .brand-link-item {
+  padding: 24px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+}
+
+.brand-page .brand-link-item:last-child {
+  border-bottom: 0;
+}
+
+.brand-page .brand-link-item strong {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.brand-page .brand-link-item a {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.brand-page .brand-link-values {
+  margin-top: 16px;
+}
+
+.brand-page .brand-link-values > div {
+  grid-template-columns: 150px minmax(0, 1fr);
+  padding: 10px 0;
+  border: 0;
+}
+
+.brand-page .brand-link-values dd {
+  font-size: 13px;
+}
+
+.brand-page .brand-empty {
+  margin-top: 16px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.brand-page .brand-projects {
+  gap: 12px;
+}
+
+.brand-page .brand-project-path {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.brand-page .brand-link-item > p {
+  margin-top: 12px;
+  max-width: 760px;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.brand-page .brand-project-actions {
+  gap: 6px;
+}
+
+.brand-page .brand-project-confirm {
+  flex-wrap: wrap;
+  line-height: 1.6;
+}
+
+.brand-page .brand-project-form {
+  padding: 20px;
+  gap: 16px;
+  border-color: var(--strong-line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.brand-page .brand-project-form label {
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.brand-page .brand-project-form input,
+.brand-page .brand-project-form textarea {
+  min-width: 0;
+  width: 100%;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.brand-page .brand-projects .button {
+  min-height: 34px;
+  border-radius: 8px;
+}
+
+.brand-page .brand-voice {
+  max-width: 760px;
+  margin: 24px 0;
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.brand-page .brand-voice .markdown p,
+.brand-page .brand-voice .markdown ul,
+.brand-page .brand-voice .markdown ol {
+  margin-bottom: 14px;
+}
+
+@media (max-width: 900px) {
+  .brand-page {
+    padding: 24px 22px;
+  }
+
+  .brand-page .brand-tabs {
+    gap: 22px;
+  }
+
+  .brand-page .brand-values > div {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 20px 0;
+  }
+
+  .brand-page .brand-link-values > div {
+    padding: 8px 0;
+  }
+
+  .brand-page .brand-link-item header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .brand-page .brand-link-item header > div:first-child {
+    flex: 1 1 220px;
+  }
+}
+
+.brand-page .brand-tabs button:focus-visible {
+  outline-offset: -2px;
+  border-radius: 4px;
+}
