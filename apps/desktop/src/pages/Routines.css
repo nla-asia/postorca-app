@@ -164,3 +164,176 @@
 .routine-load-error {
   margin-bottom: 16px;
 }
+
+/* List-only visual refinement; the routine editor keeps its existing styles. */
+.page-content.schedules-page {
+  max-width: 1040px;
+  padding: 32px 40px;
+  scrollbar-gutter: stable both-edges;
+}
+
+.schedules-page .schedule-toolbar {
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.schedules-page .schedule-toolbar > div {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.schedules-page .schedule-toolbar strong {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+
+.schedules-page .schedule-toolbar span {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.schedules-page .schedule-toolbar .button {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding-inline: 14px;
+  border-radius: 8px;
+}
+
+.schedules-page .schedule-list {
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+
+.schedules-page .schedule-card {
+  padding: 22px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.schedules-page .schedule-card-top {
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.schedules-page .schedule-card-top .platform {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+}
+
+.schedules-page .schedule-card h3 {
+  margin-top: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: -0.2px;
+  overflow-wrap: anywhere;
+}
+
+.schedules-page .schedule-card p {
+  max-width: 760px;
+  margin-top: 7px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--secondary);
+  overflow-wrap: anywhere;
+}
+
+.schedules-page .routine-last-run {
+  margin-top: 14px;
+  gap: 8px;
+}
+
+.schedules-page .routine-last-run .muted {
+  line-height: 1.6;
+}
+
+.schedules-page .routine-link {
+  margin-left: 2px;
+  color: var(--secondary);
+  line-height: 1.6;
+}
+
+.schedules-page .routine-link:hover {
+  color: var(--text);
+}
+
+.schedules-page .schedule-card-bottom {
+  margin-top: 16px;
+  padding-top: 0;
+  border-top: 0;
+  align-items: center;
+  gap: 16px;
+}
+
+.schedules-page .schedule-card-bottom > div:first-child {
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+  column-gap: 8px;
+  row-gap: 4px;
+  line-height: 1.6;
+}
+
+.schedules-page .schedule-card-bottom > div:first-child > svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.schedules-page .schedule-card-bottom > div:first-child > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.schedules-page .routine-actions {
+  flex-shrink: 0;
+}
+
+.schedules-page .routine-actions .button {
+  min-height: 32px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 11px;
+  color: var(--secondary);
+}
+
+.schedules-page .routine-actions .button:hover {
+  color: var(--text);
+}
+
+.schedules-page .empty-state {
+  margin-top: 24px;
+  padding-block: 72px;
+  border-style: solid;
+  border-color: var(--line);
+}
+
+.schedules-page .routine-load-error {
+  margin-bottom: 20px;
+}
+
+@media (max-width: 900px) {
+  .page-content.schedules-page {
+    padding: 24px 22px;
+  }
+
+  .schedules-page .schedule-toolbar {
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .schedules-page .schedule-card {
+    padding: 20px 12px;
+  }
+
+  .schedules-page .schedule-card-bottom {
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
