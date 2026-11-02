@@ -163,6 +163,20 @@ class DesktopConnection {
     if (!response.ok) throw new Error(`Upload failed: HTTP ${response.status}`);
     return (await response.json()).file;
   }
+  /** A JSON API call on this device's behalf; a rejection carries the server's message. */
+  async request(session, path, init = {}) {
+    const response = await fetch(`${session.apiUrl}/desktop/${path}`, {
+      ...init,
+      headers: {
+        ...init.headers,
+        Authorization: await this.authorization(session),
+      },
+    });
+    const data = await response.json().catch(() => undefined);
+    if (!response.ok)
+      throw new Error(data?.error ?? `Request failed: HTTP ${response.status}`);
+    return data;
+  }
   /** Reads one of the founder's saved files by key: {data, type}. */
   async download(session, key) {
     const response = await fetch(
@@ -223,6 +237,7 @@ class DesktopConnection {
           turnId: call.turnId,
           upload: (data, type) => this.upload(session, data, type),
           download: (key) => this.download(session, key),
+          request: (path, init) => this.request(session, path, init),
           uploadFile: (filename, metadata, signal) =>
             this.uploadFile(session, filename, metadata, signal),
           signal: controller.signal,

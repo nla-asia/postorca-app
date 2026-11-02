@@ -94,6 +94,10 @@ async function post(base: string, path: string, body: unknown, token: string) {
   });
   return { status: response.status, data: (await response.json()) as any };
 }
+async function get(address: string, token: string) {
+  const response = await fetch(address, { headers: { Authorization: `Bearer ${token}` } });
+  return { status: response.status, data: (await response.json()) as any };
+}
 /** The task's detail once its latest turn has finished. */
 async function settled(userId: string, taskId: string) {
   for (let attempt = 0; attempt < 200; attempt++) {
@@ -172,6 +176,29 @@ test("a chat message runs tools until Orca answers, keeping every step in order"
   await post(url, `/${chat.id}/turns`, { message: "Thanks" }, founder.token);
   await settled(founder.id, chat.id);
   assert.match(requests.at(-1)!.instructions, /- founder\.md: Founder's post rules/);
+});
+
+test("voice.md is in every turn's instructions, and a brand-profile voice moves into it", async () => {
+  const founder = await account();
+  const chat = await createTask(fixture.db, founder.id, "chat", "Orca");
+  await fixture.db.query("UPDATE brand_profiles SET voice='Short and dry' WHERE user_id=$1", [
+    founder.id,
+  ]);
+  requests.length = 0;
+  script = async () => reply("Hi.");
+  await post(url, `/${chat.id}/turns`, { message: "Hi" }, founder.token);
+  await settled(founder.id, chat.id);
+  const instructions = requests[0].instructions;
+  assert.match(instructions, /anything you write in the founder's name/i);
+  assert.match(instructions, /voice\.md \(from the start of this turn\):\n---\ndescription: The founder's voice/);
+  assert.match(instructions, /## Picks\nFrom the brand profile \(\d{4}-\d{2}-\d{2}\): Short and dry/);
+  assert.doesNotMatch(instructions, /"voice"/);
+  const {
+    rows: [profile],
+  } = await fixture.db.query("SELECT voice FROM brand_profiles WHERE user_id=$1", [founder.id]);
+  assert.equal(profile.voice, "");
+  const voice = await get(url.replace(/\/tasks$/, "/brand-profile/voice"), founder.token);
+  assert.match(voice.data.content, /Short and dry/);
 });
 
 test("tool failures go back to the model as messages it can correct", async () => {
@@ -400,7 +427,7 @@ test("with no plugins enabled, routine work can still read core skills", async (
   assert.ok(!tools.includes("activate_plugin"));
   assert.match(
     requests[0].instructions,
-    /\nSkills: when a task names a skill, or its work matches one, read it with read_skill first and follow it\.\n- connect-post: [^\n]+\n- conversations-to-join: [^\n]+\n- create-content: [^\n]+\n- daily-quote: [^\n]+\n- find-content-ideas: Find up to five content ideas/,
+    /\nSkills: when a task names a skill, or its work matches one, read it with read_skill first and follow it\. A follow-up that revises earlier work counts: read that work's skill again before revising, since the earlier read may no longer be in view\.\n- connect-post: [^\n]+\n- conversations-to-join: [^\n]+\n- create-content: [^\n]+\n- daily-quote: [^\n]+\n- find-content-ideas: Find up to five content ideas/,
   );
   assert.doesNotMatch(requests[0].instructions, /Plugins:/);
 });

@@ -21,8 +21,8 @@ const GONE =
   "That element is no longer on the page as observed (it was removed or changed). Take a new snapshot.";
 
 /** Clicks a ref's element: by its DOM node when known, else by its locator. */
-async function clickElement(page, { backendNodeId, locator }) {
-  if (backendNodeId == null) return clickLocator(page, locator);
+async function clickElement(page, { backendNodeId, locator }, beforeClick) {
+  if (backendNodeId == null) return clickLocator(page, locator, beforeClick);
   const session = await page.context().getExistingCDPSession(page);
   let objectId;
   try {
@@ -41,11 +41,11 @@ async function clickElement(page, { backendNodeId, locator }) {
   } finally {
     await session.send("Runtime.releaseObject", { objectId }).catch(() => {});
   }
-  await clickAt(page, target);
+  await clickAt(page, target, beforeClick);
 }
 
 /** For elements without a known DOM node. */
-async function clickLocator(page, locator) {
+async function clickLocator(page, locator, beforeClick) {
   // A ref whose element is gone (or whose name changed since it was observed) would
   // otherwise wait out the whole click timeout.
   try {
@@ -55,15 +55,19 @@ async function clickLocator(page, locator) {
     throw new Error(GONE);
   }
   try {
+    if (beforeClick) {
+      const box = await locator.boundingBox({ timeout: GONE_MS }).catch(() => null);
+      if (box) await beforeClick(page, box.x + box.width / 2, box.y + box.height / 2);
+    }
     await locator.click({ timeout: CLICK_TIMEOUT_MS });
     return;
   } catch (error) {
     if (!/intercepts pointer events/.test(String(error?.message))) throw error;
   }
-  await clickAt(page, await locator.evaluate(coveringElement, SAME_COMPONENT_LEVELS));
+  await clickAt(page, await locator.evaluate(coveringElement, SAME_COMPONENT_LEVELS), beforeClick);
 }
 
-async function clickAt(page, target) {
+async function clickAt(page, target, beforeClick) {
   if (!target) throw new Error(GONE);
   if (target.hidden)
     throw new Error("That element is not visible on the page. Take a new snapshot or a screenshot.");
@@ -71,6 +75,7 @@ async function clickAt(page, target) {
     throw new Error(
       `The element is covered by ${target.description}. Close or dismiss that first, then take a new snapshot.`,
     );
+  if (beforeClick) await beforeClick(page, target.x, target.y);
   await page.mouse.click(target.x, target.y);
 }
 

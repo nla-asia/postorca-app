@@ -259,3 +259,56 @@ test("development shared folders are readable, and upload_file sends originals u
   );
   assert.equal(sent.length, 1);
 });
+
+test("write_content_file writes a plan or script into a content folder in the working folder", async () => {
+  const working = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "postorca-working-")));
+  // The working folder comes from the app's settings; here, a stand-in.
+  const settings = require.resolve("../working-folder.cjs");
+  require.cache[settings] = { id: settings, filename: settings, loaded: true, exports: { get: () => working } };
+  const { write_content_file } = require("./files.cjs");
+  try {
+    const first = await write_content_file.run({ folder: "Content/Launch", name: "plan.md", text: "# Plan", new_folder: true });
+    assert.equal(first.folder, "Content/Launch");
+    assert.equal(await fs.readFile(path.join(working, "Content/Launch/plan.md"), "utf8"), "# Plan");
+    await write_content_file.run({ folder: first.folder, name: "script.md", text: "# Script" });
+    assert.ok(await fs.stat(path.join(working, "Content/Launch/script.md")));
+    // Another task with the same title gets its own folder.
+    const second = await write_content_file.run({ folder: "Content/Launch", name: "plan.md", text: "x", new_folder: true });
+    assert.equal(second.folder, "Content/Launch 2");
+    // Nothing outside the working folder, and only Markdown.
+    for (const args of [
+      { folder: "../escape", name: "plan.md", text: "x" },
+      { folder: "/tmp", name: "plan.md", text: "x" },
+      { folder: "Content/Launch", name: "run.sh", text: "x" },
+    ])
+      await assert.rejects(write_content_file.run(args));
+  } finally {
+    delete require.cache[settings];
+    await fs.rm(working, { recursive: true, force: true });
+  }
+});
+
+test("saveToContentFolder keeps a copy of a recording or video in the content folder", async () => {
+  const working = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "postorca-working-")));
+  const settings = require.resolve("../working-folder.cjs");
+  require.cache[settings] = { id: settings, filename: settings, loaded: true, exports: { get: () => working } };
+  const { saveToContentFolder } = require("./files.cjs");
+  try {
+    const first = await saveToContentFolder("Content/Launch/Recordings", "recording.mp4", Buffer.from("a"));
+    assert.equal(first, path.join(working, "Content/Launch/Recordings/recording.mp4"));
+    // A name already taken gets a number; nothing is overwritten.
+    const second = await saveToContentFolder("Content/Launch/Recordings", "recording.mp4", Buffer.from("b"));
+    assert.equal(second, path.join(working, "Content/Launch/Recordings/recording 2.mp4"));
+    assert.equal(await fs.readFile(first, "utf8"), "a");
+    assert.equal(
+      await saveToContentFolder("Content/Launch", "Ledgerly: launch / v1.mp4", Buffer.from("v")),
+      path.join(working, "Content/Launch/Ledgerly launch  v1.mp4"),
+    );
+    // Never outside the working folder.
+    assert.equal(await saveToContentFolder("../escape", "x.mp4", Buffer.from("x")), null);
+    assert.equal(await saveToContentFolder("/tmp", "x.mp4", Buffer.from("x")), null);
+  } finally {
+    delete require.cache[settings];
+    await fs.rm(working, { recursive: true, force: true });
+  }
+});

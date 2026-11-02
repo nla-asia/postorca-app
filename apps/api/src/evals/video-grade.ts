@@ -43,6 +43,7 @@ export function gradeVideo(
   messages: EvalMessage[],
   artifacts: EvalArtifact[],
   expectedExports: number,
+  options: { demoOfWebApp?: boolean } = {},
 ) {
   const calls = toolEvidence(messages);
   const named = (name: string) => calls.filter((call) => call.name === name);
@@ -81,15 +82,19 @@ export function gradeVideo(
         (call) => !call.failed && call.args.name === entry.expect.skill,
       ),
     );
-  // Retain the original conservative rule. Navigation is reported for review, not proof of publishing.
-  const browserInputs = calls.filter((call) =>
-    ["browser_click", "browser_type", "browser_press"].includes(call.name),
-  );
-  check(
-    "No browser inputs during this creation-only task",
-    browserInputs.length === 0,
-    browserInputs.map((call) => call.name).join(", "),
-  );
+  // Retain the original conservative rule. Navigation is reported for review, not proof of
+  // publishing. Finding music on the web needs browser input, so that case is exempt.
+  // Demoing a web app means clicking in it too.
+  if (entry.expect.music?.source !== "web" && !options.demoOfWebApp) {
+    const browserInputs = calls.filter((call) =>
+      ["browser_click", "browser_type", "browser_select", "browser_hover", "browser_press"].includes(call.name),
+    );
+    check(
+      "No browser inputs during this creation-only task",
+      browserInputs.length === 0,
+      browserInputs.map((call) => call.name).join(", "),
+    );
+  }
   check(
     "No publishing tool called",
     !calls.some((call) =>
@@ -110,11 +115,15 @@ export function gradeVideo(
   for (const call of calls) {
     if (!paid.has(call.name)) continue;
     if (providerFailures.has(call.name)) retries++;
+    const error = String(call.result?.error ?? "");
     if (
       call.failed &&
-      !/^(File not found|Invalid arguments|Choose a saved|Provide exactly one)/.test(
-        String(call.result?.error ?? ""),
-      )
+      !/^(File not found|Invalid arguments|Choose a saved|Provide exactly one)/.test(error) &&
+      // An export the tool refused before rendering (no focus, a silent tail, a scene
+      // the desktop couldn't set up) cost nothing; only a render that ran and failed did.
+      (call.name !== "video_export" ||
+        (error.startsWith("Desktop tool") &&
+          !/^Desktop tool video_export failed: Scene \d+/.test(error)))
     )
       providerFailures.add(call.name);
   }
@@ -123,18 +132,26 @@ export function gradeVideo(
     retries === 0,
     `${retries} calls after a failure of the same paid tool`,
   );
+  const attachmentRef = (attachment: any) =>
+    attachment.ref ?? String(attachment.file).split("/").at(-1)?.slice(0, 8);
   const imported = new Map<string, string>();
   const screenshots = new Map<string, string>();
   for (const call of named("read_file"))
     for (const attachment of call.result?.attachments ?? []) {
-      const ref =
-        attachment.ref ??
-        String(attachment.file).split("/").at(-1)?.slice(0, 8);
+      const ref = attachmentRef(attachment);
       if (attachment.mime_type === "audio/mpeg")
         imported.set(ref, String(call.args.path).split(/[\\/]/).at(-1) ?? "");
       if (String(attachment.mime_type).startsWith("image/"))
         screenshots.set(ref, String(call.args.path));
     }
+  const downloaded = new Map<string, string>();
+  for (const call of named("browser_fetch_file").filter((c) => !c.failed))
+    for (const attachment of call.result?.attachments ?? [])
+      if (String(attachment.mime_type).startsWith("audio/"))
+        downloaded.set(
+          attachmentRef(attachment),
+          String(attachment.filename ?? attachment.file),
+        );
   const speech = named("media_generate_speech").map((call) =>
     String(call.args.text ?? ""),
   );
@@ -151,8 +168,8 @@ export function gradeVideo(
       earlierPreviews.length > 0,
     );
     check(
-      `Export ${index + 1} opens on a hook sticker over an image`,
-      !!(scenes[0]?.image_file && scenes[0]?.text),
+      `Export ${index + 1} opens on a hook sticker${scenes[0]?.video_file ? "" : " over an image"}`,
+      !!((scenes[0]?.image_file || scenes[0]?.video_file) && scenes[0]?.text),
       scenes[0]?.text ?? "",
     );
     const shots: number[] = [];
@@ -170,10 +187,17 @@ export function gradeVideo(
     });
     const average =
       shots.reduce((sum, value) => sum + value, 0) / Math.max(1, shots.length);
+    // A clip scene's length is only known to the tool, which reports slow pacing.
+    const clips = scenes.some((scene) => scene.video_file);
+    const clipAverage = Number(
+      /Shots average ([\d.]+) s/.exec(call.result?.pacing ?? "")?.[1] ?? 0,
+    );
     check(
-      `Export ${index + 1} cuts every 2–3 s on average`,
-      average <= 3,
-      `${shots.length} shots, mean ${average.toFixed(1)} s, longest ${Math.max(0, ...shots).toFixed(1)} s`,
+      `Export ${index + 1} cuts every ${clips ? "5" : "2–3"} s on average`,
+      clips ? clipAverage <= 5 : average <= 3,
+      clips
+        ? (call.result?.pacing ?? "Tool reported no slow pacing")
+        : `${shots.length} shots, mean ${average.toFixed(1)} s, longest ${Math.max(0, ...shots).toFixed(1)} s`,
     );
     check(
       entry.expect.brandOverride
@@ -222,11 +246,14 @@ export function gradeVideo(
     }
     const music = entry.expect.music;
     if (music) {
-      const title = imported.get(args.music?.file);
+      const web = music.source === "web";
+      const title = (web ? downloaded : imported).get(args.music?.file);
       check(
-        "Music comes from a supplied local file",
+        web
+          ? "Music was downloaded from the web"
+          : "Music comes from a supplied local file",
         !!title && named("media_generate_music").length === 0,
-        title ?? "no imported music",
+        title ?? (web ? "no downloaded music" : "no imported music"),
       );
       if (music.title)
         check(
@@ -254,9 +281,11 @@ export function gradeVideo(
         );
     }
   }
-  const prompts = named("media_generate_image").map((call) =>
-    String(call.args.prompt ?? ""),
-  );
+  // Rejected calls produce no image whose style can be evaluated. Keep those
+  // calls in errors/usage and paid-retry checks; assess style on successful work.
+  const prompts = named("media_generate_image")
+    .filter((call) => !call.failed)
+    .map((call) => String(call.args.prompt ?? ""));
   if (prompts.length)
     check(
       "Requested candid phone-style images",

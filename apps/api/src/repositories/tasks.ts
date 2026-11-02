@@ -158,7 +158,7 @@ export async function startOnboarding(
     if (history.rowCount) return null;
     const turn = await createTurnInTransaction(client, userId, taskId);
     await appendMessage(client, turn.id, "assistant", {
-      text: "Hi, I’m Orca. Let’s set up your brand profile—it takes about 3 minutes. We’ll cover what you’re building, choose the platforms to grow your brand on, add those accounts, and pick the topics you want to share, then confirm the profile together. You can pick from the suggestions or write your own answers.\n\nTo start: what are you building?",
+      text: "Hi, I’m Orca. Let’s set up your brand profile—it takes about 3 minutes. We’ll cover what you’re building, choose the platforms to grow your brand on, add those accounts, pick the topics you want to share, and pick how your posts should sound, then confirm the profile together. You can pick from the suggestions or write your own answers.\n\nTo start: what are you building?",
     });
     // The opening is fixed text, so it completes without a model call;
     // Orca picks up from the founder's first reply.
@@ -178,13 +178,14 @@ export async function createWorkTask(
   title: string,
   instructions: string,
   platform?: string,
+  workType: "general" | "content" = "general",
 ) {
   return transaction(db, async (client) => {
     const {
       rows: [task],
     } = await client.query(
-      "INSERT INTO tasks(user_id,kind,title,platform) VALUES ($1,'work',$2,$3) RETURNING *",
-      [userId, title, platform ?? null],
+      "INSERT INTO tasks(user_id,kind,title,platform,work_type) VALUES ($1,'work',$2,$3,$4) RETURNING *",
+      [userId, title, platform ?? null, workType],
     );
     const turn = await createTurnInTransaction(
       client,
@@ -262,6 +263,7 @@ export async function createTask(
   userId: string,
   kind: TaskKind,
   title: string,
+  workType: "general" | "content" = "general",
 ) {
   // Agent chat and onboarding are one conversation per founder; reuse it.
   const {
@@ -273,8 +275,8 @@ export async function createTask(
           [userId, kind, title],
         )
       : await db.query(
-          "INSERT INTO tasks(user_id,kind,title) VALUES ($1,'work',$2) RETURNING *",
-          [userId, title],
+          "INSERT INTO tasks(user_id,kind,title,work_type) VALUES ($1,'work',$2,$3) RETURNING *",
+          [userId, title, workType],
         );
   return task;
 }

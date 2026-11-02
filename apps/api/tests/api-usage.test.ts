@@ -102,7 +102,7 @@ test("records usage without sensitive payloads, keeps response readable, and rep
   ]);
   assert.equal(row.status, "succeeded");
   assert.equal(row.credit_state, "settled");
-  assert.equal(row.credit_charged, "0.005550000");
+  assert.equal(row.credit_charged, "0.004162500");
   assert.equal(row.user_id, s.userId);
   assert.equal(row.task_id, s.taskId);
   assert.equal(row.provider_request_id, "req_usage");
@@ -475,8 +475,8 @@ test("speech settles provider character counts and tagged Unicode fallback estim
         row.credit_state === "settled" && row.credit_reserved === "0.000000000",
     ),
   );
-  assert.equal(rows[0].credit_charged, "0.053333334");
-  assert.equal(rows[1].credit_charged, "0.026666667");
+  assert.equal(rows[0].credit_charged, "0.040000000");
+  assert.equal(rows[1].credit_charged, "0.020000000");
 });
 
 test("accepted music settles by duration; a rejected generation has no accepted-duration charge", async (t) => {
@@ -509,7 +509,7 @@ test("accepted music settles by duration; a rejected generation has no accepted-
     )
   ).rows;
   assert.equal(rows[0].estimated_cost, "0.075000000000");
-  assert.equal(rows[0].credit_charged, "2.500000000");
+  assert.equal(rows[0].credit_charged, "1.875000000");
   assert.equal(rows[0].credit_state, "settled");
   assert.equal(rows[0].usage_data.meters.accepted_audio_seconds, 30);
   assert.equal(
@@ -520,6 +520,33 @@ test("accepted music settles by duration; a rejected generation has no accepted-
   assert.equal(rows[1].credit_state, "released");
   assert.equal(rows[1].usage_data.meters.accepted_audio_seconds, undefined);
   assert.ok(!JSON.stringify(rows).includes("PRIVATE"));
+});
+
+test("transcription is charged for the audio length the response states", async (t) => {
+  const s = await scope();
+  t.mock.method(globalThis, "fetch", async () =>
+    Response.json({
+      language_code: "en",
+      text: "Hello",
+      audio_duration_secs: 3600,
+      words: [{ text: "Hello", type: "word", start: 2, end: 3 }],
+    }),
+  );
+  await withApiUsage(s, () =>
+    new ElevenLabsProvider("test-key").transcribe({
+      modelId: "scribe_v2",
+      sourceUrl: "https://example.test/audio.mp3",
+    }),
+  );
+  const {
+    rows: [row],
+  } = await s.db.query("SELECT * FROM api_requests WHERE turn_id=$1", [
+    s.turnId,
+  ]);
+  assert.equal(row.usage_data.meters.billed_audio_seconds, 3600);
+  assert.equal(Number(row.estimated_cost), 0.22);
+  assert.equal(row.credit_state, "settled");
+  assert.equal(Number(row.credit_reserved), 0);
 });
 
 test("transcription saves its price but keeps the hold without full audio duration", async (t) => {
@@ -550,4 +577,63 @@ test("transcription saves its price but keeps the hold without full audio durati
   assert.equal(row.usage_data.meters.billed_audio_seconds, undefined);
   assert.ok(!JSON.stringify(row).includes("PRIVATE"));
   assert.ok(!JSON.stringify(row).includes("private-audio"));
+});
+
+test("Meta transcription reads multipart model metadata, reserves credits and settles whole processed seconds without saving audio or text", async (t) => {
+  const s = await scope();
+  const { MetaTranscriptionProvider } = await import(
+    "../src/providers/meta-transcription.js"
+  );
+  const { readFile } = await import("node:fs/promises");
+  let dispatches = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    dispatches++;
+    const {
+      rows: [pending],
+    } = await s.db.query("SELECT * FROM api_requests WHERE turn_id=$1", [
+      s.turnId,
+    ]);
+    assert.equal(pending.operation, "transcription");
+    assert.equal(pending.model, "muse-voice-transcribe-1.0");
+    assert.equal(pending.credit_state, "reserved");
+    return Response.json({
+      sessionId: "session-test",
+      transcript: "PRIVATE TRANSCRIPT",
+      audioDurationMs: 8240,
+      turns: [
+        {
+          turnId: 1,
+          startMs: 1000,
+          endMs: 8240,
+          transcript: "PRIVATE WORDS",
+          speaker: "A",
+        },
+      ],
+    });
+  });
+  const file = new Blob(
+    [
+      new Uint8Array(
+        await readFile(
+          new URL("./fixtures/media/silence.mp3", import.meta.url),
+        ),
+      ),
+    ],
+    { type: "audio/mpeg" },
+  );
+  await withApiUsage(s, () =>
+    new MetaTranscriptionProvider("PRIVATE_KEY").transcribe({ wav: file }),
+  );
+  const {
+    rows: [row],
+  } = await s.db.query("SELECT * FROM api_requests WHERE turn_id=$1", [
+    s.turnId,
+  ]);
+  assert.equal(dispatches, 1);
+  assert.equal(row.provider, "meta");
+  assert.equal(row.usage_data.meters.billed_audio_seconds, 8);
+  assert.equal(row.estimated_cost, "0.000400000000");
+  assert.equal(row.credit_state, "settled");
+  assert.equal(row.pricing_snapshot.prices[0].amount, "0.18");
+  assert.ok(!JSON.stringify(row).includes("PRIVATE"));
 });

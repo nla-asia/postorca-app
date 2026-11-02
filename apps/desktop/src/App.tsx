@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
 import AuthScreen from "./components/AuthScreen";
+import BrandMark from "./components/BrandMark";
 import Workspace from "./components/Workspace";
+import WorkingFolderSetup from "./components/WorkingFolderSetup";
 import {
   api,
   ApiError,
@@ -66,7 +67,7 @@ export default function App() {
           role="status"
           aria-label="Loading account"
         >
-          <Sparkles size={24} />
+          <BrandMark large />
         </div>
       </div>
     );
@@ -81,15 +82,17 @@ export default function App() {
       />
     );
   return (
-    <Workspace
-      key={user.id}
-      user={user}
-      onLogOut={() => {
-        setNotice("");
-        signOut();
-      }}
-      theme={theme}
-      onThemeChange={setTheme}
-    />
+    <WorkingFolderSetup key={user.id} onLogOut={signOut}>
+      <Workspace
+        key={user.id}
+        user={user}
+        onLogOut={() => {
+          setNotice("");
+          signOut();
+        }}
+        theme={theme}
+        onThemeChange={setTheme}
+      />
+    </WorkingFolderSetup>
   );
 }

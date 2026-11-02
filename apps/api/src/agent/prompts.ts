@@ -17,6 +17,7 @@ const prompts = {
   chat: load("chat"),
   work: load("work"),
   onboarding: load("onboarding"),
+  voice: load("voice"),
   lastStep: load("last-step"),
 };
 
@@ -26,11 +27,17 @@ export function systemPrompt(step: {
   plugins: PluginState;
   /** memoryIndex(): one line per memory file, read at the start of the turn. */
   memory: string;
+  /** voice.md's content, read at the start of the turn; "" before it exists. */
+  voice: string;
   lastStep: boolean;
 }) {
   const { task, profile } = step;
   const sections = [
     `Brand profile: ${JSON.stringify(profile)}`,
+    prompts.voice,
+    step.voice
+      ? `voice.md (from the start of this turn):\n${step.voice}`
+      : "voice.md doesn't exist yet: until it does, follow the founder's recent posts.",
     step.memory
       ? `Your memory files (read the ones that matter for this work with read_memory; this list is from the start of this turn):\n${step.memory}`
       : "Your memory is empty.",

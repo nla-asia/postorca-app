@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { callDesktop } from "../desktop/calls.js";
 import { listProjects } from "../repositories/projects.js";
+import { contentFolder } from "./content.js";
 import { object, type Tool, type ToolContext } from "./shared.js";
 
 /**
@@ -297,6 +298,8 @@ export const desktopToolset: Tool[] = desktopTools.map((tool) => ({
   definition: tool.definition,
   run: async (context: ToolContext, rawArgs: unknown) => {
     const args = tool.args.parse(rawArgs);
+    const folder =
+      tool.definition.name === "screen_record_stop" ? await contentFolder(context) : null;
     return callDesktop(
       context,
       tool.definition.name,
@@ -308,7 +311,7 @@ export const desktopToolset: Tool[] = desktopTools.map((tool) => ({
               (project) => project.path,
             ),
           }
-        : args,
+        : { ...args, ...(folder && { content_folder: folder }) },
     );
   },
 }));

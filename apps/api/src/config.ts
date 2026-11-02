@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { PROVIDER_PRICING } from "./providers/pricing.js";
-import { settings, type ModelChoice } from "./settings.js";
+import {
+  settings,
+  type ModelChoice,
+  type TranscriptionChoice,
+} from "./settings.js";
 
 const origin = z.url({ protocol: /^https?$/ }).refine((value) => {
   try {
@@ -14,8 +18,21 @@ const origin = z.url({ protocol: /^https?$/ }).refine((value) => {
 const keys = {
   orca: { openai: "OPENAI_API_KEY", meta: "META_MODEL_API_KEY" },
   images: { openai: "OPENAI_IMAGE_API_KEY", meta: "META_MODEL_API_KEY" },
+  transcription: {
+    meta: "META_MODEL_API_KEY",
+    elevenlabs: "ELEVENLABS_API_KEY",
+  },
 } as const;
-const operations = { orca: "responses", images: "image.generate" } as const;
+const operations = {
+  orca: "responses",
+  images: "image.generate",
+  transcription: "transcription",
+} as const;
+type Choices = {
+  orca: ModelChoice;
+  images: ModelChoice;
+  transcription: TranscriptionChoice;
+};
 type Use = keyof typeof keys;
 
 /** Only models with checked-in prices can be chosen, so every request is priced. */
@@ -35,22 +52,25 @@ export function pricedModels(provider: string, operation: string) {
  * The model chosen in settings with its key, or null when the key is not set (that
  * capability is then off). An unpriced model fails before the server starts.
  */
-function chosenModel(
-  use: Use,
+function chosenModel<U extends Use>(
+  use: U,
   env: NodeJS.ProcessEnv,
-  choice: ModelChoice = settings[use],
+  choice: Choices[U] = settings[use],
 ) {
   const models = pricedModels(choice.provider, operations[use]);
   if (!models.includes(choice.model))
     throw new Error(
       `Invalid API configuration: settings.${use}.model must be ${models.join(" or ")} for ${choice.provider}.`,
     );
-  const apiKey = env[keys[use][choice.provider]]?.trim();
+  const apiKey =
+    env[keys[use][choice.provider as keyof (typeof keys)[U]] as string]?.trim();
   return apiKey ? { ...choice, apiKey } : null;
 }
 /** The environment variable holding the key a model use needs. */
-export const keyFor = (use: Use, choice: ModelChoice = settings[use]) =>
-  keys[use][choice.provider];
+export const keyFor = <U extends Use>(
+  use: U,
+  choice: Choices[U] = settings[use],
+) => keys[use][choice.provider as keyof (typeof keys)[U]] as string;
 
 function parsed<T extends z.ZodType>(schema: T, input: unknown): z.infer<T> {
   const result = schema.safeParse(input);
@@ -80,9 +100,17 @@ export function imagesFromEnv(env: NodeJS.ProcessEnv, choice?: ModelChoice) {
   return chosenModel("images", env, choice);
 }
 
+/** The transcription model with its own selected provider's key. */
+export function transcriptionFromEnv(
+  env: NodeJS.ProcessEnv,
+  choice?: TranscriptionChoice,
+) {
+  return chosenModel("transcription", env, choice);
+}
+
 export function configFromEnv(
   env: NodeJS.ProcessEnv = process.env,
-  models: { orca?: ModelChoice; images?: ModelChoice } = {},
+  models: Partial<Choices> = {},
 ) {
   const config = parsed(schema, {
     databaseUrl: env.DATABASE_URL ?? "",
@@ -100,6 +128,7 @@ export function configFromEnv(
     orca: orcaFromEnv(env, models.orca),
     /** Image tools work only while the image model's key is set. */
     images: imagesFromEnv(env, models.images),
+    transcription: transcriptionFromEnv(env, models.transcription),
   };
 }
 

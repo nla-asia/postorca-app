@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Sparkles } from "lucide-react";
+import { ArrowUp } from "lucide-react";
+import Mark from "./BrandMark";
 import { Button } from "./ui";
 import Markdown, { type ArtifactLink } from "./Markdown";
 import QuestionWidget from "./QuestionWidget";
@@ -12,14 +13,6 @@ import {
 } from "./Artifacts";
 import type { useAgentChat } from "../lib/useAgentChat";
 import "./AgentChat.css";
-
-export function Mark({ small = false }: { small?: boolean }) {
-  return (
-    <span className={`brand-mark ${small ? "small" : ""}`}>
-      <Sparkles size={small ? 15 : 22} strokeWidth={1.7} aria-hidden="true" />
-    </span>
-  );
-}
 
 /** The conversation with Orca: shared by Agent chat and onboarding. */
 export default function AgentChat({

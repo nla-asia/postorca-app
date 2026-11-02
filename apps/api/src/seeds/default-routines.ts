@@ -101,6 +101,36 @@ export const DEFAULT_ROUTINES: DefaultRoutine[] = [
   },
 ];
 
+/** A routine that covers all of the founder's social accounts in one run. */
+export type FounderRoutine = Omit<DefaultRoutine, "kinds">;
+
+/**
+ * Created once per founder, as soon as they have a social account, with no account
+ * or platform of its own; keyed by skill on brand_profiles.seeded_routines.
+ */
+export const FOUNDER_ROUTINES: FounderRoutine[] = [
+  // Early, so the day's other routines read fresh posts from PostOrca.
+  {
+    title: "Read my posts",
+    time: "07:00",
+    days: [1, 2, 3, 4, 5, 6, 7],
+    workType: "general",
+    skill: "sync-my-posts",
+    instructions:
+      "Read the sync-my-posts skill with read_skill, then follow it for every social account in the brand profile, in this one task.",
+  },
+  // Before the day's drafts, so they follow what yesterday's edits taught.
+  {
+    title: "Voice review",
+    time: "06:30",
+    days: [1, 2, 3, 4, 5, 6, 7],
+    workType: "general",
+    skill: "review-voice-feedback",
+    instructions:
+      "Read the review-voice-feedback skill with read_skill, then follow it for the founder's content tasks of the last 24 hours.",
+  },
+];
+
 /**
  * Added once, when the founder adds their first project folder (brand_projects):
  * content ideas from what they worked on, for their X account if they have one,

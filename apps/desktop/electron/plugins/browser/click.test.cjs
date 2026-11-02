@@ -51,6 +51,17 @@ test("ordinary clicks are unchanged", async () => {
   assert.equal(await page.title(), "clicked");
 });
 
+test("a pointer glide runs before the click, at the element's center", async () => {
+  await page.setContent(`<button style="position:fixed;left:100px;top:200px;width:40px;height:20px"
+    onclick="document.title='clicked after'">Go</button>`);
+  const seen = [];
+  await clickElement(page, await byNode("button"), async (_, x, y) => {
+    seen.push([x, y, await page.title()]);
+  });
+  assert.deepEqual(seen, [[120, 210, ""]]);
+  assert.equal(await page.title(), "clicked after");
+});
+
 test("a ref whose element is gone fails fast with a clear error", async () => {
   await page.setContent(`<button>Select flight</button>`);
   const started = Date.now();

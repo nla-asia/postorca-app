@@ -92,7 +92,7 @@ export class OpenAIProvider implements Provider {
           content: [
             {
               type: "input_text",
-              text: `Image returned by tool call ${message.content.callId}. You see it in this step only: in this response, before or alongside any tool calls, write in text what you observe that matters for the task, so you can rely on that description later.`,
+              text: `Image returned by tool call ${message.content.callId}. You see it in this step only: in this response, write in text what you observe that matters for the task, so you can rely on that description later, and carry on with the task in the same response. Describing it doesn't finish the task.`,
             },
             ...message.content.images.map(
               (image: { mime_type: string; base64: string }) => ({

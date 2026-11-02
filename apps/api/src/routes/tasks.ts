@@ -31,9 +31,17 @@ export function taskRoutes(db: Database, agent: AgentRouter | null) {
       .object({
         kind: z.enum(TASK_KINDS),
         title: z.string().trim().min(1).max(200),
+        // Background work only: a content task has a plan, an approved script, a folder.
+        work_type: z.enum(["general", "content"]).optional(),
       })
       .parse(req.body);
-    const task = await createTask(db, res.locals.userId, data.kind, data.title);
+    const task = await createTask(
+      db,
+      res.locals.userId,
+      data.kind,
+      data.title,
+      data.kind === "work" ? data.work_type : undefined,
+    );
     if (data.kind === "onboarding")
       await startOnboarding(db, res.locals.userId, task.id);
     res.status(201).json(task);

@@ -3,6 +3,7 @@ const {
   BrowserWindow,
   dialog,
   ipcMain,
+  Menu,
   Notification,
   safeStorage,
   shell,
@@ -113,7 +114,7 @@ ipcMain.handle("session:set", (event, value) => {
       apiUrl: value.apiUrl,
     });
     desktop?.setSession(session);
-    askForWorkingFolder(BrowserWindow.fromWebContents(event.sender));
+    BrowserWindow.fromWebContents(event.sender)?.maximize();
   }
 });
 ipcMain.handle("session:refresh", (event) =>
@@ -157,14 +158,6 @@ ipcMain.handle("working-folder:choose", (event) =>
     ? workingFolder.choose(BrowserWindow.fromWebContents(event.sender))
     : null,
 );
-// A signed-in founder without a working folder is asked for one, once per launch;
-// they can choose or change it later in Settings.
-let askedForFolder = false;
-function askForWorkingFolder(win) {
-  if (askedForFolder || !session || workingFolder.get() || !win) return;
-  askedForFolder = true;
-  void workingFolder.choose(win);
-}
 
 // Shown notifications are held until dismissed: one that is garbage-collected
 // stops answering clicks.
@@ -226,6 +219,7 @@ function createWindow() {
     height: 760,
     minWidth: 800,
     minHeight: 600,
+    title: "PostOrca",
     titleBarStyle: "hiddenInset",
     backgroundColor: "#f8f9f7",
     webPreferences: {
@@ -236,12 +230,13 @@ function createWindow() {
     },
   });
 
+  if (session) window.maximize();
+
   window.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//.test(url)) void shell.openExternal(url);
+    if (/^(https?:\/\/|mailto:)/.test(url)) void shell.openExternal(url);
     return { action: "deny" };
   });
   window.webContents.on("will-navigate", (event) => event.preventDefault());
-  window.webContents.once("did-finish-load", () => askForWorkingFolder(window));
 
   const loading =
     !app.isPackaged && process.argv.includes("--dev")
@@ -267,6 +262,31 @@ app.on("second-instance", () => {
 // Windows shows notifications only for an app with this ID.
 if (process.platform === "win32") app.setAppUserModelId("com.postorca.desktop");
 app.whenReady().then(() => {
+  // Keep the internal name (and its data/Keychain identity) stable; only brand
+  // the visible native UI. Electron otherwise labels these with the npm name.
+  app.setAboutPanelOptions({ applicationName: "PostOrca" });
+  if (process.platform === "darwin") {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+      {
+        label: "PostOrca",
+        submenu: [
+          { role: "about", label: "About PostOrca" },
+          { type: "separator" },
+          { role: "services" },
+          { type: "separator" },
+          { role: "hide", label: "Hide PostOrca" },
+          { role: "hideOthers" },
+          { role: "unhide" },
+          { type: "separator" },
+          { role: "quit", label: "Quit PostOrca" },
+        ],
+      },
+      { role: "fileMenu" },
+      { role: "editMenu" },
+      { role: "viewMenu" },
+      { role: "windowMenu" },
+    ]));
+  }
   desktop = new DesktopConnection(installId(), refreshSession, notifyFounder);
   session = readSession();
   desktop.setSession(session);

@@ -11,10 +11,11 @@ import { createUser } from "../src/repositories/users.js";
 import { issueToken } from "../src/middleware/auth.js";
 import { createApp } from "../src/app.js";
 import { configFromEnv } from "../src/config.js";
-import { getCreditSummary } from "../src/billing/credits.js";
+import { addCredits, getCreditSummary } from "../src/billing/credits.js";
 import { membershipPackages } from "../src/billing/terms.js";
 import {
   applyBillingEvent,
+  changePlan,
   ensureCustomer,
   getBilling,
   packagePrice,
@@ -29,7 +30,8 @@ const authSecret = "billing-test-secret-at-least-32-characters";
 const envKeys = [
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
-  "STRIPE_MEMBERSHIP_PRICE_ID",
+  "STRIPE_BUILDER_PRICE_ID",
+  "STRIPE_INFLUENCER_PRICE_ID",
   "STRIPE_EXTRA_PRICE_ID",
   "BILLING_RETURN_URL",
 ];
@@ -39,7 +41,8 @@ before(async () => {
   await migrate(f.db);
   process.env.STRIPE_SECRET_KEY = "sk_test_fixture";
   process.env.STRIPE_WEBHOOK_SECRET = "whsec_fixture";
-  process.env.STRIPE_MEMBERSHIP_PRICE_ID = "price_membership";
+  process.env.STRIPE_BUILDER_PRICE_ID = "price_builder";
+  process.env.STRIPE_INFLUENCER_PRICE_ID = "price_influencer";
   process.env.STRIPE_EXTRA_PRICE_ID = "price_extra";
   process.env.BILLING_RETURN_URL = "http://127.0.0.1:3001/api/billing/return";
   server = createApp(
@@ -78,11 +81,17 @@ async function fixture() {
     }) as Stripe.Event;
   return { user, customer, event };
 }
-const sub = (status = "active") => ({
+const sub = (status = "active", plan = "builder") => ({
   id: "sub_fixture",
   status,
-  metadata: { postorca_package: "membership" },
+  metadata: { postorca_package: plan },
+  items: { data: [{ id: "si_fixture", price: { id: `price_${plan}` } }] },
 });
+const prices: Record<string, number> = {
+  price_builder: 2900,
+  price_influencer: 6900,
+  price_extra: 2000,
+};
 function fakeStripe(
   state: {
     subscriptions?: any[];
@@ -91,6 +100,7 @@ function fakeStripe(
     lines?: any[];
     open?: any[];
     create?: (args: any) => any;
+    update?: (id: string, args: any) => any;
     price?: any;
   } = {},
 ) {
@@ -102,7 +112,7 @@ function fakeStripe(
           active: true,
           livemode: false,
           currency: "usd",
-          unit_amount: id === "price_extra" ? 1000 : 2000,
+          unit_amount: prices[id],
           billing_scheme: "per_unit",
           recurring:
             id === "price_extra"
@@ -116,6 +126,8 @@ function fakeStripe(
     },
     subscriptions: {
       list: async () => ({ data: state.subscriptions ?? [], has_more: false }),
+      update: async (id: string, args: any) =>
+        state.update?.(id, args) ?? { id, status: "active", ...args },
     },
     checkout: {
       sessions: {
@@ -141,26 +153,33 @@ function fakeStripe(
     },
   } as unknown as Stripe;
 }
-function paidInvoice(userId: string, customer: string, start = 1) {
+function paidInvoice(
+  userId: string,
+  customer: string,
+  start = 1,
+  plan: "builder" | "influencer" = "builder",
+  reason = "subscription_cycle",
+) {
+  const amount = prices[`price_${plan}`];
   return {
     invoice: {
       id: `in_${start}`,
       livemode: false,
       customer,
       status: "paid",
-      billing_reason: "subscription_cycle",
+      billing_reason: reason,
       currency: "usd",
-      amount_paid: 2000,
+      amount_paid: amount,
       parent: {
         subscription_details: {
-          metadata: purchaseMetadata("membership", "price_membership", userId),
+          metadata: purchaseMetadata(plan, `price_${plan}`, userId),
           subscription: `sub_${userId}`,
         },
       },
     },
     lines: [
       {
-        pricing: { price_details: { price: "price_membership" } },
+        pricing: { price_details: { price: `price_${plan}` } },
         parent: {
           subscription_item_details: {
             subscription: `sub_${userId}`,
@@ -168,24 +187,27 @@ function paidInvoice(userId: string, customer: string, start = 1) {
           },
         },
         quantity: 1,
-        amount: 2000,
+        amount,
         period: { start, end: start + 100 },
       },
     ],
-    subscriptions: [{ ...sub(), id: `sub_${userId}` }],
+    subscriptions: [{ ...sub("active", plan), id: `sub_${userId}` }],
   };
 }
 
-test("offers preserve the reference allowance; Stripe prices must exactly match", async () => {
-  assert.equal(membershipPackages.membership.amount, 2000);
-  assert.equal(membershipPackages.membership.credits, 500);
-  assert.equal(membershipPackages.extra.amount, 1000);
-  assert.equal(membershipPackages.extra.credits, 250);
-  await packagePrice(fakeStripe(), "membership");
+test("plans buy credits with the part of their price set aside for AI usage; Stripe prices must exactly match", async () => {
+  assert.equal(membershipPackages.builder.amount, 2900);
+  assert.equal(membershipPackages.builder.credits, 500);
+  assert.equal(membershipPackages.influencer.amount, 6900);
+  assert.equal(membershipPackages.influencer.credits, 1500);
+  assert.equal(membershipPackages.extra.amount, 2000);
+  assert.equal(membershipPackages.extra.credits, 500);
+  await packagePrice(fakeStripe(), "builder");
+  await packagePrice(fakeStripe(), "influencer");
   await packagePrice(fakeStripe(), "extra");
   for (const override of [
     { currency: "eur" },
-    { unit_amount: 1999 },
+    { unit_amount: 2899 },
     { livemode: true },
     {
       recurring: {
@@ -195,12 +217,9 @@ test("offers preserve the reference allowance; Stripe prices must exactly match"
       },
     },
   ]) {
-    const price = await fakeStripe().prices.retrieve("price_membership");
+    const price = await fakeStripe().prices.retrieve("price_builder");
     await assert.rejects(
-      packagePrice(
-        fakeStripe({ price: { ...price, ...override } }),
-        "membership",
-      ),
+      packagePrice(fakeStripe({ price: { ...price, ...override } }), "builder"),
       /match the published package/,
     );
   }
@@ -238,7 +257,7 @@ test("checkout snapshots server terms, reuses open sessions and blocks duplicate
       created++;
       assert.equal(args.line_items[0].quantity, 1);
       assert.equal(args.metadata.postorca_credits, "500");
-      assert.equal(args.subscription_data.metadata.postorca_amount, "2000");
+      assert.equal(args.subscription_data.metadata.postorca_amount, "2900");
       const session = {
         ...args,
         id: "cs_once",
@@ -249,8 +268,8 @@ test("checkout snapshots server terms, reuses open sessions and blocks duplicate
     },
   });
   const results = await Promise.all([
-    startCheckout(f.db, stripe, user, "membership"),
-    startCheckout(f.db, stripe, user, "membership"),
+    startCheckout(f.db, stripe, user, "builder"),
+    startCheckout(f.db, stripe, user, "builder"),
   ]);
   assert.equal(created, 1);
   assert.deepEqual(results[0], results[1]);
@@ -259,7 +278,7 @@ test("checkout snapshots server terms, reuses open sessions and blocks duplicate
       f.db,
       fakeStripe({ subscriptions: [sub("past_due")] }),
       user,
-      "membership",
+      "influencer",
     ),
     /already have a subscription/,
   );
@@ -316,11 +335,11 @@ test("top-ups grant only paid, owner-bound, exact line items and deduplicate asy
       status: "complete",
       payment_status: "paid",
       currency: "usd",
-      amount_total: 1000,
+      amount_total: 2000,
       client_reference_id: user.id,
       metadata: purchaseMetadata("extra", "price_extra", user.id),
     },
-    lines: [{ price: { id: "price_extra" }, quantity: 1, amount_total: 1000 }],
+    lines: [{ price: { id: "price_extra" }, quantity: 1, amount_total: 2000 }],
   };
   const stripe = fakeStripe(state);
   await applyBillingEvent(
@@ -336,7 +355,7 @@ test("top-ups grant only paid, owner-bound, exact line items and deduplicate asy
     }),
     stripe,
   );
-  assert.equal((await getCreditSummary(f.db, user.id)).balance, 500);
+  assert.equal((await getCreditSummary(f.db, user.id)).balance, 750);
   state.session.client_reference_id = randomUUID();
   const invalid = event("checkout.session.completed", {
     id: "cs_pack",
@@ -385,8 +404,12 @@ test("bad paid invoices roll back event processing, unpaid invoices grant nothin
 });
 test("billing HTTP routes isolate accounts, disable unconfigured payments, verify raw webhook signatures and grant nothing on return", async () => {
   const { user } = await fixture();
-  delete process.env.STRIPE_MEMBERSHIP_PRICE_ID;
-  delete process.env.STRIPE_EXTRA_PRICE_ID;
+  const saved = Object.fromEntries(
+    envKeys
+      .filter((k) => k.endsWith("_PRICE_ID"))
+      .map((k) => [k, process.env[k]]),
+  );
+  for (const key of Object.keys(saved)) delete process.env[key];
   const headers = {
     Authorization: `Bearer ${issueToken(user.id, authSecret)}`,
     "Content-Type": "application/json",
@@ -395,7 +418,11 @@ test("billing HTTP routes isolate accounts, disable unconfigured payments, verif
   const response = await fetch(`${url}/api/billing`, { headers });
   assert.match(response.headers.get("cache-control")!, /no-store/);
   const data: any = await response.json();
-  assert.equal(data.configured, false);
+  assert.deepEqual(data.available, {
+    builder: false,
+    influencer: false,
+    extra: false,
+  });
   assert.equal(data.credits.balance, 250);
   assert.equal(
     (
@@ -458,5 +485,81 @@ test("billing HTTP routes isolate accounts, disable unconfigured payments, verif
     (await fetch(`${url}/api/billing/return?checkout=success`)).status,
     200,
   );
+  assert.equal(
+    (
+      await fetch(`${url}/api/billing/plan`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ plan: "influencer" }),
+      })
+    ).status,
+    503,
+  );
   assert.equal((await getCreditSummary(f.db, user.id)).balance, 250);
+  Object.assign(process.env, saved);
+});
+test("upgrading charges the full new plan now and grants its allowance once; downgrading waits for renewal", async () => {
+  const { user, customer, event } = await fixture();
+  const calls: any[] = [];
+  const state: any = {
+    subscriptions: [sub("active", "builder")],
+    update: (id: string, args: any) => {
+      calls.push(args);
+      return { id, status: "active", ...args };
+    },
+  };
+  assert.deepEqual(
+    await changePlan(f.db, fakeStripe(state), user.id, "influencer"),
+    { plan: "influencer" },
+  );
+  assert.equal(calls[0].items[0].price, "price_influencer");
+  assert.equal(calls[0].billing_cycle_anchor, "now");
+  assert.equal(calls[0].proration_behavior, "none");
+  assert.equal(calls[0].payment_behavior, "error_if_incomplete");
+  assert.equal(calls[0].metadata.postorca_credits, "1500");
+  assert.equal((await getBilling(f.db, user.id))?.plan, "influencer");
+  const upgrade = paidInvoice(
+    user.id,
+    customer,
+    50,
+    "influencer",
+    "subscription_update",
+  );
+  const paid = event("invoice.paid", { id: "in_50" });
+  await applyBillingEvent(f.db, paid, fakeStripe(upgrade));
+  await applyBillingEvent(f.db, paid, fakeStripe(upgrade));
+  assert.equal((await getCreditSummary(f.db, user.id)).balance, 1750);
+  state.subscriptions = [sub("active", "influencer")];
+  await changePlan(f.db, fakeStripe(state), user.id, "builder");
+  assert.equal(calls[1].items[0].price, "price_builder");
+  assert.equal(calls[1].billing_cycle_anchor, undefined);
+  assert.equal(calls[1].proration_behavior, "none");
+  assert.equal((await getCreditSummary(f.db, user.id)).balance, 1750);
+  state.subscriptions = [sub("active", "builder")];
+  await changePlan(f.db, fakeStripe(state), user.id, "builder");
+  assert.equal(calls.length, 2);
+  state.subscriptions = [sub("past_due", "builder")];
+  await assert.rejects(
+    changePlan(f.db, fakeStripe(state), user.id, "influencer"),
+    /Update your payment method/,
+  );
+  state.subscriptions = [];
+  await assert.rejects(
+    changePlan(f.db, fakeStripe(state), user.id, "influencer"),
+    /no active subscription/,
+  );
+});
+
+test("operators add credits by email, on top of the welcome credits", async () => {
+  const email = `${randomUUID()}@example.test`;
+  const user = await createUser(f.db, "Top up", email, "test-password");
+  const added = await addCredits(f.db, email.toUpperCase(), "100");
+  assert.equal(added.userId, user.id);
+  assert.equal(added.balance, 350);
+  assert.equal((await addCredits(f.db, email, "0.5")).balance, 350.5);
+  await assert.rejects(addCredits(f.db, email, "0"), /positive/);
+  await assert.rejects(
+    addCredits(f.db, "nobody@example.test", "10"),
+    /No account/,
+  );
 });

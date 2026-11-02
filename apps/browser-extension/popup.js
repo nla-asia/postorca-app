@@ -7,12 +7,12 @@ function render(state) {
   status.classList.toggle("on", !!state?.connected);
   retry.hidden = !!state?.connected;
   if (state?.connected) {
-    label.textContent = "Connected to PostOrca";
+    label.textContent = state.nativeHost === "com.postorca.browser" ? "Connected to PostOrca" : "Connected to local companion";
     detail.textContent =
-      "Orca works only in tabs it opens, in the green Orca tab group.";
+      "The companion controls tabs opened by this bridge, normally in the green Orca group. Page content and screenshots are shared with that companion.";
   } else {
     label.textContent = "Not connected";
-    detail.textContent = state?.error ?? "Open the PostOrca desktop app.";
+    detail.textContent = state?.error ?? "Start PostOrca or your selected local companion.";
   }
 }
 
@@ -23,3 +23,4 @@ chrome.storage.session.onChanged.addListener((changes) => {
 retry.addEventListener("click", () =>
   chrome.runtime.sendMessage({ type: "reconnect" }),
 );
+document.getElementById("settings").addEventListener("click", () => chrome.runtime.openOptionsPage());

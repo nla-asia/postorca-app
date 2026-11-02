@@ -1,5 +1,4 @@
 import BillingUsage from "./BillingUsage";
-import { useEffect, useState } from "react";
 import {
   CircleHelp,
   LogOut,
@@ -29,7 +28,6 @@ export default function SettingsModal({
   onThemeChange,
   user,
   onLogOut,
-  onOpenBrandProfile,
   tab,
   onTabChange,
 }: {
@@ -39,21 +37,15 @@ export default function SettingsModal({
   onThemeChange: (theme: Theme) => void;
   user: AuthUser;
   onLogOut: () => void;
-  onOpenBrandProfile?: () => void;
   tab: SettingsTab;
   onTabChange: (tab: SettingsTab) => void;
 }) {
-  const [workingFolder, setWorkingFolder] = useState<string | null>(null);
-  useEffect(() => {
-    if (open) void window.postorca?.workingFolder.get().then(setWorkingFolder);
-  }, [open]);
-
   return (
     <Modal
       open={open}
       onOpenChange={onOpenChange}
       title="Settings"
-      description="Make this space your own."
+      description="Your account, plan and app preferences."
       wide
     >
       <div className="settings-layout">
@@ -113,49 +105,6 @@ export default function SettingsModal({
                   ))}
                 </div>
               </div>
-
-              <span className="field-section-label">Workspace</span>
-              <div className="settings-group">
-                <div className="setting-row">
-                  <div>
-                    <strong>Brand profile</strong>
-                    <p>{user.name || "Your profile"} · Personal workspace</p>
-                  </div>
-                  {onOpenBrandProfile && (
-                    <Button
-                      onClick={() => {
-                        onOpenChange(false);
-                        onOpenBrandProfile();
-                      }}
-                    >
-                      Edit profile
-                    </Button>
-                  )}
-                </div>
-                {window.postorca && (
-                  <div className="setting-row">
-                    <div>
-                      <strong>Working folder</strong>
-                      <p>
-                        {workingFolder ??
-                          "Not set. Orca can only use files in this folder and your project folders."}
-                      </p>
-                    </div>
-                    <Button
-                      onClick={async () => {
-                        const chosen =
-                          await window.postorca?.workingFolder.choose();
-                        if (chosen) setWorkingFolder(chosen);
-                      }}
-                    >
-                      {workingFolder ? "Change" : "Choose folder"}
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <div className="preview-notice">
-                Appearance is saved on this device.
-              </div>
             </>
           )}
 
@@ -175,41 +124,42 @@ export default function SettingsModal({
                   </Button>
                 </div>
               </div>
-              <Button
-                className="account-billing-link"
-                onClick={() => onTabChange("Billing & Usage")}
-              >
-                <Wallet size={15} aria-hidden="true" />
-                Billing &amp; Usage
-              </Button>
             </>
           )}
 
           {tab === "Billing & Usage" && <BillingUsage />}
 
           {tab === "Help" && (
-            <div className="settings-group">
-              <div className="setting-row">
-                <div>
-                  <strong>Working with your agent</strong>
-                  <p>
-                    Use Agent to develop your brand direction and content ideas.
-                    Review proposals in your Inbox, see planned content in the
-                    Calendar, and manage your agent’s rhythm in Routines.
-                  </p>
+            <>
+              <div className="settings-group">
+                <div className="setting-row">
+                  <div>
+                    <strong>Support</strong>
+                    <p>
+                      Questions or problems? Email{" "}
+                      <a
+                        href="mailto:nla@autopilotstartup.com"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        nla@autopilotstartup.com
+                      </a>
+                      .
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div className="setting-row">
-                <div>
-                  <strong>About this version</strong>
-                  <p>
-                    PostOrca runs on the server and desktop. Gmail and Google
-                    Drive connectors connect your workspace to your files and
-                    email.
-                  </p>
+
+              <span className="field-section-label">About</span>
+              <div className="settings-group">
+                <div className="setting-row">
+                  <div>
+                    <strong>PostOrca</strong>
+                    <p>Version {__APP_VERSION__}</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       </div>

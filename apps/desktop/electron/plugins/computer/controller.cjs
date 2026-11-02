@@ -22,6 +22,91 @@ const keys = new Set([
 const modifiers = new Set(["control", "command", "alt", "shift"]);
 const sameBounds = (a, b) =>
   ["x", "y", "width", "height"].every((key) => a[key] === b[key]);
+// Controls worth targeting even when the helper reports no press action
+// (macOS AX roles and Windows UI Automation control types).
+const actionableRoles = new Set([
+  "AXButton",
+  "AXCheckBox",
+  "AXRadioButton",
+  "AXPopUpButton",
+  "AXMenuButton",
+  "AXMenuItem",
+  "AXLink",
+  "AXTextField",
+  "AXTextArea",
+  "AXSearchField",
+  "AXComboBox",
+  "AXSlider",
+  "AXIncrementor",
+  "AXDisclosureTriangle",
+  "AXTab",
+  "AXCell",
+  ..."Button CheckBox RadioButton ComboBox Edit Hyperlink ListItem MenuItem TabItem TreeItem Slider SplitButton DataItem Spinner"
+    .split(" ")
+    .map((type) => `ControlType.${type}`),
+]);
+
+// Desktop rectangle (the window/capture coordinate space) → its visible part in
+// screenshot pixels, plus the desktop centre of that visible part.
+function elementRegion(rect, shot) {
+  if (
+    !rect ||
+    ![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) ||
+    rect.width <= 0 ||
+    rect.height <= 0
+  )
+    return null;
+  const c = shot.bounds,
+    sx = shot.width / c.width,
+    sy = shot.height / c.height;
+  const left = Math.max(rect.x, c.x),
+    top = Math.max(rect.y, c.y),
+    right = Math.min(rect.x + rect.width, c.x + c.width),
+    bottom = Math.min(rect.y + rect.height, c.y + c.height);
+  if (right - left < 1 || bottom - top < 1) return null;
+  const x = Math.floor((left - c.x) * sx),
+    y = Math.floor((top - c.y) * sy);
+  return {
+    bounds: {
+      x,
+      y,
+      width: Math.ceil((right - c.x) * sx) - x,
+      height: Math.ceil((bottom - c.y) * sy) - y,
+    },
+    center: {
+      x: Math.floor((left + right) / 2),
+      y: Math.floor((top + bottom) / 2),
+    },
+  };
+}
+
+// Rewrite helper bounds into this screenshot's pixels and index the visible
+// actionable controls so a click can target one instead of guessing pixels.
+function indexElements(accessibility, shot) {
+  const elements = new Map();
+  if (!Array.isArray(accessibility?.nodes)) return elements;
+  accessibility.nodes = accessibility.nodes.map(
+    ({ bounds, actionable, ...node }) => {
+      const region = elementRegion(bounds, shot);
+      if (!region) return node;
+      if (
+        (actionable || actionableRoles.has(node.role)) &&
+        elements.size < 300
+      ) {
+        const element = elements.size + 1;
+        elements.set(element, {
+          center: region.center,
+          role: node.role,
+          text: (node.text ?? "").slice(0, 80),
+        });
+        return { element, ...node, bounds: region.bounds };
+      }
+      return { ...node, bounds: region.bounds };
+    },
+  );
+  accessibility.bounds_space = "screenshot";
+  return elements;
+}
 
 function matchingApps(apps, wanted) {
   return apps.flatMap((a) => {
@@ -59,6 +144,8 @@ function captureBounds(bounds, displays) {
   return visible[0];
 }
 
+const terminalApps =
+  /(^|[\\/])(Terminal|iTerm2?|Warp|Ghostty|kitty|Alacritty|WezTerm|Hyper|Tabby|WindowsTerminal|wt|cmd|powershell|pwsh|conhost)(\.app|\.exe)?$/i;
 class ComputerController {
   constructor({
     native,
@@ -206,6 +293,24 @@ class ComputerController {
       );
       this.check(context);
     }
+    const front = result.front;
+    if (
+      focus &&
+      !result.foreground &&
+      front?.id &&
+      front.id !== window &&
+      front.pid === known.pid
+    ) {
+      // A sheet or panel of the same app covers the window; let the caller observe
+      // it directly instead of failing until it is closed.
+      this.windows.set(front.id, { ...front, app_id: known.app_id });
+      throw Object.assign(
+        new Error(
+          `Window ${front.id}${front.title ? ` ("${front.title}")` : ""} of this app is in front of the selected window, such as a sheet or panel. Observe window ${front.id} to use it, or close it first. No task input was sent.`,
+        ),
+        { front },
+      );
+    }
     if (!result.window || (focus && !result.foreground))
       throw new Error(
         "The target window could not be focused. No task input was sent.",
@@ -220,6 +325,8 @@ class ComputerController {
     );
     const bitmap = await this.takeCapture(bounds);
     this.check(context);
+    // An observe is a look at the window, which a screen recording of it requires.
+    require("../../tools/screen.cjs").lookedAt(window);
     const image = this.encode(bitmap);
     const id = `o${++this.observationSequence}_${this.observationPrefix}`;
     this.observations.set(window, {
@@ -251,6 +358,11 @@ class ComputerController {
     }
     if (result.accessibility?.menus)
       this.observations.get(window).menus = result.accessibility.menus;
+    if (result.accessibility && !result.accessibility.unavailable)
+      this.observations.get(window).elements = indexElements(
+        result.accessibility,
+        this.observations.get(window),
+      );
     this.check(context);
     const file = await context.upload(image, "image/png");
     return {
@@ -363,6 +475,12 @@ class ComputerController {
       this.check(context);
       return this.observe(args.window, args.accessibility ?? false, context);
     }
+    const known = this.windows.get(args.window);
+    // Input to a terminal would run commands on the founder's computer.
+    if (name !== "computer_scroll" && terminalApps.test(known?.app_id ?? ""))
+      throw new Error(
+        "Input to a terminal is not allowed: it could run commands on the founder's computer. No task input was sent. Ask the founder to run the command instead.",
+      );
     const shot = await this.observed(args, context);
     const outcome = { action: name, input_sent: false };
     try {
@@ -374,11 +492,12 @@ class ComputerController {
         if (
           args.x !== undefined ||
           args.y !== undefined ||
+          args.element !== undefined ||
           args.button !== undefined ||
           args.clicks !== undefined
         )
           throw new Error(
-            "Use a menu_path or screenshot coordinates, not both.",
+            "Use a menu_path or an element/screenshot coordinates, not both.",
           );
         if (
           !Array.isArray(args.menu_path) ||
@@ -423,7 +542,24 @@ class ComputerController {
           needs_observation: true,
         };
       } else if (name === "computer_click") {
-        const p = this.point(args, shot);
+        let p;
+        if (args.element !== undefined) {
+          if (args.x !== undefined || args.y !== undefined)
+            throw new Error(
+              "Use an element or screenshot coordinates, not both.",
+            );
+          const element = shot.elements?.get(args.element);
+          if (!Number.isInteger(args.element) || !element)
+            throw new Error(
+              "Unknown element. Observe with accessibility=true and use an element number from that observation.",
+            );
+          p = element.center;
+          outcome.element = {
+            element: args.element,
+            role: element.role,
+            text: element.text,
+          };
+        } else p = this.point(args, shot);
         if (
           ![undefined, "left", "right"].includes(args.button) ||
           ![undefined, 1, 2].includes(args.clicks)
@@ -497,6 +633,29 @@ class ComputerController {
         this.check(context);
         this.robot.keyTap(args.key, args.modifiers ?? []);
         outcome.input_sent = true;
+      } else if (name === "computer_drag") {
+        const from = this.point(args, shot),
+          to = this.point({ x: args.to_x, y: args.to_y }, shot);
+        this.check(context);
+        this.robot.moveMouse(from.x, from.y);
+        this.robot.mouseToggle("down");
+        outcome.input_sent = true;
+        try {
+          // A person's pace: a quick flick would throw a touch list far past the target.
+          // Moves with the button down must be drag events: the Simulator turns those,
+          // not plain moves, into a touch swipe.
+          const steps = 24;
+          for (let i = 1; i <= steps; i++) {
+            await delay(16, undefined, { signal: context.signal });
+            this.robot.dragMouse(
+              Math.round(from.x + ((to.x - from.x) * i) / steps),
+              Math.round(from.y + ((to.y - from.y) * i) / steps),
+            );
+          }
+          await delay(120, undefined, { signal: context.signal });
+        } finally {
+          this.robot.mouseToggle("up");
+        }
       } else if (name === "computer_scroll") {
         const p = this.point(args, shot);
         if (
@@ -542,7 +701,30 @@ class ComputerController {
         outcome.bottom_verified = false;
       } else throw new Error("Unknown computer tool.");
       await delay(200, undefined, { signal: context.signal });
-      return await this.observe(args.window, false, context, outcome);
+      try {
+        return await this.observe(args.window, false, context, outcome);
+      } catch (error) {
+        // The input itself can close the window or open a sheet over it. That is its
+        // outcome, not a failure: return fresh discovery, as a menu command does.
+        const closed = /Window is no longer (visible|available)/.test(
+          error.message,
+        );
+        if (!closed && !error.front) throw error;
+        const discovery = await this.list(context);
+        if (error.front)
+          this.windows.set(error.front.id, {
+            ...error.front,
+            app_id: known.app_id,
+          });
+        return {
+          ...outcome,
+          window: args.window,
+          window_closed: closed,
+          ...(error.front ? { front_window: error.front.id } : {}),
+          ...discovery,
+          needs_observation: true,
+        };
+      }
     } catch (error) {
       if (outcome.input_sent)
         throw new Error(
@@ -552,4 +734,4 @@ class ComputerController {
     }
   }
 }
-module.exports = { ComputerController, captureBounds };
+module.exports = { ComputerController, captureBounds, elementRegion };

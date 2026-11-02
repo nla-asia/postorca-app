@@ -51,11 +51,12 @@ export function createApp(
 
   app.get("/api/health", async (_req, res) => {
     await ping(db);
-    res.json({ ok: true });
+    // The eval runner checks the model it records against the one actually serving.
+    res.json({ ok: true, orca: config.orca?.model ?? null });
   });
   app.use("/api/auth", authRoutes(db, config.jwtSecret));
   // Desktop routes authenticate themselves (most take a device token).
-  app.use("/api/desktop", desktopRoutes(config.jwtSecret));
+  app.use("/api/desktop", desktopRoutes(config.jwtSecret, db));
   // The public OAuth callback is not behind JWT auth — the one-use state binds it to a user.
   app.use("/api/connectors/google/callback", connectorCallback(db));
   // The founder's saved files (screenshots, media, downloads), streamed by key.

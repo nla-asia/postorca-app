@@ -8,6 +8,7 @@ import {
   updateProject,
 } from "../repositories/projects.js";
 import { profileSchema, projectSchema } from "../schemas/brand.js";
+import { readVoice } from "../voice.js";
 export function brandRoutes(db: Database) {
   const router = Router();
   router.get("/", async (_req, res) =>
@@ -26,6 +27,10 @@ export function brandRoutes(db: Database) {
         )
       ).profile,
     ),
+  );
+  // The founder's voice is Orca's voice.md memory file; the founder reads it here.
+  router.get("/voice", async (_req, res) =>
+    res.json({ content: await readVoice(res.locals.userId) }),
   );
   // Project folders: where the founder builds, read by Orca's desktop file tools.
   router.post("/projects", async (req, res) =>

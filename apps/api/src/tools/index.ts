@@ -3,7 +3,9 @@ import { HttpError } from "../handlers/errors.js";
 import type { TaskKind } from "../repositories/tasks.js";
 import { artifactTools } from "./artifacts.js";
 import { brandTools } from "./brand.js";
+import { contentTools, requireApprovedScript } from "./content.js";
 import { desktopToolset } from "./desktop.js";
+import { feedbackTools } from "./feedback.js";
 import { memoryTools } from "./memory.js";
 import { questionTool } from "./questions.js";
 import { socialPostTools } from "./social-posts.js";
@@ -26,7 +28,9 @@ const tools: Tool[] = [
   ...artifactTools,
   ...memoryTools,
   ...socialPostTools,
+  ...feedbackTools,
   ...desktopToolset,
+  ...contentTools,
   ...taskTools,
   questionTool,
 ];
@@ -57,6 +61,8 @@ export async function executeTool(
   dispatchTask?: DispatchTask,
 ) {
   const { plugins, ...toolContext } = context;
+  // A content task makes nothing until its script is approved.
+  await requireApprovedScript(db, context, name);
   if (isPluginRuntimeTool(name))
     return executePluginTool(
       { ...toolContext, db },

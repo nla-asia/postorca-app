@@ -10,6 +10,8 @@ export type VideoExpectation = {
   formats?: string[];
   screens?: { folder: string; min: number; contain?: boolean; focus?: boolean };
   music?: {
+    /** "web": the agent finds and downloads a free track itself. */
+    source?: "web";
     title?: string;
     notTitle?: string;
     minStart?: number;
@@ -18,6 +20,12 @@ export type VideoExpectation = {
 };
 export type VideoCase = {
   id: string;
+  revision?: number;
+  revision_change?: {
+    from: number;
+    reason: string;
+    preserved_coverage: string[];
+  };
   name: string;
   start: { brief: string } | { of: string; messages: string[] };
   expect: VideoExpectation;
@@ -132,7 +140,7 @@ export const videoCases: VideoCase[] = [
     expect: {
       exports: 1,
       seconds: [15, 32],
-      skill: "video-product-demo",
+      skill: "product-content-edit",
       mustInclude: ["Weekly Founder Digest|digest", "autopilotstartup\\.com"],
     },
   },
@@ -159,7 +167,7 @@ export const videoCases: VideoCase[] = [
     expect: {
       exports: 1,
       seconds: [15, 32],
-      skill: "video-product-demo",
+      skill: "product-content-edit",
       mustInclude: ["Cold Turkey", "getcoldturkey\\.com"],
       screens: { folder: "cold-turkey", min: 3, contain: true, focus: true },
       formats: ["16:9", "1:1", "4:5"],
@@ -175,7 +183,7 @@ export const videoCases: VideoCase[] = [
     expect: {
       exports: 1,
       seconds: [12, 25],
-      skill: "video-product-demo",
+      skill: "product-content-edit",
       mustInclude: ["Google Keep|Keep"],
       screens: { folder: "google keep", min: 2 },
     },
@@ -190,15 +198,36 @@ export const videoCases: VideoCase[] = [
   },
   {
     id: "F3",
+    revision: 3,
+    revision_change: {
+      from: 2,
+      reason:
+        "F3 tests mixing music under a voiceover, so the track is a fixture handed to Orca; finding music online moved to browser-find-music (level 2) and content-reel-with-music (level 3).",
+      preserved_coverage: ["video-F3 music under a voiceover with ducking", "content-reel-with-music", "browser-find-music"],
+    },
     name: "Music under a voiceover",
     start: {
-      brief: `Make a 15-second UGC-style reel of my morning before any calls: coffee at 6, inbox cleared by 7, then one hour on the product. Voiceover and captions, with soft lo-fi music from the music folder in my project folder underneath. ${deliver}`,
+      brief: `Make a 15-second UGC-style reel of my morning before any calls: coffee at 6, inbox cleared by 7, then one hour on the product. Voiceover and captions, with my track sleepy-cat-lofi.mp3 underneath (it's in the eval-fixtures folder of my working folder). ${deliver}`,
     },
     expect: {
       exports: 1,
       seconds: [10, 25],
       skill: "video-music",
-      music: { title: "lo-?fi" },
+      music: { title: "sleepy-cat" },
+    },
+  },
+  {
+    // Content (level 3): the real-world reel, finding the music online too.
+    id: "C1",
+    name: "Reel with music found online",
+    start: {
+      brief: `Make a 15-second UGC-style reel of my morning before any calls: coffee at 6, inbox cleared by 7, then one hour on the product. Voiceover and captions, with soft lo-fi music underneath. Find a free track online that I'm allowed to use, and tell me where it's from and any credit it needs. ${deliver}`,
+    },
+    expect: {
+      exports: 1,
+      seconds: [10, 25],
+      skill: "video-music",
+      music: { source: "web" },
     },
   },
   {

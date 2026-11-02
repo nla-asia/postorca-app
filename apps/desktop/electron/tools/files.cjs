@@ -304,7 +304,61 @@ const uploadFile = {
   },
 };
 
+// A content task's plan.md or script.md, written into its folder in the working
+// folder (apps/api/src/tools/content.ts). The server names the folder; a new one that
+// is already taken gets a number, so two tasks never share a folder.
+const writeContentFile = {
+  run: async ({ folder, name, text, new_folder }) => {
+    const base = workingFolder();
+    if (!base)
+      throw new Error(
+        "No working folder is set. Ask the founder to choose a working folder in Settings.",
+      );
+    if (typeof name !== "string" || !/^[\w .-]+\.md$/.test(name))
+      throw new Error("Only a Markdown file can be saved here.");
+    const parts = String(folder ?? "").split(/[\\/]+/).filter(Boolean);
+    if (!parts.length || path.isAbsolute(String(folder)) || parts.some((part) => part === ".." || part === "."))
+      throw new Error("The content folder must be inside the working folder.");
+    const root = await fs.realpath(base);
+    let relative = parts.join("/");
+    if (new_folder)
+      for (let n = 2; await fs.stat(path.join(root, relative)).then(() => true, () => false); n++)
+        relative = `${parts.join("/")} ${n}`;
+    const dir = path.join(root, relative);
+    await fs.mkdir(dir, { recursive: true });
+    const real = await fs.realpath(dir);
+    if (real !== root && !real.startsWith(root + path.sep))
+      throw new Error("The content folder must be inside the working folder.");
+    const file = path.join(real, name);
+    await fs.writeFile(file, String(text));
+    return { folder: relative, path: file };
+  },
+};
+
+// A copy of a recording or an export in a content task's folder, so everything for one
+// piece of content sits together. A name already taken gets a number.
+async function saveToContentFolder(folder, name, data) {
+  const base = workingFolder();
+  const parts = String(folder ?? "").split(/[\\/]+/).filter(Boolean);
+  if (!base || !parts.length || path.isAbsolute(String(folder)) || parts.some((part) => part === ".." || part === "."))
+    return null;
+  const root = await fs.realpath(base);
+  const dir = path.join(root, ...parts);
+  await fs.mkdir(dir, { recursive: true });
+  const real = await fs.realpath(dir);
+  if (real !== root && !real.startsWith(root + path.sep)) return null;
+  const ext = path.extname(name);
+  const stem = name.slice(0, name.length - ext.length).replace(/[^\w .-]+/g, "").trim().slice(0, 80) || "video";
+  let file = path.join(real, stem + ext);
+  for (let n = 2; await fs.stat(file).then(() => true, () => false); n++) file = path.join(real, `${stem} ${n}${ext}`);
+  await fs.writeFile(file, data);
+  return file;
+}
+
 module.exports = {
+  write_content_file: writeContentFile,
+  saveToContentFolder,
+  mediaBinary,
   list_dir: listDir,
   read_file: readFile,
   upload_file: uploadFile,

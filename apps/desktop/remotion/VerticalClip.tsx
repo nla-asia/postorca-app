@@ -2,7 +2,9 @@ import { useMemo } from "react";
 import {
   AbsoluteFill,
   Audio,
+  Freeze,
   Img,
+  OffthreadVideo,
   Sequence,
   interpolate,
   useCurrentFrame,
@@ -20,7 +22,19 @@ export type VerticalClipProps = {
   format?: Format;
   scenes: {
     src: string | null;
+    // A recorded clip (src is a video): its trim, speed and a still for the backdrop.
+    clip?: {
+      startMs: number;
+      endMs: number;
+      speed: number;
+      // Plays with its own sound instead of muted.
+      sound?: boolean;
+      poster: string;
+    } | null;
     text: string | null;
+    // A card (text, no media): a line under the title and a small one above it.
+    subtitle?: string | null;
+    label?: string | null;
     durationMs: number;
     fit?: "cover" | "contain";
     device?: Device | null;
@@ -29,6 +43,8 @@ export type VerticalClipProps = {
     aspect?: number | null;
   }[];
   voiceover: string | null;
+  // Where the voiceover stops (in its own time) and for how long, while a clip plays with its sound.
+  voiceoverPauses?: { atMs: number; ms: number }[];
   music: {
     src: string;
     volume: number;
@@ -41,6 +57,12 @@ export type VerticalClipProps = {
   brand: { background: string; text: string; highlight: string };
 };
 type SceneData = VerticalClipProps["scenes"][number];
+/** Whether a scene continues the previous one's shot: the same image, or a clip picking up where it stopped. */
+const continues = (previous: SceneData | undefined, scene: SceneData) =>
+  !!previous &&
+  !!scene.src &&
+  scene.src === previous.src &&
+  (!scene.clip || scene.clip.startMs === previous.clip?.endMs);
 type Shot = {
   offset: number;
   frames: number;
@@ -81,6 +103,18 @@ function textBands(width: number, height: number) {
   return {
     top: Math.round(safe.top + 40 + 72 * 1.35 + 16 + 24),
     bottom: Math.round(safe.bottom + 84 * 1.12 + 30),
+  };
+}
+// On the stage, the bands a title and captions take, so neither covers the app. In
+// portrait they sit inside a Reel's safe area: the app keeps the middle of the screen.
+function stageBands(width: number, height: number) {
+  if (height <= width * 1.5) return { ...textBands(width, height), clear: 0 };
+  const safe = safeArea(width, height);
+  return {
+    top: Math.round(safe.top + 40 + 2 * 62 * 1.35 + 40),
+    bottom: Math.round(safe.bottom + 2 * 84 * 1.12 + 30),
+    // Untitled, the app still stays below the app's own controls at the top of a Reel.
+    clear: safe.top,
   };
 }
 function textSize(
@@ -148,6 +182,9 @@ function focusTransform(
   viewport: { top: number; width: number; height: number },
   focus: Region | null,
   previous: Region | null,
+  // A clip that fills the frame: the whole frame shows the recording, and the focus
+  // fits in the viewport (clear of the title and captions) instead of in the frame.
+  stage?: { width: number; height: number },
 ) {
   if (!focus && !previous) return undefined;
   const fraction = interpolate(frame, [0, 18], [0, 1], {
@@ -174,36 +211,83 @@ function focusTransform(
         y: viewport.top + viewport.height / 2,
         scale: 1,
       };
+    const [marginX, marginY] = stage ? [0.9, 0.9] : [0.88, 0.8];
+    // A focus on the stage may shrink to fit: the whole app, with room around it.
     const scale = Math.min(
       4,
       Math.max(
-        1,
+        stage ? 0.25 : 1,
         Math.min(
-          (viewport.width * 0.88) / (region.width * rect.width),
-          (viewport.height * 0.8) / (region.height * rect.height),
+          (viewport.width * marginX) / (region.width * rect.width),
+          (viewport.height * marginY) / (region.height * rect.height),
         ),
       ),
     );
+    const x = rect.left + (region.x + region.width / 2) * rect.width,
+      y = rect.top + (region.y + region.height / 2) * rect.height;
+    // Only the focus shows (focusBox), centred above the captions: nothing around it
+    // needs to stay inside the recording.
+    if (stage) return { scale, x, y };
     return {
       scale,
-      x: bounded(
-        rect.left + (region.x + region.width / 2) * rect.width,
-        rect.left,
-        rect.width,
-        viewport.width / scale,
-      ),
-      y: bounded(
-        rect.top + (region.y + region.height / 2) * rect.height,
-        rect.top,
-        rect.height,
-        viewport.height / scale,
-      ),
+      x: bounded(x, rect.left, rect.width, viewport.width / scale),
+      y: bounded(y, rect.top, rect.height, viewport.height / scale),
     };
   }
   const start = target(previous),
     end = target(focus);
   const mix = (a: number, b: number) => a + (b - a) * fraction;
-  return `translate(${viewport.width / 2}px, ${viewport.top + viewport.height / 2}px) scale(${mix(start.scale, end.scale)}) translate(${-mix(start.x, end.x)}px, ${-mix(start.y, end.y)}px)`;
+  // On the stage the box itself moves (focusBox), so blend its size on screen: blending
+  // the zoom on its own would swell the box past the frame halfway.
+  const span = (region: Region | null) => (region ? region.width : 1) * rect.width;
+  const scale = stage
+    ? mix(start.scale * span(previous), end.scale * span(focus)) /
+      mix(span(previous), span(focus))
+    : mix(start.scale, end.scale),
+    x = mix(start.x, end.x),
+    y = mix(start.y, end.y);
+  const centre = { x: viewport.width / 2, y: viewport.top + viewport.height / 2 };
+  return {
+    transform: `translate(${centre.x}px, ${centre.y}px) scale(${scale}) translate(${-x}px, ${-y}px)`,
+    // Where a box in the recording lands on screen.
+    place: (box: Rect): Rect => ({
+      left: centre.x + scale * (box.left - x),
+      top: centre.y + scale * (box.top - y),
+      width: scale * box.width,
+      height: scale * box.height,
+    }),
+  };
+}
+
+/**
+ * The focus of a clip that fills the frame, as a clip path in the recording's own
+ * coordinates: only that area shows, so a focus that leaves out a browser's bars or the
+ * desktop really leaves them out. It moves with the zoom between foci.
+ */
+function focusBox(
+  frame: number,
+  rect: Rect,
+  focus: Region | null,
+  previous: Region | null,
+): Rect | undefined {
+  if (!focus && !previous) return undefined;
+  const fraction = interpolate(frame, [0, 18], [0, 1], {
+    ...clamp,
+    easing: (t) => 1 - (1 - t) ** 3,
+  });
+  const box = (region: Region | null) =>
+    region
+      ? {
+          left: rect.left + region.x * rect.width,
+          top: rect.top + region.y * rect.height,
+          width: region.width * rect.width,
+          height: region.height * rect.height,
+        }
+      : rect;
+  const a = box(previous),
+    b = box(focus);
+  const mix = (key: keyof Rect) => a[key] + (b[key] - a[key]) * fraction;
+  return { left: mix("left"), top: mix("top"), width: mix("width"), height: mix("height") };
 }
 
 function DeviceFrame({ device, rect }: { device: Device; rect: Rect }) {
@@ -297,50 +381,150 @@ function camera(frame: number, fps: number, shot: Shot, amount: number) {
   return `translate(${x}px, ${y}px) rotate(${amount * 0.3 * Math.sin(0.9 * seconds + phase)}deg) scale(${scale})`;
 }
 
+/** Plays the trimmed part of a clip at its speed, muted unless it keeps its sound, then holds its last frame. */
+function ClipVideo({
+  src,
+  clip,
+  style,
+}: {
+  src: string;
+  clip: NonNullable<SceneData["clip"]>;
+  style: React.CSSProperties;
+}) {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const playing = Math.max(
+    1,
+    Math.floor((((clip.endMs - clip.startMs) / clip.speed) * fps) / 1000),
+  );
+  return (
+    <Freeze frame={playing - 1} active={frame >= playing}>
+      <OffthreadVideo
+        src={src}
+        muted={!clip.sound}
+        trimBefore={Math.round((clip.startMs * fps) / 1000)}
+        trimAfter={Math.round((clip.endMs * fps) / 1000)}
+        playbackRate={clip.speed}
+        style={style}
+      />
+    </Freeze>
+  );
+}
+
+/**
+ * A title, section or end card: the title rises in under a drawn accent bar, a small
+ * label above it and a subtitle below, on the brand background with a soft glow.
+ */
+function Card({
+  title,
+  subtitle,
+  label,
+  brand,
+}: {
+  title: string;
+  subtitle: string | null;
+  label: string | null;
+  brand: VerticalClipProps["brand"];
+}) {
+  const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
+  const ease = (from: number, to: number) =>
+    interpolate(frame, [from, to], [0, 1], { ...clamp, easing: (t) => 1 - (1 - t) ** 3 });
+  const portrait = height > width;
+  const available = width - (portrait ? 140 : 360);
+  const titleIn = ease(4, 20),
+    barIn = ease(0, 14),
+    sub = ease(12, 28),
+    lab = ease(0, 12);
+  const titleSize = textSize(title, available, portrait ? [116, 92, 72] : [132, 104, 80]);
+  return (
+    <AbsoluteFill
+      style={{
+        justifyContent: "center",
+        alignItems: portrait ? "center" : "flex-start",
+        padding: portrait ? "0 70px" : "0 180px",
+        background: `radial-gradient(ellipse at ${portrait ? "50% 30%" : "25% 40%"}, ${brand.highlight}26, transparent 60%), ${brand.background}`,
+      }}
+    >
+      <div style={{ textAlign: portrait ? "center" : "left", maxWidth: available }}>
+        {label && (
+          <div
+            style={{
+              fontFamily,
+              fontWeight: 700,
+              fontSize: portrait ? 36 : 34,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              color: brand.highlight,
+              opacity: lab,
+              marginBottom: 28,
+            }}
+          >
+            {label}
+          </div>
+        )}
+        <div
+          style={{
+            width: 120 * barIn,
+            height: 10,
+            borderRadius: 5,
+            backgroundColor: brand.highlight,
+            margin: portrait ? "0 auto 40px" : "0 0 40px",
+          }}
+        />
+        <div
+          style={{
+            fontFamily,
+            fontWeight: 800,
+            fontSize: titleSize,
+            lineHeight: 1.08,
+            letterSpacing: "-0.02em",
+            whiteSpace: "pre-line",
+            overflowWrap: "anywhere",
+            color: brand.text,
+            opacity: titleIn,
+            transform: `translateY(${(1 - titleIn) * 40}px)`,
+          }}
+        >
+          {title}
+        </div>
+        {subtitle && (
+          <div
+            style={{
+              fontFamily,
+              fontWeight: 500,
+              fontSize: Math.max(36, Math.round(titleSize * 0.42)),
+              lineHeight: 1.3,
+              color: brand.text,
+              opacity: 0.78 * sub,
+              transform: `translateY(${(1 - sub) * 24}px)`,
+              marginTop: 28,
+            }}
+          >
+            {subtitle}
+          </div>
+        )}
+      </div>
+    </AbsoluteFill>
+  );
+}
+
 function Headline({
   text,
   image,
+  stage = false,
   brand,
 }: {
   text: string;
   image: boolean;
+  // Over the stage's clean background, beside the app: plain type, no backing.
+  stage?: boolean;
   brand: VerticalClipProps["brand"];
 }) {
   const { width, height } = useVideoConfig();
   const safe = safeArea(width, height);
   const pop = usePop();
   const available = image ? width - safe.left - safe.right : width - 180;
-  if (!image)
-    return (
-      <AbsoluteFill
-        style={{ justifyContent: "center", alignItems: "center", padding: 90 }}
-      >
-        <div style={{ ...pop, textAlign: "center" }}>
-          <div
-            style={{
-              width: 120,
-              height: 12,
-              borderRadius: 6,
-              margin: "0 auto 56px",
-              backgroundColor: brand.highlight,
-            }}
-          />
-          <div
-            style={{
-              fontFamily,
-              fontWeight: 800,
-              fontSize: textSize(text, available, [120, 96, 76]),
-              lineHeight: 1.1,
-              whiteSpace: "pre-line",
-              overflowWrap: "anywhere",
-              color: brand.text,
-            }}
-          >
-            {text}
-          </div>
-        </div>
-      </AbsoluteFill>
-    );
   return (
     <AbsoluteFill
       style={{
@@ -363,9 +547,13 @@ function Headline({
             fontFamily,
             fontWeight: 800,
             fontSize: textSize(text, available - 60, [72, 62, 54]),
-            color: "#111111",
-            backgroundColor: "rgba(255,255,255,0.96)",
-            padding: "8px 26px",
+            ...(stage
+              ? { color: brand.text, letterSpacing: "-0.01em" }
+              : {
+                  color: "#111111",
+                  backgroundColor: "rgba(255,255,255,0.96)",
+                  padding: "8px 26px",
+                }),
             borderRadius: 18,
             whiteSpace: "pre-line",
             overflowWrap: "anywhere",
@@ -384,6 +572,7 @@ function Scene({
   scene,
   shot,
   previousFocus,
+  previousTitled,
   captioned,
   brand,
   base,
@@ -391,6 +580,7 @@ function Scene({
   scene: SceneData;
   shot: Shot;
   previousFocus: Region | null;
+  previousTitled: boolean;
   captioned: boolean;
   brand: VerticalClipProps["brand"];
   base: string;
@@ -399,32 +589,78 @@ function Scene({
   const { width, height, fps } = useVideoConfig();
   const fit = scene.fit ?? "cover",
     device = scene.device ?? null;
-  const bands = textBands(width, height);
   const framed = fit === "contain" || !!device;
-  const top = framed && shot.stickered ? bands.top : 0;
+  // A screen recording is laid out on the whole frame, so the app keeps its size from
+  // shot to shot; its focus sits on the stage clear of the captions (and of a title).
+  const croppedClip = !!scene.clip && framed && !device;
+  const bands = croppedClip ? stageBands(width, height) : { ...textBands(width, height), clear: 0 };
+  // On the stage, a title gets the band above the app, which makes room for it as the
+  // shot opens and gives it back when the title goes.
+  const titleBand = (titled: boolean) => (titled ? bands.top : bands.clear);
+  const top = croppedClip
+    ? interpolate(frame, [0, 18], [titleBand(previousTitled), titleBand(!!scene.text)], {
+        ...clamp,
+        easing: (t) => 1 - (1 - t) ** 3,
+      })
+    : framed && shot.stickered
+      ? bands.top
+      : 0;
   const viewport = {
     top,
     width,
     height: height - top - (framed && captioned ? bands.bottom : 0),
   };
   const placed = scene.aspect
-    ? imageRect(scene.aspect, fit, device, width, viewport.height)
+    ? croppedClip
+      ? imageRect(scene.aspect, fit, device, width, height)
+      : imageRect(scene.aspect, fit, device, width, viewport.height)
     : null;
-  const rect = placed ? { ...placed, top: placed.top + top } : null;
+  const rect = placed
+    ? { ...placed, top: placed.top + (croppedClip ? 0 : top) }
+    : null;
   const shownWhole = !!rect && framed;
   const focus = scene.focus ?? null;
-  const amount = shownWhole || focus || previousFocus ? 0.4 : 1;
+  // A clip has its own motion: only image shots get the handheld drift.
+  const amount = scene.clip
+    ? 0
+    : shownWhole || focus || previousFocus
+      ? 0.4
+      : 1;
   const glow = interpolate(frame, [4, 22], [0, 1], clamp);
   const src = scene.src ? asset(base, scene.src) : null;
+  const backdrop = scene.clip ? asset(base, scene.clip.poster) : src;
   const highlight = scene.highlight;
   const radius = rect
     ? (device === "phone" ? 0.1 : device ? 0.004 : 0) * rect.width
     : 0;
+  const media: React.CSSProperties = rect
+    ? { position: "absolute", ...rect, borderRadius: radius }
+    : {
+        position: "absolute",
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+      };
+  const framing = rect
+    ? focusTransform(
+        frame,
+        rect,
+        viewport,
+        focus,
+        previousFocus,
+        croppedClip ? { width, height } : undefined,
+      )
+    : undefined;
+  const shown = croppedClip && rect ? focusBox(frame, rect, focus, previousFocus) : undefined;
+  // Rounded a little and lifted off the background, so it reads as the app framed
+  // rather than a crop.
+  const corner = Math.round(width * 0.008);
+  const onScreen = shown && framing ? framing.place(shown) : undefined;
   return (
     <AbsoluteFill style={{ backgroundColor: brand.background }}>
-      {src && shownWhole && (
+      {backdrop && shownWhole && !croppedClip && (
         <Img
-          src={src}
+          src={backdrop}
           style={{
             position: "absolute",
             width: "100%",
@@ -435,30 +671,46 @@ function Scene({
           }}
         />
       )}
+      {croppedClip && (
+        // A focused recording sits on a clean stage, never a smear of itself.
+        <AbsoluteFill
+          style={{
+            background: `radial-gradient(ellipse at 50% 35%, ${brand.highlight}22, transparent 65%), ${brand.background}`,
+          }}
+        />
+      )}
+      {onScreen && (
+        <div
+          style={{
+            position: "absolute",
+            ...onScreen,
+            borderRadius: corner,
+            boxShadow: "0 30px 90px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.08)",
+          }}
+        />
+      )}
       {src && (
-        <AbsoluteFill style={{ transform: camera(frame, fps, shot, amount) }}>
+        <AbsoluteFill
+          style={{
+            transform: camera(frame, fps, shot, amount),
+
+          }}
+        >
           <AbsoluteFill
             style={{
               transformOrigin: "0 0",
-              transform: rect
-                ? focusTransform(frame, rect, viewport, focus, previousFocus)
-                : undefined,
+              ...(shown && {
+                clipPath: `inset(${shown.top}px ${width - shown.left - shown.width}px ${height - shown.top - shown.height}px ${shown.left}px round ${corner / (onScreen!.width / shown.width)}px)`,
+              }),
+              transform: framing?.transform,
             }}
           >
             {device && rect && <DeviceFrame device={device} rect={rect} />}
-            <Img
-              src={src}
-              style={
-                rect
-                  ? { position: "absolute", ...rect, borderRadius: radius }
-                  : {
-                      position: "absolute",
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }
-              }
-            />
+            {scene.clip ? (
+              <ClipVideo src={src} clip={scene.clip} style={media} />
+            ) : (
+              <Img src={src} style={media} />
+            )}
             {highlight && rect && (
               <div
                 style={{
@@ -477,7 +729,12 @@ function Scene({
           </AbsoluteFill>
         </AbsoluteFill>
       )}
-      {scene.text && <Headline text={scene.text} image={!!src} brand={brand} />}
+      {scene.text &&
+        (src ? (
+          <Headline text={scene.text} image stage={croppedClip} brand={brand} />
+        ) : (
+          <Card title={scene.text} subtitle={scene.subtitle ?? null} label={scene.label ?? null} brand={brand} />
+        ))}
     </AbsoluteFill>
   );
 }
@@ -573,15 +830,58 @@ function CaptionPage({ page, highlight }: { page: Page; highlight: string }) {
   );
 }
 
+/** The voiceover, split at each pause so it picks up again once the clip with sound has played. */
+function Voiceover({
+  src,
+  pauses,
+}: {
+  src: string;
+  pauses: { atMs: number; ms: number }[];
+}) {
+  const { fps } = useVideoConfig();
+  const frames = (ms: number) => Math.round((ms * fps) / 1000);
+  if (!pauses.length) return <Audio src={src} />;
+  let shift = 0;
+  const parts = [...pauses, null].map((pause, index) => {
+    const from = index ? pauses[index - 1].atMs : 0;
+    const part = { from, to: pause?.atMs, startMs: from + shift };
+    if (pause) shift += pause.ms;
+    return part;
+  });
+  return (
+    <>
+      {parts.map((part) => (
+        <Sequence key={part.from} from={frames(part.startMs)}>
+          <Audio
+            src={src}
+            trimBefore={frames(part.from)}
+            trimAfter={part.to === undefined ? undefined : frames(part.to)}
+          />
+        </Sequence>
+      ))}
+    </>
+  );
+}
+
 export function VerticalClip({
   assetBaseUrl,
   scenes,
   voiceover,
+  voiceoverPauses = [],
   music,
   captions,
   brand,
 }: VerticalClipProps) {
   const { fps } = useVideoConfig();
+  // Where each voiceover pause starts in the video.
+  const pausesInVideo = useMemo(() => {
+    let shift = 0;
+    return voiceoverPauses.map((pause) => {
+      const at = pause.atMs + shift;
+      shift += pause.ms;
+      return at;
+    });
+  }, [voiceoverPauses]);
   const pages = useMemo(
     () =>
       createTikTokStyleCaptions({
@@ -604,17 +904,21 @@ export function VerticalClip({
       index = 0;
     return ranges.map((range, position) => {
       const scene = scenes[position];
-      if (position && (!scene.src || scene.src !== scenes[position - 1].src)) {
+      if (position && !continues(scenes[position - 1], scene)) {
         first = position;
         index++;
       }
       let last = position;
-      while (scene.src && scenes[last + 1]?.src === scene.src) last++;
+      while (scenes[last + 1] && continues(scenes[last], scenes[last + 1]))
+        last++;
       const shot: Shot = {
         offset: range.from - ranges[first].from,
         frames: ranges[last].to - ranges[first].from,
         index,
-        stickered: scenes.slice(first, last + 1).some((item) => !!item.text),
+        // Clips keep one layout across cuts, so the recording doesn't jump between them.
+        stickered: (scene.clip ? scenes : scenes.slice(first, last + 1)).some(
+          (item) => !!item.text,
+        ),
       };
       return { ...range, shot };
     });
@@ -636,10 +940,17 @@ export function VerticalClip({
               base={assetBaseUrl}
               captioned={pages.length > 0}
               brand={brand}
+              previousTitled={
+                continues(scenes[index - 1], scene) && !!scenes[index - 1].text
+              }
               previousFocus={
-                index > 0 && scenes[index - 1].src === scene.src
+                continues(scenes[index - 1], scene)
                   ? (scenes[index - 1].focus ?? null)
-                  : null
+                  : // A clip cuts straight to its focus: zooming in from the whole recording
+                    // at every cut looks like the page reloading.
+                    scene.clip
+                    ? (scene.focus ?? null)
+                    : null
               }
             />
           </Sequence>
@@ -647,8 +958,13 @@ export function VerticalClip({
       })}
       {pages.map((page, index) => {
         const from = Math.round((page.startMs * fps) / 1000);
+        // A caption holds until the next one, but not into a voiceover pause.
+        const pause = pausesInVideo.find((at) => at > page.startMs);
         const end = Math.round(
-          ((pages[index + 1]?.startMs ?? page.startMs + page.durationMs) *
+          (Math.min(
+            pages[index + 1]?.startMs ?? page.startMs + page.durationMs,
+            pause ?? Infinity,
+          ) *
             fps) /
             1000,
         );
@@ -662,7 +978,12 @@ export function VerticalClip({
           </Sequence>
         ) : null;
       })}
-      {voiceover && <Audio src={asset(assetBaseUrl, voiceover)} />}
+      {voiceover && (
+        <Voiceover
+          src={asset(assetBaseUrl, voiceover)}
+          pauses={voiceoverPauses}
+        />
+      )}
       {music && <Music {...music} src={asset(assetBaseUrl, music.src)} />}
     </AbsoluteFill>
   );

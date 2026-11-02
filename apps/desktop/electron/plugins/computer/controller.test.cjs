@@ -1,6 +1,10 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { ComputerController, captureBounds } = require("./controller.cjs");
+const {
+  ComputerController,
+  captureBounds,
+  elementRegion,
+} = require("./controller.cjs");
 
 function fixture() {
   let time = 1000;
@@ -36,6 +40,8 @@ function fixture() {
     mouseClick: (...a) => sent.push(["click", ...a]),
     keyTap: (...a) => sent.push(["key", ...a]),
     scrollMouse: (...a) => sent.push(["scroll", ...a]),
+    mouseToggle: (...a) => sent.push(["toggle", ...a]),
+    dragMouse: (...a) => sent.push(["drag", ...a]),
   };
   let loads = 0;
   const controller = new ComputerController({
@@ -160,6 +166,22 @@ test("aborted queued input cannot execute after the preceding action", async () 
   );
   assert.deepEqual(f.sent, []);
 });
+test("a drag presses, moves in steps and releases within the screenshot", async () => {
+  const f = fixture(),
+    shot = await f.ready();
+  const args = { window: "7", observation: shot.observation, x: 20, y: 40, to_x: 20, to_y: 10 };
+  await f.controller.run("computer_drag", args, f.context);
+  const kinds = f.sent.map((s) => s[0]);
+  assert.equal(kinds[0], "move");
+  assert.deepEqual(f.sent[1], ["toggle", "down"]);
+  assert.deepEqual(f.sent.at(-1), ["toggle", "up"]);
+  assert.ok(kinds.filter((k) => k === "drag").length > 10);
+  const fresh = await f.ready();
+  await assert.rejects(
+    f.controller.run("computer_drag", { ...args, observation: fresh.observation, to_y: 99999 }, f.context),
+    /outside the latest screenshot/,
+  );
+});
 test("bottom scrolling is bounded and does not assert completeness", async () => {
   const f = fixture(),
     shot = await f.ready();
@@ -196,6 +218,204 @@ test("a lost post-input screenshot reports uncertainty and invalidates the old o
     /Stale/,
   );
 });
+test("element bounds convert desktop points to Retina screenshot pixels with the window offset", () => {
+  // Window at (-100, 10) points captured as a 2x Retina bitmap.
+  const shot = {
+    bounds: { x: -100, y: 10, width: 400, height: 300 },
+    width: 800,
+    height: 600,
+  };
+  assert.deepEqual(
+    elementRegion({ x: 100, y: 60, width: 40, height: 20 }, shot),
+    {
+      bounds: { x: 400, y: 100, width: 80, height: 40 },
+      center: { x: 120, y: 70 },
+    },
+  );
+  // Only the visible part counts, and the click lands in its centre.
+  assert.deepEqual(
+    elementRegion({ x: -120, y: 0, width: 40, height: 30 }, shot),
+    {
+      bounds: { x: 0, y: 0, width: 40, height: 40 },
+      center: { x: -90, y: 20 },
+    },
+  );
+  assert.equal(
+    elementRegion({ x: 400, y: 60, width: 40, height: 20 }, shot),
+    null,
+  );
+  assert.equal(
+    elementRegion({ x: Infinity, y: 0, width: 1, height: 1 }, shot),
+    null,
+  );
+  assert.equal(elementRegion(undefined, shot), null);
+  // Windows: physical pixels at 1:1 on a second monitor.
+  assert.deepEqual(
+    elementRegion(
+      { x: 2020, y: 100, width: 50, height: 30 },
+      {
+        bounds: { x: 1920, y: 0, width: 1000, height: 800 },
+        width: 1000,
+        height: 800,
+      },
+    ),
+    {
+      bounds: { x: 100, y: 100, width: 50, height: 30 },
+      center: { x: 2045, y: 115 },
+    },
+  );
+});
+
+function elementFixture() {
+  const f = fixture();
+  const original = f.controller.native;
+  f.controller.native = async (request) =>
+    request.action === "accessibility"
+      ? {
+          source: "macOS Accessibility",
+          nodes: [
+            {
+              role: "AXWindow",
+              text: "Probe",
+              depth: 0,
+              bounds: { ...f.window.bounds },
+            },
+            {
+              role: "AXStaticText",
+              text: "Allow notifications?",
+              depth: 1,
+              bounds: { x: 0, y: 40, width: 100, height: 20 },
+            },
+            {
+              role: "AXGroup",
+              text: "Don't Allow",
+              depth: 1,
+              actionable: true,
+              bounds: { x: 100, y: 60, width: 40, height: 20 },
+            },
+            {
+              role: "AXButton",
+              text: "Allow",
+              depth: 1,
+              bounds: { x: 150, y: 60, width: 40, height: 20 },
+            },
+            {
+              role: "AXButton",
+              text: "Offscreen",
+              depth: 1,
+              bounds: { x: 900, y: 60, width: 40, height: 20 },
+            },
+            { role: "AXButton", text: "No frame", depth: 1 },
+          ],
+        }
+      : original(request);
+  return f;
+}
+const observeElements = (f) =>
+  f.controller.run(
+    "computer_observe",
+    { window: "7", accessibility: true },
+    f.context,
+  );
+
+test("accessibility observations index visible actionable controls in screenshot pixels", async () => {
+  const f = elementFixture();
+  await f.ready();
+  const shot = await observeElements(f);
+  assert.equal(shot.accessibility.bounds_space, "screenshot");
+  assert.deepEqual(
+    shot.accessibility.nodes.map(({ element, text, bounds }) => [
+      element,
+      text,
+      bounds,
+    ]),
+    [
+      [undefined, "Probe", { x: 0, y: 0, width: 800, height: 600 }],
+      [
+        undefined,
+        "Allow notifications?",
+        { x: 200, y: 60, width: 200, height: 40 },
+      ],
+      [1, "Don't Allow", { x: 400, y: 100, width: 80, height: 40 }],
+      [2, "Allow", { x: 500, y: 100, width: 80, height: 40 }],
+      [undefined, "Offscreen", undefined],
+      [undefined, "No frame", undefined],
+    ],
+  );
+  assert.equal(shot.accessibility.nodes[2].actionable, undefined);
+});
+
+test("element clicks press the element centre and consume the observation", async () => {
+  const f = elementFixture();
+  await f.ready();
+  const shot = await observeElements(f);
+  const args = { window: "7", observation: shot.observation, element: 1 };
+  const result = await f.controller.run("computer_click", args, f.context);
+  assert.deepEqual(f.sent, [
+    ["move", 120, 70],
+    ["click", "left", false],
+  ]);
+  assert.deepEqual(result.element, {
+    element: 1,
+    role: "AXGroup",
+    text: "Don't Allow",
+  });
+  // The post-click screenshot has no accessibility, so no elements to reuse.
+  await assert.rejects(
+    f.controller.run("computer_click", args, f.context),
+    /Stale/,
+  );
+  await assert.rejects(
+    f.controller.run(
+      "computer_click",
+      { ...args, observation: result.observation },
+      f.context,
+    ),
+    /Unknown element/,
+  );
+  assert.equal(f.sent.length, 2);
+});
+
+test("element clicks reject stale observations, moved windows and missing elements without input", async () => {
+  const f = elementFixture();
+  await f.ready();
+  const old = await observeElements(f);
+  const fresh = await observeElements(f);
+  await assert.rejects(
+    f.controller.run(
+      "computer_click",
+      { window: "7", observation: old.observation, element: 1 },
+      f.context,
+    ),
+    /Stale/,
+  );
+  f.window.bounds.y += 5;
+  await assert.rejects(
+    f.controller.run(
+      "computer_click",
+      { window: "7", observation: fresh.observation, element: 1 },
+      f.context,
+    ),
+    /moved/,
+  );
+  f.window.bounds.y -= 5;
+  for (const [extra, error] of [
+    [{ element: 9 }, /Unknown element/],
+    [{ element: 1, x: 10, y: 10 }, /not both/],
+  ]) {
+    const shot = await observeElements(f);
+    await assert.rejects(
+      f.controller.run(
+        "computer_click",
+        { window: "7", observation: shot.observation, ...extra },
+        f.context,
+      ),
+      error,
+    );
+  }
+  assert.deepEqual(f.sent, []);
+});
+
 test("spanning windows capture only the largest visible display intersection", () => {
   assert.deepEqual(
     captureBounds({ x: -100, y: -10, width: 500, height: 300 }, [
@@ -271,6 +491,139 @@ test("opening an already running app focuses its window without launching anothe
   assert.deepEqual(actions, ["focus"]);
 });
 
+test("a sheet in front of the selected window is named and can be observed and clicked", async () => {
+  const f = fixture();
+  await f.ready();
+  const sheet = {
+    id: "8",
+    pid: 55,
+    title: "Untitled",
+    bounds: { x: 0, y: 40, width: 200, height: 150 },
+  };
+  const original = f.controller.native;
+  f.controller.native = async (request) => {
+    if (request.action !== "focus") return original(request);
+    assert.equal(request.expected_pid, 55);
+    return request.window === "8"
+      ? { window: sheet, foreground: true }
+      : { window: f.window, foreground: false, front: sheet };
+  };
+  await assert.rejects(
+    f.controller.run("computer_observe", { window: "7" }, f.context),
+    /Window 8 \("Untitled"\) of this app is in front.*Observe window 8/,
+  );
+  // The sheet is usable without listing apps again.
+  const shot = await f.controller.run(
+    "computer_observe",
+    { window: "8" },
+    f.context,
+  );
+  assert.deepEqual(shot.capture_bounds, sheet.bounds);
+  await f.controller.run(
+    "computer_click",
+    { window: "8", observation: shot.observation, x: 400, y: 300 },
+    f.context,
+  );
+  assert.deepEqual(f.sent, [
+    ["move", 100, 115],
+    ["click", "left", false],
+  ]);
+});
+test("input to a terminal is refused before anything is sent", async () => {
+  for (const app_id of [
+    "/System/Applications/Utilities/Terminal.app",
+    "/Applications/iTerm.app",
+    "C:\\Windows\\System32\\cmd.exe",
+  ]) {
+    const f = fixture(),
+      shot = await f.ready();
+    f.controller.windows.get("7").app_id = app_id;
+    for (const [tool, extra] of [
+      ["computer_type", { text: "rm -rf x" }],
+      ["computer_press", { key: "enter" }],
+      ["computer_click", { x: 10, y: 10 }],
+    ])
+      await assert.rejects(
+        f.controller.run(
+          tool,
+          { window: "7", observation: shot.observation, ...extra },
+          f.context,
+        ),
+        /Input to a terminal is not allowed/,
+      );
+    assert.deepEqual(f.sent, []);
+  }
+});
+test("a click that closes its window succeeds and asks for a new observation", async () => {
+  const f = fixture(),
+    shot = await f.ready();
+  const original = f.controller.native;
+  let clicked = false;
+  f.controller.native = async (request) => {
+    if (request.action === "focus" && f.sent.length) {
+      clicked = true;
+      throw new Error("Window is no longer available; list apps again.");
+    }
+    return original(request);
+  };
+  const result = await f.controller.run(
+    "computer_click",
+    { window: "7", observation: shot.observation, x: 400, y: 300 },
+    f.context,
+  );
+  assert.equal(clicked, true);
+  assert.equal(result.input_sent, true);
+  assert.equal(result.window_closed, true);
+  assert.equal(result.needs_observation, true);
+  assert.ok(result.apps.length);
+});
+test("a click that opens a sheet succeeds and names the sheet", async () => {
+  const f = fixture(),
+    shot = await f.ready();
+  const sheet = {
+    id: "8",
+    pid: 55,
+    title: "Untitled",
+    bounds: { x: 0, y: 40, width: 200, height: 150 },
+  };
+  const original = f.controller.native;
+  f.controller.native = async (request) => {
+    if (request.action === "focus" && request.window === "7" && f.sent.length)
+      return { window: f.window, foreground: false, front: sheet };
+    if (request.action === "focus" && request.window === "8")
+      return { window: sheet, foreground: true };
+    return original(request);
+  };
+  const result = await f.controller.run(
+    "computer_click",
+    { window: "7", observation: shot.observation, x: 400, y: 300 },
+    f.context,
+  );
+  assert.equal(result.window_closed, false);
+  assert.equal(result.front_window, "8");
+  assert.equal(result.needs_observation, true);
+  // The sheet is usable straight away.
+  const next = await f.controller.run(
+    "computer_observe",
+    { window: "8" },
+    f.context,
+  );
+  assert.deepEqual(next.capture_bounds, sheet.bounds);
+});
+test("a covering window of another process is not offered as a target", async () => {
+  const f = fixture();
+  await f.ready();
+  f.controller.native = async () => ({
+    window: f.window,
+    foreground: false,
+    front: { id: "9", pid: 99, title: "Other", bounds: f.window.bounds },
+  });
+  await assert.rejects(
+    f.controller.run("computer_observe", { window: "7" }, f.context),
+    /could not be focused/,
+  );
+  assert.equal(f.controller.windows.has("9"), false);
+});
 test(
   "Windows foreground lock gets one Alt activation retry, but modal windows do not",
   { skip: process.platform !== "win32" },
@@ -377,6 +730,7 @@ test(
       { menu_path: ["File", "Stop Recording"] },
       { menu_path: ["Apple", "Restart"] },
       { menu_path: ["File", "Record Screen"], x: 1, y: 1 },
+      { menu_path: ["File", "Record Screen"], element: 1 },
     ]) {
       const f = fixture();
       const original = f.controller.native;

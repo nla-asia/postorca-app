@@ -43,6 +43,12 @@ export const taskTools: Tool[] = [
           title: { type: "string" },
           instructions: { type: "string" },
           platform: { type: "string", enum: [...platforms] },
+          work_type: {
+            type: "string",
+            enum: ["general", "content"],
+            description:
+              "content for one piece of content (a video, a post): the task is its project, with a plan and a script the founder approves before the content is made, in its own folder. general (the default) for anything else.",
+          },
         },
         ["title", "instructions"],
       ),
@@ -55,6 +61,7 @@ export const taskTools: Tool[] = [
           title: z.string().trim().min(1).max(200),
           instructions: message,
           platform: z.enum(platforms).optional(),
+          work_type: z.enum(["general", "content"]).optional(),
         })
         .strict()
         .parse(args);
@@ -65,6 +72,7 @@ export const taskTools: Tool[] = [
         data.title,
         data.instructions,
         data.platform,
+        data.work_type,
       );
       dispatch(task.id, turn.id, context.userId);
       return {

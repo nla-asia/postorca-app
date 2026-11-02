@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronRight, Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
+import BrandMark from "./BrandMark";
 import Sidebar from "./Sidebar";
 import ConnectApps from "./ConnectApps";
 import SettingsModal, { type SettingsTab } from "./SettingsModal";
@@ -43,7 +44,7 @@ export default function Workspace({
   const [notice, setNotice] = useState("");
   const [profileName, setProfileName] = useState(user.name);
   const [selected, setSelected] = useState<string | null>(null);
-  const [filter, setFilter] = useState<InboxFilter>("For review");
+  const [filter, setFilter] = useState<InboxFilter>("review");
   const work = useWorkTasks(user.id);
   const [brand, setBrand] = useState<Brand | null>(null);
   const [brandError, setBrandError] = useState("");
@@ -110,14 +111,6 @@ export default function Workspace({
       onThemeChange={onThemeChange}
       user={{ ...user, name: profileName }}
       onLogOut={onLogOut}
-      onOpenBrandProfile={
-        completed && !setupDone
-          ? () => {
-              setSelected(null);
-              setPage("Brand Profile");
-            }
-          : undefined
-      }
     />
   );
   if (!brand)
@@ -138,7 +131,7 @@ export default function Workspace({
             role="status"
             aria-label="Loading your brand"
           >
-            <Sparkles size={24} />
+            <BrandMark large />
           </div>
         )}
       </div>
@@ -181,10 +174,7 @@ export default function Workspace({
         <InAppNotifications onOpen={openWork} />
         {page !== "Agent" && !(page === "Inbox" && selected) && (
           <header className="topbar">
-            <div className="breadcrumb">
-              Your space <ChevronRight size={13} aria-hidden="true" />
-              <span>{page}</span>
-            </div>
+            <h1 className="topbar-title">{page}</h1>
           </header>
         )}
         {page === "Agent" && <Agent chat={chat} />}
@@ -197,6 +187,8 @@ export default function Workspace({
             filter={filter}
             onFilterChange={setFilter}
             onSelect={openWork}
+            onChanged={() => void work.reload()}
+            notify={setNotice}
           />
         )}
         {page === "Inbox" && selected && (

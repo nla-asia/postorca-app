@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, Globe, LogOut } from "lucide-react";
 import { Button, Platform } from "./ui";
-import AgentChat, { Mark } from "./AgentChat";
+import AgentChat from "./AgentChat";
+import Mark from "./BrandMark";
 import { describeDays } from "../pages/Routines";
 import { api } from "../lib/api";
 import type { Brand } from "../lib/brand";
@@ -86,7 +87,8 @@ function groupRoutines(routines: Routine[]) {
   for (const routine of routines) {
     const key = `${routine.title}|${routine.time}|${routine.days.join(",")}`;
     const group = groups.get(key) ?? { ...routine, platforms: [] };
-    if (!group.platforms.includes(routine.platform))
+    // A routine for every account (no platform) shows as "All accounts".
+    if (routine.platform && !group.platforms.includes(routine.platform))
       group.platforms.push(routine.platform);
     groups.set(key, group);
   }
@@ -191,9 +193,11 @@ function OnboardingDone({
                       {describeDays(routine.days)} · {routine.time}
                     </span>
                     <span className="onboarding-schedule-platforms">
-                      {routine.platforms.map((platform) => (
-                        <Platform key={platform} name={platform} />
-                      ))}
+                      {routine.platforms.length
+                        ? routine.platforms.map((platform) => (
+                            <Platform key={platform} name={platform} />
+                          ))
+                        : "All accounts"}
                     </span>
                   </li>
                 ))}

@@ -25,7 +25,8 @@ export const WORK_TYPE_LABELS: Record<WorkType, string> = {
 };
 export type Routine = {
   id: string;
-  platform: PlatformName;
+  /** Null when the routine covers every social account. */
+  platform: PlatformName | null;
   title: string;
   instructions: string;
   time: string;

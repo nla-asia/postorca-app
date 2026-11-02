@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import Vision
 
 func fail(_ message: String) throws -> Never { throw NSError(domain: "ComputerUse", code: 1, userInfo: [NSLocalizedDescriptionKey: message]) }
 func bounds(_ rect: CGRect) -> [String: Any] { ["x": Double(rect.origin.x), "y": Double(rect.origin.y), "width": Double(rect.width), "height": Double(rect.height)] }
@@ -22,21 +23,78 @@ func axValue(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
     var value: CFTypeRef?
     return AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success ? value : nil
 }
+func axFrame(_ element: AXUIElement) -> CGRect? {
+    guard let p = axValue(element, kAXPositionAttribute), CFGetTypeID(p) == AXValueGetTypeID(),
+          let s = axValue(element, kAXSizeAttribute), CFGetTypeID(s) == AXValueGetTypeID() else { return nil }
+    var point = CGPoint.zero, size = CGSize.zero
+    AXValueGetValue(p as! AXValue, .cgPoint, &point); AXValueGetValue(s as! AXValue, .cgSize, &size)
+    return size.width > 0 && size.height > 0 ? CGRect(origin: point, size: size) : nil
+}
+@_silgen_name("_AXUIElementGetWindow")
+func _AXUIElementGetWindow(_ element: AXUIElement, _ id: UnsafeMutablePointer<CGWindowID>) -> AXError
+
+/// Electron apps build the accessibility tree of their content only when an assistive
+/// app asks for it; until then a window shows nothing but its title-bar buttons.
+/// Returns true for an app that takes the request (Electron), whose page content may
+/// take a moment to appear the first time.
+func exposeAppContent(_ pid: pid_t) -> Bool {
+    let app = AXUIElementCreateApplication(pid)
+    AXUIElementSetMessagingTimeout(app, 3)
+    // Electron builds the tree while answering, so a slow answer still means it took.
+    let result = AXUIElementSetAttributeValue(app, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+    return result == .success || result == .cannotComplete
+}
+func hasWebArea(_ element: AXUIElement, _ depth: Int) -> Bool {
+    if axValue(element, kAXRoleAttribute) as? String == "AXWebArea" { return true }
+    guard depth > 0 else { return false }
+    return (axValue(element, kAXChildrenAttribute) as? [AXUIElement] ?? []).contains { hasWebArea($0, depth - 1) }
+}
 func axWindow(_ pid: pid_t, _ target: [String: Any]) throws -> AXUIElement {
     let app = AXUIElementCreateApplication(pid)
     AXUIElementSetMessagingTimeout(app, 2)
-    let windows = axValue(app, kAXWindowsAttribute) as? [AXUIElement] ?? []
+    // A sheet or panel is its own CG window, but Accessibility lists a sheet as an
+    // AXSheet child of its parent window rather than in the app's window list.
+    var candidates: [AXUIElement] = []
+    func add(_ value: CFTypeRef?) {
+        guard let value, CFGetTypeID(value) == AXUIElementGetTypeID() else { return }
+        let element = value as! AXUIElement
+        if !candidates.contains(where: { CFEqual($0, element) }) { candidates.append(element) }
+    }
+    (axValue(app, kAXWindowsAttribute) as? [AXUIElement] ?? []).forEach { add($0) }
+    add(axValue(app, kAXFocusedWindowAttribute)); add(axValue(app, kAXMainWindowAttribute))
+    for window in candidates {
+        for child in axValue(window, kAXChildrenAttribute) as? [AXUIElement] ?? [] where axValue(child, kAXRoleAttribute) as? String == kAXSheetRole { add(child) }
+    }
+    // Same-sized windows (browser windows usually are) can't be told apart by frame.
+    // Their window number settles it; this call has no public equivalent.
+    if let number = Int(target["id"] as? String ?? "") {
+        for element in candidates {
+            var id = CGWindowID(0)
+            if _AXUIElementGetWindow(element, &id) == .success, Int(id) == number { return element }
+        }
+    }
     let frame = target["bounds"] as! [String: Any]
-    // Match the AX window to the CG window by position and size; never pick an arbitrary window.
-    let matches = windows.filter { window in
-        guard let p = axValue(window, kAXPositionAttribute), CFGetTypeID(p) == AXValueGetTypeID(),
-              let s = axValue(window, kAXSizeAttribute), CFGetTypeID(s) == AXValueGetTypeID() else { return false }
+    let rect = CGRect(x: frame["x"] as! Double, y: frame["y"] as! Double, width: frame["width"] as! Double, height: frame["height"] as! Double)
+    let described = candidates.map { element -> (frame: CGRect?, title: String?) in
+        guard let p = axValue(element, kAXPositionAttribute), CFGetTypeID(p) == AXValueGetTypeID(),
+              let s = axValue(element, kAXSizeAttribute), CFGetTypeID(s) == AXValueGetTypeID() else { return (nil, nil) }
         var point = CGPoint.zero, size = CGSize.zero
         AXValueGetValue(p as! AXValue, .cgPoint, &point); AXValueGetValue(s as! AXValue, .cgSize, &size)
-        return abs(point.x - (frame["x"] as! Double)) < 3 && abs(point.y - (frame["y"] as! Double)) < 3 && abs(size.width - (frame["width"] as! Double)) < 3 && abs(size.height - (frame["height"] as! Double)) < 3
+        return (CGRect(origin: point, size: size), axValue(element, kAXTitleAttribute) as? String)
     }
-    guard matches.count == 1 else { try fail("Cannot uniquely match the selected window. Check Accessibility permission and observe again.") }
-    return matches[0]
+    guard let index = uniqueWindowMatch(described, rect, target["title"] as? String ?? "") else { try fail("Window is no longer available or cannot be told apart from another window; list apps again.") }
+    return candidates[index]
+}
+// Match the AX window to the CG window by position and size; never pick an arbitrary
+// window. The title only separates candidates that share a frame.
+func uniqueWindowMatch(_ candidates: [(frame: CGRect?, title: String?)], _ target: CGRect, _ title: String) -> Int? {
+    let matches = candidates.indices.filter { index in
+        guard let a = candidates[index].frame else { return false }
+        return abs(a.minX - target.minX) < 3 && abs(a.minY - target.minY) < 3 && abs(a.width - target.width) < 3 && abs(a.height - target.height) < 3
+    }
+    if matches.count == 1 { return matches[0] }
+    let titled = matches.filter { !title.isEmpty && candidates[$0].title == title }
+    return titled.count == 1 ? titled[0] : nil
 }
 // Resolve app menus only; unnamed AXMenu containers do not add a path segment.
 func menuChildren(_ element: AXUIElement) -> [AXUIElement] {
@@ -64,6 +122,22 @@ func menuItems(_ pid: pid_t) -> [[String: Any]] {
 }
 func run(_ request: [String: Any]) throws -> [String: Any] {
     let action = request["action"] as? String ?? ""
+    if action == "read_text" {
+        // The words on a still (a frame of a recording) with their boxes, as fractions of
+        // the image from its top left, so a video's focus can be aimed at them.
+        guard let path = request["path"] as? String, let image = NSImage(contentsOfFile: path),
+              let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { try fail("Can't open the image.") }
+        let recognize = VNRecognizeTextRequest()
+        recognize.recognitionLevel = .accurate
+        recognize.usesLanguageCorrection = false
+        try VNImageRequestHandler(cgImage: cg).perform([recognize])
+        let lines: [[String: Any]] = (recognize.results ?? []).compactMap { observation in
+            guard let text = observation.topCandidates(1).first?.string else { return nil }
+            let box = observation.boundingBox
+            return ["text": text, "x": Double(box.minX), "y": Double(1 - box.maxY), "width": Double(box.width), "height": Double(box.height)]
+        }
+        return ["lines": lines]
+    }
     if action == "list" {
         let windows = windowList()
         var apps: [String: [String: Any]] = [:]
@@ -114,14 +188,20 @@ func run(_ request: [String: Any]) throws -> [String: Any] {
     if action == "focus" {
         guard AXIsProcessTrusted() else { try fail("Grant Accessibility permission to PostOrca in System Settings.") }
         let ax = try axWindow(pid_t(pid), window)
-        AXUIElementPerformAction(ax, kAXRaiseAction as CFString)
+        // A sheet raises with its parent window.
+        let parent = axValue(ax, kAXParentAttribute)
+        let raised = axValue(ax, kAXRoleAttribute) as? String == kAXSheetRole && parent.map({ CFGetTypeID($0) == AXUIElementGetTypeID() }) == true ? parent as! AXUIElement : ax
+        AXUIElementPerformAction(raised, kAXRaiseAction as CFString)
         app?.activate(options: [])
         Thread.sleep(forTimeInterval: 0.12)
         let fresh = windowList()
         // CG windows are ordered front to back; reject a sibling or modal window above the target.
         let front = fresh.first(where: { $0["pid"] as? Int == pid })
-        return ["window": fresh.first(where: { $0["id"] as? String == id }) ?? window,
-                "foreground": app?.isActive == true && front?["id"] as? String == id]
+        var result: [String: Any] = ["window": fresh.first(where: { $0["id"] as? String == id }) ?? window,
+                                     "foreground": app?.isActive == true && front?["id"] as? String == id]
+        // Name the sheet or panel in front so the caller can observe it instead.
+        if let front, front["id"] as? String != id { result["front"] = front }
+        return result
     }
     if action == "window" { return ["window": window, "foreground": app?.isActive == true] }
     if action == "menu" {
@@ -147,7 +227,10 @@ func run(_ request: [String: Any]) throws -> [String: Any] {
     }
     if action == "accessibility" {
         guard AXIsProcessTrusted() else { try fail("Accessibility permission is missing.") }
+        let electron = exposeAppContent(pid_t(pid))
         let root = try axWindow(pid_t(pid), window)
+        // The first time, an Electron window's page content builds after the request.
+        for _ in 0..<5 where electron && !hasWebArea(root, 10) { Thread.sleep(forTimeInterval: 0.4) }
         var queue: [(AXUIElement, Int)] = [(root, 0)], nodes: [[String: Any]] = []
         let deadline = Date(timeIntervalSinceNow: 4)
         var characters = 0
@@ -159,7 +242,12 @@ func run(_ request: [String: Any]) throws -> [String: Any] {
             if subrole != kAXSecureTextFieldSubrole {
                 let text = [kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute].compactMap { axValue(element, $0) as? String }.joined(separator: "\n")
                 let bounded = String(text.prefix(2000)); characters += bounded.count
-                nodes.append(["role": role, "text": bounded, "depth": depth])
+                var node: [String: Any] = ["role": role, "text": bounded, "depth": depth]
+                // Global top-left points, the same space as the CG window bounds.
+                if let rect = axFrame(element) { node["bounds"] = bounds(rect) }
+                var actions: CFArray?
+                if AXUIElementCopyActionNames(element, &actions) == .success, (actions as? [String] ?? []).contains(kAXPressAction) { node["actionable"] = true }
+                nodes.append(node)
             }
             if depth < 12, let children = axValue(element, kAXChildrenAttribute) as? [AXUIElement] { queue.append(contentsOf: children.prefix(max(0, 500 - queue.count)).map { ($0, depth + 1) }) }
         }
@@ -167,6 +255,7 @@ func run(_ request: [String: Any]) throws -> [String: Any] {
     }
     try fail("Unsupported native action.")
 }
+// Entry point. mac-native.test.cjs replaces everything from here with the tests.
 do {
     let request = try JSONSerialization.jsonObject(with: FileHandle.standardInput.readDataToEndOfFile()) as! [String: Any]
     let result = try run(request)

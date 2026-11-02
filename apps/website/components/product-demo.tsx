@@ -23,22 +23,22 @@ const views = ["Agent", "Inbox", "Calendar", "Routines"] as const;
 const icons = [MessageSquare, Inbox, CalendarDays, Clock3];
 const work = [
   {
-    title: "A launch story worth telling",
-    platform: "Threads",
-    type: "Content draft",
-    text: "A few honest words about what you're building, and why it matters.",
+    title: "Ledgerly launch video",
+    platform: "LinkedIn",
+    type: "Video",
+    text: "30 seconds on the whole product, from your code and your real app.",
   },
   {
-    title: "Three conversations to join",
+    title: "New in Ledgerly: overdue invoices",
     platform: "X",
-    type: "Conversation research",
-    text: "Founders talking about the problems you know firsthand.",
+    type: "Script for review",
+    text: "The feature you shipped yesterday, in four shots.",
   },
   {
-    title: "Your next week of ideas",
-    platform: "Threads",
-    type: "Content ideas",
-    text: "Three starting points, shaped around your point of view.",
+    title: "How to share a packing list",
+    platform: "Instagram",
+    type: "How-to reel",
+    text: "The steps users asked about, shown on the iPhone.",
   },
 ];
 export function ProductDemo() {
@@ -208,10 +208,10 @@ export function ProductDemo() {
               </div>
               <p>
                 {selected === 0
-                  ? "Turn my launch notes into a post. Keep it honest, and keep it short."
+                  ? "I haven't posted anything about Ledgerly yet. Can you make a launch video for LinkedIn?"
                   : selected === 1
-                    ? "Find a few relevant conversations I could contribute to."
-                    : "Help me plan a few useful posts for next week."}
+                    ? "I just shipped overdue invoices. Can you make a short announcement?"
+                    : "Users asked how to share their packing list. Can you make a quick how-to?"}
               </p>
               <div className="thread-reply">
                 <div className="thread-author">
@@ -226,28 +226,28 @@ export function ProductDemo() {
                     <ChevronDown size={14} />
                   </summary>
                   <p>
-                    Read your brand profile
+                    Read the project and recent commits
                     <br />
-                    Reviewed your direction
+                    Opened the running app
                     <br />
                     Prepared work for review
                   </p>
                 </details>
                 <p>
                   {selected === 0
-                    ? "The part of building a startup that nobody sees? All the small decisions before anything looks like a launch. Today, I'm sharing one of mine."
+                    ? "Here's your launch video: the main journey from a new invoice to getting paid, with voiceover and captions. The script you approved, the recordings and the video are in its folder."
                     : selected === 1
-                      ? "I found three conversations about building in public where your experience could add something useful. I've prepared a different starting point for each."
-                      : "Start with what you learned, share a decision you changed your mind about, then show the small thing you shipped. Three posts. Your point of view."}
+                      ? "Here's the script: what's new on screen in the first shot, where you meet it on the dashboard, the Overdue badge, and why it helps. Approve it or tell me what to change."
+                      : "Sharing is on the iPhone, so the steps are shown in the Simulator: open the trip, tap Share packing list, pick who to send it to."}
                 </p>
                 <div className="artifact-example">
                   <FileText size={17} />
                   <span>
                     {selected === 0
-                      ? "Launch story · draft"
+                      ? "Ledgerly launch.mp4"
                       : selected === 1
-                        ? "Conversations & reply ideas"
-                        : "Next week · content ideas"}
+                        ? "script.md"
+                        : "Packlight how-to.mp4"}
                   </span>
                   <ChevronRight size={14} />
                 </div>
@@ -305,7 +305,7 @@ export function ProductDemo() {
             <div className="chat-user">
               {asked
                 ? chat
-                : "Help me show up more consistently, without sounding like everyone else."}
+                : "I just shipped a new feature. Can you make a short video about it?"}
             </div>
             <div className="chat-reply">
               <span className="asia-avatar">
@@ -315,10 +315,10 @@ export function ProductDemo() {
                 <strong>Orca</strong>
                 <p>
                   {asked
-                    ? "Let's start with your point of view. Tell me about a small decision you made this week, and I'll help shape it into something worth sharing."
-                    : "Let's start with what you already know. Your work, your decisions, the things you're learning as a founder."}
+                    ? "I'll read your project and open the running app, then write the script for you to approve. Nothing is recorded until you say go."
+                    : "I'll find it in your latest commits and open the app to see where users meet it."}
                 </p>
-                <p>We'll turn those into ideas that sound like you.</p>
+                <p>Then a short script for you to approve, and the video once you do.</p>
               </div>
             </div>
             <form
@@ -375,10 +375,10 @@ export function ProductDemo() {
                     >
                       <b>{i === 23 ? "09:00" : "10:00"}</b>
                       {i === 23
-                        ? "Launch story"
+                        ? "Launch video"
                         : i === 25
-                          ? "Find conversations"
-                          : "Next week's ideas"}
+                          ? "Feature launch"
+                          : "How-to reel"}
                     </button>
                   )}
                 </div>
@@ -396,16 +396,16 @@ export function ProductDemo() {
                   className={`demo-switch ${paused ? "" : "on"}`}
                   role="switch"
                   aria-checked={!paused}
-                  aria-label="Example morning research routine"
+                  aria-label="Example daily routine"
                   onClick={() => setPaused(!paused)}
                 >
                   <span />
                 </button>
               </div>
-              <h3>Find your next conversation</h3>
+              <h3>Ideas from my work</h3>
               <p>
-                Discover conversations and fresh content ideas around your
-                primary topics.
+                Check what changed in your projects and suggest what's worth a
+                video.
               </p>
               <footer>
                 <Clock3 size={14} />
@@ -419,9 +419,9 @@ export function ProductDemo() {
                 <span>X</span>
                 <span className="routine-active">Active</span>
               </div>
-              <h3>A few ideas for the week ahead</h3>
+              <h3>How my posts did</h3>
               <p>
-                Bring back three post ideas grounded in what you're building.
+                Read how last week's posts did and what people responded to.
               </p>
               <footer>
                 <Clock3 size={14} />

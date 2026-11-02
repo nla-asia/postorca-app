@@ -1,12 +1,11 @@
-// PostOrca browser extension. It connects to the relay in the PostOrca desktop
-// app (found through native messaging), opens tabs in its own "Orca" tab group, and
-// forwards Chrome DevTools Protocol traffic for those tabs only. Everything else
-// (Playwright, the agent's tools) runs in the desktop app.
+// PostOrca Browser Bridge connects to the user-selected local companion through
+// native messaging and forwards Chrome DevTools Protocol traffic for tabs it
+// creates. The agent and automation client run in the companion, outside Chrome.
 
 import { createScreenshotCapture } from "./capture.js";
+import { DEFAULT_NATIVE_HOST, nativeHost, pairingDetails } from "./connection.js";
 
 const captureScreenshot = createScreenshotCapture(chrome);
-const NATIVE_HOST = "com.postorca.browser";
 const GROUP_TITLE = "Orca";
 // Short enough that a browser already open finds a newly started app within the
 // desktop's connect wait (founder-browser.cjs).
@@ -21,6 +20,7 @@ let socket = null;
 let connecting = false;
 let retries = 0;
 let retryTimer = null;
+let generation = 0;
 
 // --- State shown in the popup and owned tabs (survive service-worker restarts) ------
 
@@ -60,25 +60,29 @@ function browserName() {
 async function connect() {
   if (socket || connecting) return;
   connecting = true;
+  const attempt = generation;
   clearTimeout(retryTimer);
   try {
     await ownedLoaded;
+    const saved = await chrome.storage.local.get("nativeHost");
+    const host = nativeHost(saved.nativeHost ?? DEFAULT_NATIVE_HOST);
     let pairing;
     try {
-      pairing = await chrome.runtime.sendNativeMessage(NATIVE_HOST, {
+      pairing = await chrome.runtime.sendNativeMessage(host, {
         type: "pair",
       });
     } catch (error) {
-      throw new Error(`Cannot reach the PostOrca desktop app. Open or restart it, then try again. Native messaging: ${error?.message ?? error}`);
+      throw new Error(`Cannot reach ${host}. Start the companion or check Connection settings. Native messaging: ${error?.message ?? error}`);
     }
-    if (!pairing?.ok) throw new Error("The PostOrca desktop app is not running.");
-    await open(pairing);
+    if (attempt !== generation) return;
+    await open(pairingDetails(pairing), host, attempt);
     retries = 0;
   } catch (error) {
+    if (attempt !== generation) return;
     await setState({ connected: false, error: String(error?.message ?? error) });
     scheduleReconnect();
   } finally {
-    connecting = false;
+    if (attempt === generation) connecting = false;
   }
 }
 
@@ -89,12 +93,18 @@ function scheduleReconnect() {
 }
 
 /** Opens the relay socket and completes the challenge/proof handshake. */
-function open({ port, secret }) {
+function open({ port, secret }, host, attempt) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`ws://127.0.0.1:${port}/extension`);
     let ready = false;
+    const timeout = setTimeout(() => {
+      ws.close();
+      reject(new Error("The local companion did not complete pairing in time."));
+    }, 5000);
     ws.onmessage = async (event) => {
-      const message = JSON.parse(event.data);
+      if (attempt !== generation) { ws.close(); return; }
+      let message;
+      try { message = JSON.parse(event.data); } catch { ws.close(); return; }
       if (!ready) {
         try {
           if (message.type === "challenge") {
@@ -105,17 +115,20 @@ function open({ port, secret }) {
               }),
             );
           } else if (message.type === "accepted") {
+            clearTimeout(timeout);
             ready = true;
             socket = ws;
             await closePreviousTabs();
-            send({
+            const id = await instanceId();
+            if (attempt !== generation) { ws.close(); return; }
+            ws.send(JSON.stringify({
               type: "hello",
-              id: await instanceId(),
+              id,
               browser: browserName(),
               userAgent: navigator.userAgent,
               extensionVersion: chrome.runtime.getManifest().version,
-            });
-            await setState({ connected: true, browser: browserName() });
+            }));
+            await setState({ connected: true, browser: browserName(), nativeHost: host });
             resolve();
           }
         } catch (error) {
@@ -124,16 +137,18 @@ function open({ port, secret }) {
         }
         return;
       }
-      void handle(message);
+      void handle(message, ws, attempt);
     };
     ws.onerror = () => {};
     ws.onclose = () => {
+      clearTimeout(timeout);
       if (!ready) {
-        reject(new Error("The PostOrca desktop app refused the connection."));
+        reject(new Error("The local companion refused the connection."));
         return;
       }
+      if (attempt !== generation) return;
       if (socket === ws) socket = null;
-      void setState({ connected: false, error: "Disconnected from the PostOrca desktop app." });
+      void setState({ connected: false, error: "Disconnected from the local companion." });
       scheduleReconnect();
     };
   });
@@ -174,9 +189,12 @@ async function closePreviousTabs() {
 
 // --- Commands from the relay --------------------------------------------------------
 
-async function handle(message) {
+async function handle(message, connection, attempt) {
+  const reply = (value) => {
+    if (attempt === generation && connection.readyState === WebSocket.OPEN) connection.send(JSON.stringify(value));
+  };
   if (message.type === "ping") {
-    send({ type: "pong" });
+    reply({ type: "pong" });
     return;
   }
   const { seq } = message;
@@ -184,7 +202,7 @@ async function handle(message) {
     let result;
     switch (message.type) {
       case "createTab":
-        result = await createTab(message.url, message.newWindow === true);
+        result = await createTab(message.url, message.newWindow === true, attempt);
         break;
       case "closeTab":
         requireOwned(message.tabId);
@@ -206,9 +224,9 @@ async function handle(message) {
       default:
         throw new Error(`Unknown command ${message.type}`);
     }
-    send({ type: "result", seq, result: result ?? {} });
+    reply({ type: "result", seq, result: result ?? {} });
   } catch (error) {
-    send({ type: "error", seq, message: String(error?.message ?? error) });
+    reply({ type: "error", seq, message: String(error?.message ?? error) });
   }
 }
 
@@ -217,7 +235,7 @@ async function handle(message) {
  * newWindow, the tab gets a window of its own (unfocused), so it is that window's
  * front tab: for screen recording without touching the founder's tabs.
  */
-async function createTab(url, newWindow = false) {
+async function createTab(url, newWindow = false, attempt = generation) {
   let tab;
   try {
     if (newWindow) throw new Error("own window");
@@ -227,15 +245,17 @@ async function createTab(url, newWindow = false) {
     const window = await chrome.windows.create({ url, focused: false });
     tab = window.tabs[0];
   }
-  owned.add(tab.id);
-  await saveOwned();
   try {
+    if (attempt !== generation) throw new Error("The companion changed while opening the tab.");
+    owned.add(tab.id);
+    await saveOwned();
     if (!newWindow) await addToGroup(tab);
     await chrome.debugger.attach({ tabId: tab.id }, "1.3");
     const { targetInfo } = await chrome.debugger.sendCommand(
       { tabId: tab.id },
       "Target.getTargetInfo",
     );
+    if (attempt !== generation) throw new Error("The companion changed while opening the tab.");
     return {
       tabId: tab.id,
       targetId: targetInfo.targetId,
@@ -243,6 +263,8 @@ async function createTab(url, newWindow = false) {
       title: targetInfo.title,
     };
   } catch (error) {
+    owned.delete(tab.id);
+    await saveOwned();
     await chrome.tabs.remove(tab.id).catch(() => {});
     throw error;
   }
@@ -296,6 +318,16 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 chrome.runtime.onStartup.addListener(() => void connect());
 chrome.runtime.onInstalled.addListener(() => void connect());
+chrome.storage.local.onChanged.addListener((changes) => {
+  if (!changes.nativeHost) return;
+  generation++;
+  socket?.close();
+  socket = null;
+  connecting = false;
+  retries = 0;
+  void setState({ connected: false });
+  void connect();
+});
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === "reconnect") {
     retries = 0;

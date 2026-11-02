@@ -16,7 +16,7 @@ const path = require("node:path");
 const { execFile, spawn } = require("node:child_process");
 const { randomUUID } = require("node:crypto");
 const { promisify } = require("node:util");
-const { mediaBinary } = require("./files.cjs");
+const { mediaBinary, saveToContentFolder } = require("./files.cjs");
 
 const run = promisify(execFile);
 const MAX_RECORD_SECONDS = 180;
@@ -206,6 +206,19 @@ function menuBarIndicator() {
  * The capture tools. Dependencies are parameters so tests can run them without
  * macOS, Electron or a screen.
  */
+let recordingNow = false;
+/** Whether a screen recording is running, for tools that act differently on camera. */
+const isRecording = () => recordingNow;
+
+// When each target was last looked at: a capture of it, or a computer-use observe of a
+// window. A recording starts only from a screen the agent has just checked.
+const LOOK_MS = 120_000;
+const looks = new Map();
+const lookKey = (target) =>
+  target.type === "window" ? `window:${target.window_id}` : target.type === "screen" ? `screen:${target.display}` : `simulator:${target.udid}`;
+/** Notes a look at a window, from computer use's observe. */
+const lookedAt = (windowId) => looks.set(`window:${Number(windowId)}`, Date.now());
+
 function createScreenTools({
   platform = process.platform,
   access = screenAccess,
@@ -214,6 +227,8 @@ function createScreenTools({
   indicator = menuBarIndicator(),
   maxSeconds = MAX_RECORD_SECONDS,
   startupMs = 1000,
+  requireLook = false,
+  raiseWindow = (id) => require("../plugins/computer/native.cjs").native({ action: "focus", window: String(id) }),
 } = {}) {
   // Recordings by id, from start until screen_record_stop collects the clip.
   const recordings = new Map();
@@ -238,6 +253,7 @@ function createScreenTools({
       recording.seconds = (Date.now() - recording.startedAt) / 1000;
       if (active === recording) {
         active = null;
+        recordingNow = false;
         indicator.hide();
       }
       recording.child.kill("SIGINT");
@@ -290,6 +306,7 @@ function createScreenTools({
   const screenshot = async ({ target }, context) => {
     target = parseTarget(target);
     await requireAccess(target);
+    looks.set(lookKey(target), Date.now());
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "postorca-capture-"));
     try {
       const file = path.join(dir, "capture.png");
@@ -317,7 +334,21 @@ function createScreenTools({
     target = parseTarget(target);
     if (active)
       throw new Error(`Recording ${active.id} is still running. Stop it with screen_record_stop first.`);
+    if (requireLook && !(Date.now() - (looks.get(lookKey(target)) ?? 0) < LOOK_MS))
+      throw new Error(
+        "Look at what you are about to record first: take a screen_capture of this target (or observe the window with computer use) and check it shows the screen the clip starts from, ready and with nothing covering it. Then start the recording.",
+      );
     await requireAccess(target);
+    // screencapture records a window even behind others, which looks fine in the clip
+    // while the founder sees nothing and a moving pointer misses it. Bring it forward.
+    if (target.type === "window") {
+      const inFront = await raiseWindow(target.window_id).then((result) => result?.foreground === true);
+      if (!inFront)
+        throw new Error(
+          "The window could not be brought to the front, so nothing was recorded. Close what covers it or ask the founder to, then try again.",
+        );
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "postorca-recording-"));
     const raw = path.join(dir, target.type === "simulator" ? "raw.mp4" : "raw.mov");
     const [command, args] = recordCommand(target, raw);
@@ -364,11 +395,12 @@ function createScreenTools({
     exited.then(() => recording.saved ?? finish(recording, "ended"));
     recordings.set(recording.id, recording);
     active = recording;
+    recordingNow = true;
     indicator.show({ startedAt: recording.startedAt, stop: () => finish(recording, "founder") });
     return { id: recording.id, target, max_seconds: maxSeconds };
   };
 
-  const stop = async ({ id }, context) => {
+  const stop = async ({ id, content_folder }, context) => {
     const recording = typeof id === "string" && recordings.get(id);
     if (!recording)
       throw new Error("No recording with that id: it was already saved, or the desktop app restarted.");
@@ -384,10 +416,14 @@ function createScreenTools({
     const data = await fs.readFile(file);
     // A failed upload keeps the clip, so stopping again retries it.
     const key = await context.upload(data, "video/mp4");
+    const saved = content_folder
+      ? await saveToContentFolder(path.join(content_folder, "Recordings"), "recording.mp4", data).catch(() => null)
+      : null;
     recordings.delete(id);
     await fs.rm(recording.dir, { recursive: true, force: true });
     return {
       id,
+      ...(saved && { saved_to: saved }),
       target: recording.target,
       duration_seconds: info.duration_seconds || Math.round(recording.seconds * 10) / 10,
       width: info.width,
@@ -408,7 +444,7 @@ function createScreenTools({
 
 let tools;
 const lazy = (name) => ({
-  run: (args, context) => (tools ??= createScreenTools())[name].run(args, context),
+  run: (args, context) => (tools ??= createScreenTools({ requireLook: true }))[name].run(args, context),
 });
 module.exports = {
   list_capture_targets: lazy("list_capture_targets"),
@@ -416,6 +452,8 @@ module.exports = {
   screen_record_start: lazy("screen_record_start"),
   screen_record_stop: lazy("screen_record_stop"),
   createScreenTools,
+  isRecording,
+  lookedAt,
   parseTarget,
   parseWindows,
   toMp4,

@@ -381,6 +381,8 @@ test("an idea queues one create-content task that the scheduler runs", async () 
   const wait = new Date(queued.data.run_at).getTime() - Date.now();
   assert.ok(wait > 4 * 60_000 && wait <= 5 * 60_000);
   assert.equal(queued.data.platform, "X");
+  // Content work, so the Inbox labels it and the voice review reads its feedback.
+  assert.equal(queued.data.work_type, "content");
   assert.equal(
     queued.data.instructions,
     "Read the create-content skill with read_skill, then follow it for this idea.\n\nIdea: The awkward first post\n\n**Hook**: I almost didn't post this.\n\nFounder's note: Keep the product out of it",

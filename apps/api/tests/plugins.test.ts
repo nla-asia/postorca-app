@@ -261,8 +261,12 @@ test("migrate projects the code-defined plugin catalog and core skills into the 
     { name: "find-content-ideas", dir: "skills/find-content-ideas", plugin_code: null },
     { name: "media-create", dir: "plugins/media/skills/media-create", plugin_code: "media" },
     { name: "people-to-connect", dir: "skills/people-to-connect", plugin_code: null },
-    { name: "product-demo-capture", dir: "skills/product-demo-capture", plugin_code: null },
+    { name: "product-content-capture", dir: "skills/product-content-capture", plugin_code: null },
+    { name: "product-content-edit", dir: "plugins/video/skills/product-content-edit", plugin_code: "video" },
+    { name: "product-content-plan", dir: "skills/product-content-plan", plugin_code: null },
     { name: "publish-post", dir: "skills/publish-post", plugin_code: null },
+    { name: "review-voice-feedback", dir: "skills/review-voice-feedback", plugin_code: null },
+    { name: "sync-my-posts", dir: "skills/sync-my-posts", plugin_code: null },
     { name: "video-build-log", dir: "plugins/video/skills/video-build-log", plugin_code: "video" },
     { name: "video-create", dir: "plugins/video/skills/video-create", plugin_code: "video" },
     { name: "video-event-invite", dir: "plugins/video/skills/video-event-invite", plugin_code: "video" },
@@ -270,7 +274,6 @@ test("migrate projects the code-defined plugin catalog and core skills into the 
     { name: "video-music", dir: "plugins/video/skills/video-music", plugin_code: "video" },
     { name: "video-post-to-video", dir: "plugins/video/skills/video-post-to-video", plugin_code: "video" },
     { name: "video-pov-storytime", dir: "plugins/video/skills/video-pov-storytime", plugin_code: "video" },
-    { name: "video-product-demo", dir: "plugins/video/skills/video-product-demo", plugin_code: "video" },
     { name: "video-product-update", dir: "plugins/video/skills/video-product-update", plugin_code: "video" },
     { name: "weekly-strategy-research", dir: "skills/weekly-strategy-research", plugin_code: null },
     { name: "work-content-ideas", dir: "skills/work-content-ideas", plugin_code: null },
@@ -501,6 +504,29 @@ test("a reconnecting device replaces its previous connection, and calls go to th
   laptop.ws.close();
 });
 
+test("a malformed frame closes only that desktop's socket, not the API", async () => {
+  const founder = await account();
+  await activate(founder.token);
+  const broken = await desktop(founder.token, () => ({ ok: true, result: "broken" }));
+  // The test runner swallows uncaught exceptions; in production one exits the API.
+  const uncaught: Error[] = [];
+  const record = (error: Error) => uncaught.push(error);
+  process.on("uncaughtException", record);
+  try {
+    // An unmasked client frame is a protocol error the server must survive.
+    (broken.ws as any)._socket.write(Buffer.from([0x81, 0x02, 0x68, 0x69]));
+    assert.equal(await broken.closed, 1002);
+    await new Promise((resolve) => setImmediate(resolve));
+  } finally {
+    process.off("uncaughtException", record);
+  }
+  assert.deepEqual(uncaught, []);
+  const install = await desktop(founder.token, () => ({ ok: true, result: "still up" }));
+  script = [call("demo_open", { url: "https://example.com" })];
+  assert.equal(await ask(founder.token), "still up");
+  install.ws.close();
+});
+
 test("a device uploads screenshots to file storage and gets back a file key", async () => {
   const founder = await account();
   const deviceToken = (
@@ -608,8 +634,10 @@ test("the browser plugin offers its desktop tools and skill, and validates calls
         "browser_screenshot",
         "browser_click",
         "browser_type",
+        "browser_select",
         "browser_press",
         "browser_scroll",
+        "browser_hover",
         "browser_close",
       ],
     );
@@ -678,7 +706,7 @@ test("computer tools require activation, validate input, and release control bet
     assert.deepEqual(activated.skills.map((skill: any) => skill.name), ["computer-use"]);
     assert.deepEqual(offered[1].filter((name) => name.startsWith("computer_")), [
       "computer_list_apps", "computer_open", "computer_observe", "computer_click",
-      "computer_type", "computer_press", "computer_scroll",
+      "computer_type", "computer_press", "computer_drag", "computer_scroll",
     ]);
     assert.ok(offered.every((names) => !names.includes("desktop_computer_session")));
     assert.deepEqual(install.calls.map((sent) => sent.arguments), [

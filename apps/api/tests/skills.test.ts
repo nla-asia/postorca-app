@@ -28,7 +28,10 @@ test("a skill is a folder whose SKILL.md frontmatter gives its name and descript
       "daily-quote",
       "work-content-ideas",
       "publish-post",
-      "product-demo-capture",
+      "product-content-capture",
+      "product-content-plan",
+      "sync-my-posts",
+      "review-voice-feedback",
     ],
   );
   for (const skill of coreSkills) assert.ok(skill.description.length > 20);

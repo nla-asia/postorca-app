@@ -225,6 +225,27 @@ export const socialPostTools: Tool[] = [
   },
   {
     definition: {
+      name: "mark_my_posts_synced",
+      description:
+        "Record that you just caught up one of the founder's profiles (read it down to its last sync and saved everything new), so posts_synced_at and the Posts page show it is fresh. Call it after each account's catch-up, also when nothing was new or the account has no posts.",
+      parameters: object({ account: accountParameter }, ["account"]),
+    },
+    run: async ({ db, userId }, args) => {
+      const { account: reference } = z
+        .object({ account: z.string().min(1).max(2048) })
+        .strict()
+        .parse(args);
+      const account = findAccount(await socialAccounts(db, userId), reference);
+      await markAccountRead(db, userId, account.id);
+      return {
+        account: account.name,
+        platform: account.platform,
+        synced: true,
+      };
+    },
+  },
+  {
+    definition: {
       name: "delete_my_post",
       description:
         "Mark one saved post as deleted, by its id (from list_my_posts), when it is no longer on the founder's profile. Routines then treat it as not posted; saving it again restores it.",

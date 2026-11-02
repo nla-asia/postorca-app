@@ -14,6 +14,7 @@ files:
   - "!electron/**/*.test.cjs"
   - "!electron/plugins/video/{bundle,fixtures,smoke}.cjs"
   - "!electron/plugins/computer/{smoke,live-check,eval-desktop}.cjs"
+  - "!electron/plugins/computer/native/mac-tests/**/*"
   # Production dependencies only the renderer (bundled into dist/) or the server use.
   - "!node_modules/{lucide-react,openai}/**/*"
 asarUnpack:
@@ -27,7 +28,9 @@ extraResources:
   - from: build/remotion
     to: remotion-bundle
 mac:
-  identity: null
+  # Sign the complete bundle locally so native helpers share PostOrca's TCC identity.
+  # null skips signing and leaves Electron's unbound linker signature in place.
+  identity: "-"
   extraResources:
     - from: build/computer-use/computer-native
       to: computer-native

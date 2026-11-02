@@ -20,7 +20,9 @@ export default function Sidebar({
   user: AuthUser;
   reviewCount?: number;
 }) {
-  const [plan, setPlan] = useState<{ userId: string; name: string } | null>(null);
+  const [plan, setPlan] = useState<{ userId: string; name: string } | null>(
+    null,
+  );
   useEffect(() => {
     let active = true,
       inFlight = false;
@@ -31,7 +33,8 @@ export default function Sidebar({
       try {
         const billing = await api<{
           status: string;
-          packages: { membership: { name: string } };
+          plan: "builder" | "influencer" | null;
+          packages: Record<"builder" | "influencer", { name: string }>;
         }>("/billing", {
           signal: AbortSignal.any([
             controller.signal,
@@ -41,9 +44,10 @@ export default function Sidebar({
         if (active)
           setPlan({
             userId: user.id,
-            name: ["active", "trialing"].includes(billing.status)
-              ? billing.packages.membership.name
-              : "Free",
+            name:
+              billing.plan && ["active", "trialing"].includes(billing.status)
+                ? billing.packages[billing.plan].name
+                : "Free",
           });
       } catch {
         if (active)
@@ -118,7 +122,9 @@ export default function Sidebar({
           </span>
           <span>
             <strong>{user.name || "Your profile"}</strong>
-            <small>{plan?.userId === user.id ? plan.name : "Loading plan…"}</small>
+            <small>
+              {plan?.userId === user.id ? plan.name : "Loading plan…"}
+            </small>
           </span>
           <Settings2 size={17} aria-hidden="true" />
         </button>

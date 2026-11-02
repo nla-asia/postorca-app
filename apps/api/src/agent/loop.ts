@@ -4,6 +4,7 @@ import type { Database } from "../db.js";
 import { desktopConnections } from "../desktop/connections.js";
 import { HttpError } from "../handlers/errors.js";
 import { memoryIndex } from "../memory.js";
+import { moveProfileVoice, readVoice } from "../voice.js";
 import { loadPluginState, releaseComputer } from "../plugins/service.js";
 import { ContextTooLongError, type Provider } from "../providers/types.js";
 import { getProfile } from "../repositories/brand.js";
@@ -99,7 +100,12 @@ export class AgentLoop {
         () => controller.abort(timedOut(limits.ms)),
         limits.ms,
       );
-      const memory = await memoryIndex(userId);
+      await moveProfileVoice(this.db, userId);
+      // Read once per turn, like the memory index, so the prompt cache holds.
+      const [memory, voice] = await Promise.all([
+        memoryIndex(userId),
+        readVoice(userId),
+      ]);
       for (let step = 1; step <= limits.responses; step++) {
         controller.signal.throwIfAborted();
         // Re-read each step: tools such as update_brand_profile change it mid-turn.
@@ -113,6 +119,7 @@ export class AgentLoop {
           profile,
           plugins,
           memory,
+          voice,
           lastStep,
         });
         const respond = async () =>

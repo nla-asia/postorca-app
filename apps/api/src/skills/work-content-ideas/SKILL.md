@@ -23,7 +23,7 @@ A moment is something that happened, with a when and a what, that people outside
 1. **Something went wrong in a surprising way**, especially an AI agent or a tool behaving unexpectedly, with a specific cause ("one message had no timestamp, so a task grew to 150% of its memory limit").
 2. **A number that tells a story**: a before and after, a count of tries, how long something took.
 3. **A decision with a real trade-off**, where reasonable people would choose differently.
-4. **Something shipped**, only when it rides a topic people are talking about right now. "I added X" is a changelog, not a post: a feature without a surprise, a number or a trade-off behind it is not a moment. Something people can see is different: see Product demos.
+4. **Something shipped**, only when it rides a topic people are talking about right now. "I added X" is a changelog, not a post: a feature without a surprise, a number or a trade-off behind it is not a moment. Something people can see is different: a demo can plainly say what was added (see Product demos).
 
 Always look at fixes and failures first: commits that fix, revert or work around something, and docs or reports that record what went wrong and what was tried. They usually hold the best story, even when the commit message makes them sound dull.
 
@@ -51,6 +51,14 @@ Pitch it from the viewer's life, not the feature. A changed screen is the smalle
 
 Go as high as the change honestly supports: a small setting can show a big promise when it is what unlocks it, but never claim more than the work does. Never a tour of buttons, and never open on the feature's name.
 
+**Say it plainly.** A product demo post says what was added and why, the way a product page announces a feature. No abstract angle, marketing concept or clever line:
+
+- **"People kept asking for this"**: when the notes say users asked. "You kept asking for dark mode. It's here."
+- **What it solves**: "Export your invoices to PDF in one click."
+- **"Introducing X"**: when it is a whole product or a major launch.
+
+Name the feature in the title, in words a user would use: "Bulk edit: change many rows at once", not a slogan about it. The rules above about transforming a moment and avoiding the obvious are for story posts, not demos.
+
 You only plan the demo; you don't capture it. Work out the steps from the code: read the changed screens and components with `read_file` to find where the feature lives, how to get there, and what the user does and sees. Then give:
 
 - **Screenshot or short video**: a screenshot when one screen tells the story; a video (15–45 seconds) when the value is in something happening, like an agent working or a before and after.
@@ -76,21 +84,21 @@ Refer to the founder by name, or as "they". Do not guess pronouns.
 3. For each project, see what changed since the last run (or the last 24 hours on a first run; at most the last 7 days):
    - In a git repository: `git_activity` with `since`. It lists commits and uncommitted work. For promising commits, call it again with `commit` to read the changes.
    - Outside git, or for files git doesn't track: `recent_files`, then `read_file` for the ones that matter (notes, docs, plans).
-4. If the browser is available, open the account and skim the founder's recent posts, so an idea doesn't repeat what they already posted. Close the tabs you opened.
+4. Check `list_my_posts` for the founder's saved recent posts, so an idea doesn't repeat what they already posted. Don't open the founder's social accounts for this: finding ideas in their work needs no browsing.
 5. Pick the strongest moments (up to three) and write each as an idea. If something visible changed, read its screens and components and plan the demo first.
 6. Save this run to memory before delivering (see Memory).
 
 ## Deliver
 
-Create one artifact of kind `idea` per idea, strongest first. Title each with a short name for the moment. Its content, in this order:
+Create one artifact of kind `idea` per idea, strongest first. Title each with a short name for the moment; a product demo's title plainly names the feature (see Product demos). Its content, in this order:
 
 - **From your work**: the project, the commits (short hash and date) or files it comes from, and the concrete facts: what changed, the numbers, what broke and what fixed it.
 - **What happened**: the moment, in two or three plain sentences.
-- **Angle**: the register (fully technical or high level) and the point the post makes beyond the work: the realization, relatable truth, contrarian take or analogy. Say why it isn't obvious.
+- **Angle** (not for product demos): the register (fully technical or high level) and the point the post makes beyond the work: the realization, relatable truth, contrarian take or analogy. Say why it isn't obvious.
 - **Why people would care**: who it is for and the bigger topic it connects to (for example, what working with AI agents is really like).
 - **Content type**: a video demo, a screenshot or image post, a text post or a thread, and why that fits. Say what visual would show it best. Don't tie it to one platform: the shapes and lengths for each of the founder's accounts are decided when the content is made.
 - **Demo plan** (product demos only): screenshot or short video, where it is, steps to capture, and what to show and say (see Product demos).
-- **Sample opening**: a first line the founder could post as is, built on the angle, not a description of the change.
+- **Sample opening**: a first line the founder could post as is, built on the angle, not a description of the change. For a product demo, plainly what was added and why.
 - **Question for you**: only if one detail the work can't tell you is essential; exactly one specific question.
 
 The content is the idea only, with no notes about how you found it. To fix an idea, delete it with delete_artifact and create the corrected one. End with a one-line summary; if there were no moments worth posting, say what you looked at and that nothing stood out.

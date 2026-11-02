@@ -1,0 +1,46 @@
+.brand-mark.logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  overflow: hidden;
+  display: inline-flex;
+  flex-shrink: 0;
+  background: none;
+  border: 0;
+}
+
+.brand-mark.logo.small {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.brand-mark.logo.large {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+}
+
+.brand-mark.logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.auth-loading .brand-mark.logo {
+  animation: brand-mark-breathe 1.6s ease-in-out infinite;
+}
+
+@keyframes brand-mark-breathe {
+  50% {
+    transform: scale(0.92);
+    opacity: 0.75;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-loading .brand-mark.logo {
+    animation: none;
+  }
+}

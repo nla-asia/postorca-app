@@ -31,7 +31,6 @@ export const profileSchema = z.object({
   name: z.string().trim().min(1).max(120),
   company: z.string().max(5000),
   audience: z.string().max(5000),
-  voice: z.string().max(5000),
   topics: z.string().max(5000),
   colors: brandColorsSchema.default({}),
   links: z.array(brandLinkSchema).max(50),

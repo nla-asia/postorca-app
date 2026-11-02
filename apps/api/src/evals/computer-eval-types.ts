@@ -53,3 +53,11 @@ export type ComputerEvalSuite<Id extends string> = {
     platform: string,
   ) => string;
 };
+
+/** activate_plugin may switch to computer use or back to the default tools (null,
+ * which some models write as the string "null"); any other plugin is a substitute. */
+export const computerPluginOnly = (call: EvalCall) =>
+  call.name !== "activate_plugin" ||
+  call.args?.code === "computer" ||
+  call.args?.code === null ||
+  call.args?.code === "null";

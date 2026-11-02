@@ -6,9 +6,17 @@ const { spawnSync } = require("node:child_process");
 const { test } = require("node:test");
 const { installWindowsHost } = require("./windows-pairing.cjs");
 
-const extensionId = "bdfijompoabfinpmaepcpcfhdneghegf";
+const { EXTENSION_ID: extensionId } = require("./extension-id.cjs");
 const hostName = "com.postorca.browser";
 const hostScript = path.join(__dirname, "native-host.cjs");
+
+test("unpacked extension public key matches the Web Store ID trusted by the native host", () => {
+  const crypto = require("node:crypto");
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "../../../../browser-extension/manifest.json"), "utf8"));
+  const digest = crypto.createHash("sha256").update(Buffer.from(manifest.key, "base64")).digest("hex").slice(0, 32);
+  const id = digest.replace(/[0-9a-f]/g, (digit) => String.fromCharCode(97 + parseInt(digit, 16)));
+  assert.equal(id, extensionId);
+});
 
 function decode(buffer) {
   const length = buffer.readUInt32LE(0);

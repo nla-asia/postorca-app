@@ -41,10 +41,16 @@ module.exports = {
       run: ({ tab, ref, text, submit, replace }) =>
         founderBrowser.type(tab, ref, text, submit ?? false, replace === true),
     },
+    browser_select: {
+      run: ({ tab, ref, option }) => founderBrowser.select(tab, ref, option),
+    },
     browser_press: { run: ({ tab, key }) => founderBrowser.press(tab, key) },
     browser_fetch_file: { run: ({ tab, ...args }, context) => founderBrowser.fetchFile(tab, args, context) },
     browser_scroll: {
-      run: ({ tab, direction }) => founderBrowser.scroll(tab, direction),
+      run: ({ tab, direction, ref, text }) => founderBrowser.scroll(tab, direction, ref, text),
+    },
+    browser_hover: {
+      run: ({ tab, ref, text }) => founderBrowser.hover(tab, ref, text),
     },
     browser_close: { run: ({ tab }) => founderBrowser.close(tab) },
   },

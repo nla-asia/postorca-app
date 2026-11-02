@@ -1,9 +1,6 @@
 .billing-panel {
   margin-top: 0;
 }
-.account-billing-link {
-  margin-top: 18px;
-}
 .billing-heading-row {
   display: flex;
   align-items: flex-start;
@@ -13,7 +10,9 @@
 }
 .billing-panel h4,
 .billing-panel h5,
-.billing-panel p {
+.billing-panel p,
+.billing-plans h5,
+.billing-plans p {
   margin: 0;
 }
 .billing-heading-row h4,
@@ -86,11 +85,53 @@
   color: var(--secondary);
   line-height: 1.6;
 }
+.billing-current-plan {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.billing-current-plan > svg {
+  flex: none;
+  color: var(--accent);
+}
+.billing-current-plan-info {
+  flex: 1;
+  min-width: 180px;
+}
+.billing-current-plan h5 {
+  font-size: 13px;
+  font-weight: 550;
+}
+.billing-panel .billing-current-plan p {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.billing-current-plan-actions {
+  display: flex;
+  gap: 8px;
+}
+.billing-current-plan-actions .button {
+  font-size: 11px;
+  padding: 8px 12px;
+}
+.billing-portal-link {
+  margin-top: 6px;
+  font-size: 11px;
+}
+.modal.billing-pricing {
+  width: min(760px, calc(100vw - 50px));
+}
 .billing-plans {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  margin-top: 16px;
 }
 .billing-plan {
   border: 1px solid var(--line);
@@ -100,8 +141,20 @@
   flex-direction: column;
   align-items: flex-start;
 }
-.billing-plan-membership {
-  border-color: var(--strong-line);
+.billing-plan-current {
+  border-color: var(--accent);
+}
+.billing-plan-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--accent);
+}
+.billing-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
 }
 .billing-plan-title {
   display: flex;
@@ -139,18 +192,15 @@
   font-weight: 500;
   margin-bottom: 5px;
 }
+.billing-plan .billing-plan-pitch {
+  flex: 1;
+  margin-bottom: 18px;
+}
 .billing-plan .button {
   width: 100%;
   justify-content: center;
-  margin-top: 18px;
   font-size: 11px;
   padding: 9px 7px;
-}
-.billing-panel .billing-footnote {
-  margin-top: 12px;
-  font-size: 10px;
-  color: var(--muted);
-  line-height: 1.7;
 }
 .billing-panel .billing-notice {
   padding: 12px 14px;
@@ -160,6 +210,30 @@
   font-size: 12px;
   line-height: 1.7;
   margin: 12px 0;
+}
+.billing-panel .billing-waiting,
+.billing-panel .billing-confirmed {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.billing-waiting > svg,
+.billing-confirmed > svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--accent);
+}
+.billing-waiting > div,
+.billing-confirmed > div {
+  flex: 1;
+}
+.billing-waiting p {
+  margin: 2px 0 0;
+}
+.billing-waiting > button,
+.billing-confirmed > button {
+  flex: none;
+  margin: -4px -6px -4px 0;
 }
 .billing-notice a {
   color: var(--accent);

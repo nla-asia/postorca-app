@@ -218,3 +218,222 @@
     width: 150px;
   }
 }
+
+/* Visual refinement scoped to Posts; shared Inbox and tab styles stay intact. */
+.posts-page {
+  max-width: 1040px;
+  padding: 32px 40px;
+  scrollbar-gutter: stable both-edges;
+}
+
+.posts-page .posts-toolbar {
+  align-items: flex-end;
+  flex-wrap: wrap;
+  column-gap: 24px;
+  row-gap: 14px;
+  margin-bottom: 18px;
+}
+
+.posts-page .tabs {
+  gap: 24px;
+}
+
+.posts-page .tabs button {
+  padding-bottom: 16px;
+  font-size: 13px;
+}
+
+.posts-page .tabs button.selected {
+  font-weight: 600;
+}
+
+.posts-page .posts-search {
+  flex: 0 1 260px;
+  min-width: 180px;
+  gap: 8px;
+  padding: 0 11px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.posts-page .posts-search:focus-within {
+  border-color: var(--muted);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.posts-page .posts-search input {
+  min-width: 0;
+  width: 100%;
+  padding: 9px 0;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  font-size: 12px;
+}
+
+.posts-page .posts-accounts {
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
+.posts-page .account-chip {
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+
+.posts-page .account-chip.selected {
+  border-color: var(--strong-line);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.posts-page .posts-list {
+  gap: 0;
+}
+
+.posts-page .post-card {
+  padding: 24px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.posts-page .proposal-top {
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.posts-page .proposal-meta {
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+  line-height: 1.6;
+}
+
+.posts-page .proposal-meta strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.posts-page .post-actions {
+  flex-shrink: 0;
+  gap: 4px;
+  margin: -4px -4px 0 0;
+}
+
+.posts-page .post-actions .icon-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  color: var(--muted);
+}
+
+.posts-page .post-actions .icon-button:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.posts-page .post-card h3 {
+  margin-top: 14px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: -0.2px;
+}
+
+.posts-page .post-text {
+  max-width: 760px;
+  margin-top: 14px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.posts-page .post-context {
+  font-size: 12px;
+}
+
+.posts-page .post-media {
+  max-width: 760px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-style: solid;
+  border-color: var(--line);
+  border-radius: 8px;
+  background: var(--surface-hover);
+}
+
+.posts-page .post-media p {
+  font-style: normal;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.posts-page .post-bottom {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.posts-page .post-stats {
+  line-height: 1.6;
+}
+
+.posts-page .post-bottom > .pill {
+  flex-shrink: 0;
+}
+
+.posts-page .post-hidden {
+  margin-block: 12px;
+  padding: 12px 16px;
+  gap: 12px;
+  border-style: solid;
+  border-color: var(--line);
+  border-radius: 8px;
+  background: var(--surface-hover);
+  line-height: 1.6;
+}
+
+.posts-page .posts-more {
+  margin-top: 20px;
+  min-height: 36px;
+  border-radius: 8px;
+}
+
+.posts-page .empty-state {
+  margin-top: 24px;
+  padding-block: 72px;
+  border-style: solid;
+  border-color: var(--line);
+}
+
+.posts-page .inbox-load-error {
+  margin-top: 16px;
+}
+
+@media (max-width: 900px) {
+  .posts-page {
+    padding: 24px 22px;
+  }
+
+  .posts-page .posts-toolbar {
+    column-gap: 16px;
+  }
+
+  .posts-page .posts-search {
+    flex-basis: 220px;
+  }
+
+  .posts-page .post-card {
+    padding: 22px 12px;
+  }
+}
