@@ -172,6 +172,12 @@ test("correcting locally rejected arguments is not counted as a repeated paid re
     ...call(
       "video_export",
       { scenes },
+      { error: 'Desktop tool video_export failed: Scene 5: "Mark as sent" isn\'t on screen in that part of the clip.' },
+      "unset",
+    ),
+    ...call(
+      "video_export",
+      { scenes },
       { attachments: [{ file: video, mime_type: "video/mp4" }] },
       "corrected",
     ),

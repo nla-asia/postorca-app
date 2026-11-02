@@ -774,6 +774,11 @@ async function prepare(context: PluginContext, clip: Clip) {
         (clip.scenes.some((scene) => scene.video_file) ? 5000 : 3000) && {
         pacing: `Shots average ${(totalMs / shots / 1000).toFixed(1)} s; consecutive scenes on the same image are one shot; each clip scene is a shot. UGC usually changes shot every 2–3 s, and a screen recording at most every 5 s. Alternate images, or trim and speed up clips, for faster cuts.`,
       }),
+      // Most feeds autoplay without sound: the opening has to read on its own.
+      ...(!clip.scenes[0]?.text?.trim() && {
+        opening:
+          "The first scene has no on-screen text, so someone watching without sound can't tell what this is. Give it the hook as its text (an approved script's on-screen text for its first shot).",
+      }),
     },
   };
 }

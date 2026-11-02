@@ -119,9 +119,11 @@ export function gradeVideo(
     if (
       call.failed &&
       !/^(File not found|Invalid arguments|Choose a saved|Provide exactly one)/.test(error) &&
-      // An export the tool refused before rendering (no focus, a silent tail) cost
-      // nothing; only a render that ran and failed did.
-      (call.name !== "video_export" || error.startsWith("Desktop tool"))
+      // An export the tool refused before rendering (no focus, a silent tail, a scene
+      // the desktop couldn't set up) cost nothing; only a render that ran and failed did.
+      (call.name !== "video_export" ||
+        (error.startsWith("Desktop tool") &&
+          !/^Desktop tool video_export failed: Scene \d+/.test(error)))
     )
       providerFailures.add(call.name);
   }

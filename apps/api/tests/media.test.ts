@@ -541,6 +541,12 @@ test("clip scenes trim, speed up and hold recorded videos, deriving their durati
   assert.equal(result.duration_seconds, 9);
   // Each clip scene is its own shot: three shots in 9 s.
   assert.equal(result.pacing, undefined);
+  // Nothing on screen says what this is until the voiceover does.
+  assert.match(result.opening, /no on-screen text/);
+  const titled = await preview([
+    { video_file: clip, end_seconds: 3, text: "Introducing Clip" },
+  ]);
+  assert.equal(titled.opening, undefined);
 
   const before = calls.length;
   for (const [scene, error] of [
