@@ -12,16 +12,16 @@
   --sidebar: #f7f7f8;
   --surface: #fff;
   --surface-hover: #f7f7f8;
-  --accent-hover: #27272a;
+  --accent-hover: #304d70;
   --badge: #f1f1f3;
-  --note-border: #e4e4e7;
+  --note-border: #dce4ef;
   --text: #27272a;
   --muted: #71717a;
   --secondary: #52525b;
   --line: #e9e9ec;
   --strong-line: #dcdce0;
-  --accent: #3f3f46;
-  --accent-soft: #ebebee;
+  --accent: #3e5f87;
+  --accent-soft: #eaf0f7;
   --modal-backdrop: #18181b55;
   --shadow: 0 12px 50px #18181b12;
   color-scheme: light;
@@ -651,7 +651,7 @@ h1 {
   top: 45px;
   right: 17%;
   height: 12px;
-  background: #ebebee;
+  background: #eaf0f7;
 }
 .theme-preview.dark {
   background: #18181b;
