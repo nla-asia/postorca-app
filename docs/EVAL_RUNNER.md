@@ -346,6 +346,10 @@ Two separate evals use it, matching the product:
   criteria written for that product and task: the journey or change that matters, what
   the product really does, and what has to stay out. They set direction and flow, not
   wording.
+  Script-only cases have no OS restriction unless their fixture starts a native
+  macOS app (currently Quill). They still need a connected desktop for project
+  files, and web cases need the browser connection to inspect the running app.
+  Recording and Simulator cases retain their macOS requirements.
 - `content-script-ledgerly-intro`: the same on Ledgerly (`scripts/evals/ledgerly-fixture.mjs`,
   port 4130), an invoicing SaaS with sign-in (local demo login in its README), a
   dashboard chart, invoices with line items and live totals, status changes, a status
