@@ -1,6 +1,7 @@
 import AgentChat from "../components/AgentChat";
 import Mark from "../components/BrandMark";
 import type { useAgentChat } from "../lib/useAgentChat";
+import "./Agent.css";
 
 export default function Agent({
   chat,
@@ -8,7 +9,7 @@ export default function Agent({
   chat: ReturnType<typeof useAgentChat>;
 }) {
   return (
-    <section className="chat-page" aria-label="Agent chat">
+    <section className="chat-page agent-page" aria-label="Agent chat">
       <header className="work-header">
         <Mark small />
         <div className="work-heading">

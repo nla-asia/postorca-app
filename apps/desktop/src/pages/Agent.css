@@ -1,0 +1,215 @@
+/* Keep this treatment local to Agent; onboarding shares AgentChat. */
+.agent-page {
+  --chat-width: 728px;
+  --chat-gutter: 32px;
+}
+
+.agent-page > .work-header {
+  min-height: 68px;
+  padding: 18px 28px;
+  gap: 10px;
+}
+
+.agent-page .work-heading h1 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.agent-page .chat-scroll {
+  padding-inline: var(--chat-gutter);
+  scrollbar-gutter: stable both-edges;
+}
+
+.agent-page .messages {
+  max-width: var(--chat-width);
+  margin: 36px auto 24px;
+}
+
+.agent-page .message {
+  margin: 0;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.agent-page .message + .message {
+  margin-top: 28px;
+}
+
+.agent-page .message > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.agent-page .message > div > strong {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.agent-page .message.user > div {
+  max-width: 82%;
+  background: var(--surface-hover);
+  border-radius: 16px;
+  padding: 12px 16px;
+}
+
+.agent-page .message.agent + .message.agent {
+  margin-top: 12px;
+}
+
+/* Keep the text aligned while showing Orca's identity once per reply. */
+.agent-page .message.agent:not(.actions-message) + .message.agent > .brand-mark {
+  visibility: hidden;
+}
+
+.agent-page .message.agent:not(.actions-message) + .message.agent > div > strong {
+  display: none;
+}
+
+.agent-page .actions-message > .brand-mark {
+  visibility: hidden;
+}
+
+.agent-page .message .markdown p,
+.agent-page .message .markdown ul,
+.agent-page .message .markdown ol {
+  margin-bottom: 12px;
+}
+
+.agent-page .message .markdown > :last-child {
+  margin-bottom: 0;
+}
+
+/* Tool activity stays available without taking over the conversation. */
+.agent-page .work-actions {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.agent-page .work-actions summary {
+  width: fit-content;
+  max-width: 100%;
+  gap: 8px;
+  padding: 5px 0;
+  color: var(--muted);
+  border-radius: 4px;
+}
+
+.agent-page .work-actions summary:hover {
+  color: var(--text);
+  background: transparent;
+}
+
+.agent-page .work-actions summary:focus-visible {
+  outline-offset: 3px;
+}
+
+.agent-page .action-tool-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.agent-page .action-tool-icon svg,
+.agent-page .action-chevron {
+  width: 14px;
+  height: 14px;
+}
+
+.agent-page .work-actions summary strong {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.agent-page .action-duration {
+  margin-left: 0;
+  padding: 0 0 0 8px;
+  border-left: 1px solid var(--strong-line);
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+}
+
+.agent-page .action-details {
+  margin-top: 8px;
+  padding: 2px 0 2px 16px;
+  border-top: 0;
+  border-left: 1px solid var(--line);
+}
+
+.agent-page .action-details li {
+  padding: 7px 0;
+}
+
+.agent-page .composer-wrap {
+  max-width: calc(var(--chat-width) + 2 * var(--chat-gutter));
+  padding: 12px var(--chat-gutter) 24px;
+  margin: 0 auto;
+}
+
+.agent-page .composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 14px 14px 14px 18px;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px #00000008;
+}
+
+.agent-page .composer:focus-within {
+  border-color: var(--muted);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.agent-page .composer textarea {
+  flex: 1;
+  min-width: 0;
+  field-sizing: content;
+  height: auto;
+  min-height: 30px;
+  max-height: 180px;
+  padding-block: 3px;
+  font-size: 14px;
+  line-height: 24px;
+  outline: none;
+}
+
+.agent-page .composer-bottom {
+  flex-shrink: 0;
+}
+
+.agent-page .composer-bottom .button {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.agent-page .chat-welcome {
+  margin-top: clamp(60px, 20vh, 180px);
+}
+
+.agent-page .chat-welcome h2 {
+  color: var(--text);
+  font-size: 24px;
+  letter-spacing: -0.5px;
+}
+
+@media (max-width: 800px) {
+  .agent-page {
+    --chat-gutter: 20px;
+  }
+
+  .agent-page > .work-header {
+    padding-inline: 20px;
+  }
+
+  .agent-page .message.user > div {
+    max-width: 90%;
+  }
+}
