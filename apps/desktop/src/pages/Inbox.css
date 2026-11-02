@@ -181,3 +181,162 @@
   border-color: var(--accent);
   background: var(--accent-soft);
 }
+
+/* Inbox-only refinement; Posts reuses some of the base metadata classes. */
+.inbox-page {
+  max-width: 1040px;
+  padding: 32px 40px;
+  scrollbar-gutter: stable both-edges;
+}
+
+.inbox-page .section-toolbar {
+  margin-bottom: 0;
+  padding-bottom: 16px;
+}
+
+.inbox-page .inbox-heading {
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+
+.inbox-page .inbox-heading span {
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  text-align: center;
+  letter-spacing: 0;
+}
+
+.inbox-page .section-toolbar .button {
+  color: var(--secondary);
+  border-radius: 8px;
+}
+
+.inbox-page .bulk-bar {
+  min-height: 48px;
+  margin-bottom: 0;
+  padding-inline: 16px;
+  gap: 16px;
+}
+
+.inbox-page .bulk-check {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.inbox-page .proposal-list {
+  gap: 0;
+}
+
+.inbox-page .proposal-card {
+  padding: 18px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transition: background 0.15s;
+}
+
+.inbox-page .proposal-card:hover {
+  background: var(--surface-hover);
+  box-shadow: none;
+}
+
+.inbox-page .proposal-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.inbox-page .proposal-card.checked {
+  background: var(--accent-soft);
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.inbox-page .proposal-top {
+  gap: 16px;
+}
+
+.inbox-page .proposal-meta {
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.inbox-page .proposal-meta .platform {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+}
+
+.inbox-page .proposal-time {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.inbox-page .proposal-card h3 {
+  margin: 10px 0 6px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.inbox-page .proposal-card > p {
+  max-width: 92%;
+  color: var(--secondary);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.inbox-page .proposal-bottom {
+  margin-top: 12px;
+  gap: 16px;
+}
+
+.inbox-page .review-link {
+  flex-shrink: 0;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.inbox-page .proposal-card:hover .review-link,
+.inbox-page .proposal-card:focus-visible .review-link {
+  color: var(--text);
+}
+
+.inbox-page .empty-state {
+  margin-top: 24px;
+  border-style: solid;
+  border-color: var(--line);
+  padding-block: 72px;
+}
+
+.inbox-page .inbox-load-error {
+  margin-top: 16px;
+}
+
+@media (max-width: 900px) {
+  .inbox-page {
+    padding: 24px 22px;
+  }
+
+  .inbox-page .bulk-bar {
+    padding-inline: 12px;
+  }
+
+  .inbox-page .proposal-card {
+    padding: 18px 12px;
+  }
+
+  .inbox-page .proposal-card > p {
+    max-width: 100%;
+  }
+}
