@@ -342,7 +342,7 @@ function createScreenTools({
     // screencapture records a window even behind others, which looks fine in the clip
     // while the founder sees nothing and a moving pointer misses it. Bring it forward.
     if (target.type === "window") {
-      const inFront = await raiseWindow(target.window_id).then((result) => result?.foreground === true, () => false);
+      const inFront = await raiseWindow(target.window_id).then((result) => result?.foreground === true);
       if (!inFront)
         throw new Error(
           "The window could not be brought to the front, so nothing was recorded. Close what covers it or ask the founder to, then try again.",

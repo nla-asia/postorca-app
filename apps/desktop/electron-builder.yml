@@ -28,7 +28,9 @@ extraResources:
   - from: build/remotion
     to: remotion-bundle
 mac:
-  identity: null
+  # Sign the complete bundle locally so native helpers share PostOrca's TCC identity.
+  # null skips signing and leaves Electron's unbound linker signature in place.
+  identity: "-"
   extraResources:
     - from: build/computer-use/computer-native
       to: computer-native
