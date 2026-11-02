@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, Globe, LogOut } from "lucide-react";
 import { Button, Platform } from "./ui";
-import AgentChat, { Mark } from "./AgentChat";
+import AgentChat from "./AgentChat";
+import Mark from "./BrandMark";
 import { describeDays } from "../pages/Routines";
 import { api } from "../lib/api";
 import type { Brand } from "../lib/brand";

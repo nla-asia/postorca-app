@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
+import BrandMark from "./BrandMark";
 import Sidebar from "./Sidebar";
 import ConnectApps from "./ConnectApps";
 import SettingsModal, { type SettingsTab } from "./SettingsModal";
@@ -130,7 +131,7 @@ export default function Workspace({
             role="status"
             aria-label="Loading your brand"
           >
-            <Sparkles size={24} />
+            <BrandMark large />
           </div>
         )}
       </div>

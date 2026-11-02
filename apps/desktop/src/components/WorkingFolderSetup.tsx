@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { FolderOpen, LoaderCircle, Sparkles } from "lucide-react";
+import { FolderOpen, LoaderCircle } from "lucide-react";
 import { Button } from "./ui";
+import BrandMark from "./BrandMark";
 import "./AuthScreen.css";
 import "./forms.css";
 
@@ -50,7 +51,7 @@ export default function WorkingFolderSetup({
         <main className="auth-main">
           <div className="auth-panel">
             <div className="auth-brand">
-              <span className="brand-mark"><Sparkles size={22} strokeWidth={1.7} /></span>
+              <BrandMark />
               <span>PostOrca</span>
             </div>
             <h1>Choose your working folder</h1>
