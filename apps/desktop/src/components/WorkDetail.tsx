@@ -25,6 +25,7 @@ import { api } from "../lib/api";
 import type { TaskArtifact, TaskDetail } from "../lib/tasks";
 import "./WorkDetail.css";
 import "./forms.css";
+import "./InboxDetail.css";
 
 /** Where an idea's content work stands, for its row and dialog. */
 function ideaStatus(item: TaskArtifact) {
@@ -153,7 +154,7 @@ export default function WorkDetail({
   };
   if (!task)
     return (
-      <section className="work-page" aria-label="Inbox work detail">
+      <section className="work-page inbox-detail-page" aria-label="Inbox work detail">
         <header className="work-header">
           <button
             className="icon-button"
@@ -217,7 +218,7 @@ export default function WorkDetail({
     return () => openArtifact(item);
   };
   return (
-    <section className="work-page" aria-label="Inbox work detail">
+    <section className="work-page inbox-detail-page" aria-label="Inbox work detail">
       <header className="work-header">
         <button
           className="icon-button"

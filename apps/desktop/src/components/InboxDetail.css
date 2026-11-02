@@ -1,0 +1,232 @@
+/* Visual treatment only: retain the existing content order and controls. */
+.inbox-detail-page {
+  min-width: 0;
+}
+
+.inbox-detail-page > .work-header {
+  min-height: 76px;
+  padding: 20px 28px;
+  gap: 14px;
+}
+
+.inbox-detail-page .work-heading h1 {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.inbox-detail-page .work-scroll {
+  min-height: 0;
+  padding: 32px;
+  background: var(--bg);
+  scrollbar-gutter: stable both-edges;
+}
+
+.inbox-detail-page .work-content {
+  max-width: 800px;
+}
+
+.inbox-detail-page .work-entry {
+  margin-bottom: 0;
+  padding: 0 0 28px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.inbox-detail-page .work-agent-response {
+  margin-top: 26px;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+
+.inbox-detail-page .work-author {
+  gap: 12px;
+  font-size: 12px;
+}
+
+.inbox-detail-page .work-author strong {
+  font-weight: 600;
+}
+
+.inbox-detail-page .work-entry-content {
+  margin: 14px 0 0 40px;
+  overflow-wrap: anywhere;
+}
+
+.inbox-detail-page .work-entry-content .markdown {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.inbox-detail-page .markdown p,
+.inbox-detail-page .markdown ul,
+.inbox-detail-page .markdown ol {
+  margin-bottom: 12px;
+}
+
+.inbox-detail-page .markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.inbox-detail-page .work-artifacts {
+  margin-top: 24px;
+  padding-top: 18px;
+}
+
+.inbox-detail-page .work-artifacts h2 {
+  margin-bottom: 12px;
+  color: var(--secondary);
+  font-size: 12px;
+}
+
+.inbox-detail-page .artifact-row {
+  padding: 14px;
+  gap: 12px;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.inbox-detail-page .artifact-row > span:nth-child(2) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.inbox-detail-page .artifact-row strong {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.inbox-detail-page .artifact-row small {
+  font-size: 11px;
+}
+
+.inbox-detail-page .artifact-icon {
+  width: 36px;
+  height: 40px;
+  background: var(--badge);
+  color: var(--secondary);
+  border-radius: 7px;
+}
+
+/* The existing activity disclosure gets the same quiet treatment as chat. */
+.inbox-detail-page .work-actions {
+  margin: 8px 0 0 40px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.inbox-detail-page .work-actions summary {
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 0;
+  gap: 8px;
+  color: var(--muted);
+  border-radius: 4px;
+}
+
+.inbox-detail-page .work-actions summary:hover {
+  color: var(--text);
+  background: transparent;
+}
+
+.inbox-detail-page .work-actions summary:focus-visible {
+  outline-offset: 3px;
+}
+
+.inbox-detail-page .action-tool-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.inbox-detail-page .action-tool-icon svg,
+.inbox-detail-page .action-chevron {
+  width: 14px;
+  height: 14px;
+}
+
+.inbox-detail-page .work-actions summary strong {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.inbox-detail-page .action-duration {
+  margin-left: 0;
+  padding: 0 0 0 8px;
+  border-left: 1px solid var(--strong-line);
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.inbox-detail-page .action-details {
+  margin-top: 8px;
+  padding: 2px 0 2px 16px;
+  border-top: 0;
+  border-left: 1px solid var(--line);
+}
+
+.inbox-detail-page .action-details li {
+  padding: 7px 0;
+}
+
+.inbox-detail-page .work-review {
+  gap: 8px;
+  padding: 4px 0 24px;
+}
+
+.inbox-detail-page .work-review .button {
+  min-height: 36px;
+  border-radius: 8px;
+}
+
+.inbox-detail-page .follow-up-panel {
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.inbox-detail-page .follow-up-panel textarea {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+@media (max-width: 1000px) {
+  .inbox-detail-page > .work-header {
+    padding: 18px 20px;
+  }
+
+  .inbox-detail-page .work-scroll {
+    padding: 24px 22px;
+  }
+
+  .inbox-detail-page .work-entry-content,
+  .inbox-detail-page .work-actions {
+    margin-left: 0;
+  }
+}
+
+.inbox-detail-page .work-entry > .work-entry-content {
+  color: var(--secondary);
+}
+
+.inbox-detail-page .work-author .avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+
+.inbox-detail-page .work-time-separator {
+  margin: 8px 0 28px;
+  gap: 12px;
+}
+
+.inbox-detail-page .work-time-separator::before {
+  flex: 0 0 24px;
+}
