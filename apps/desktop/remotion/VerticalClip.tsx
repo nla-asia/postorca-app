@@ -27,6 +27,8 @@ export type VerticalClipProps = {
       startMs: number;
       endMs: number;
       speed: number;
+      // Plays with its own sound instead of muted.
+      sound?: boolean;
       poster: string;
     } | null;
     text: string | null;
@@ -41,6 +43,8 @@ export type VerticalClipProps = {
     aspect?: number | null;
   }[];
   voiceover: string | null;
+  // Where the voiceover stops (in its own time) and for how long, while a clip plays with its sound.
+  voiceoverPauses?: { atMs: number; ms: number }[];
   music: {
     src: string;
     volume: number;
@@ -377,7 +381,7 @@ function camera(frame: number, fps: number, shot: Shot, amount: number) {
   return `translate(${x}px, ${y}px) rotate(${amount * 0.3 * Math.sin(0.9 * seconds + phase)}deg) scale(${scale})`;
 }
 
-/** Plays the trimmed part of a clip muted at its speed, then holds its last frame. */
+/** Plays the trimmed part of a clip at its speed, muted unless it keeps its sound, then holds its last frame. */
 function ClipVideo({
   src,
   clip,
@@ -397,7 +401,7 @@ function ClipVideo({
     <Freeze frame={playing - 1} active={frame >= playing}>
       <OffthreadVideo
         src={src}
-        muted
+        muted={!clip.sound}
         trimBefore={Math.round((clip.startMs * fps) / 1000)}
         trimAfter={Math.round((clip.endMs * fps) / 1000)}
         playbackRate={clip.speed}
@@ -826,15 +830,58 @@ function CaptionPage({ page, highlight }: { page: Page; highlight: string }) {
   );
 }
 
+/** The voiceover, split at each pause so it picks up again once the clip with sound has played. */
+function Voiceover({
+  src,
+  pauses,
+}: {
+  src: string;
+  pauses: { atMs: number; ms: number }[];
+}) {
+  const { fps } = useVideoConfig();
+  const frames = (ms: number) => Math.round((ms * fps) / 1000);
+  if (!pauses.length) return <Audio src={src} />;
+  let shift = 0;
+  const parts = [...pauses, null].map((pause, index) => {
+    const from = index ? pauses[index - 1].atMs : 0;
+    const part = { from, to: pause?.atMs, startMs: from + shift };
+    if (pause) shift += pause.ms;
+    return part;
+  });
+  return (
+    <>
+      {parts.map((part) => (
+        <Sequence key={part.from} from={frames(part.startMs)}>
+          <Audio
+            src={src}
+            trimBefore={frames(part.from)}
+            trimAfter={part.to === undefined ? undefined : frames(part.to)}
+          />
+        </Sequence>
+      ))}
+    </>
+  );
+}
+
 export function VerticalClip({
   assetBaseUrl,
   scenes,
   voiceover,
+  voiceoverPauses = [],
   music,
   captions,
   brand,
 }: VerticalClipProps) {
   const { fps } = useVideoConfig();
+  // Where each voiceover pause starts in the video.
+  const pausesInVideo = useMemo(() => {
+    let shift = 0;
+    return voiceoverPauses.map((pause) => {
+      const at = pause.atMs + shift;
+      shift += pause.ms;
+      return at;
+    });
+  }, [voiceoverPauses]);
   const pages = useMemo(
     () =>
       createTikTokStyleCaptions({
@@ -911,8 +958,13 @@ export function VerticalClip({
       })}
       {pages.map((page, index) => {
         const from = Math.round((page.startMs * fps) / 1000);
+        // A caption holds until the next one, but not into a voiceover pause.
+        const pause = pausesInVideo.find((at) => at > page.startMs);
         const end = Math.round(
-          ((pages[index + 1]?.startMs ?? page.startMs + page.durationMs) *
+          (Math.min(
+            pages[index + 1]?.startMs ?? page.startMs + page.durationMs,
+            pause ?? Infinity,
+          ) *
             fps) /
             1000,
         );
@@ -926,7 +978,12 @@ export function VerticalClip({
           </Sequence>
         ) : null;
       })}
-      {voiceover && <Audio src={asset(assetBaseUrl, voiceover)} />}
+      {voiceover && (
+        <Voiceover
+          src={asset(assetBaseUrl, voiceover)}
+          pauses={voiceoverPauses}
+        />
+      )}
       {music && <Music {...music} src={asset(assetBaseUrl, music.src)} />}
     </AbsoluteFill>
   );

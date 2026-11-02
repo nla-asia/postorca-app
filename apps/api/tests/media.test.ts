@@ -25,6 +25,7 @@ import { executeTool } from "../src/tools/index.js";
 import { loadPluginState } from "../src/plugins/service.js";
 import {
   alignScenes,
+  pausedTranscript,
   transcriptWithScript,
 } from "../src/plugins/video/index.js";
 import { temporaryPostgres } from "./postgres.js";
@@ -516,7 +517,7 @@ test("clip scenes trim, speed up and hold recorded videos, deriving their durati
       device: "browser",
       focus: { x: 0.5, y: 0.5, width: 0.4, height: 0.4 },
     },
-    { video_file: clip, start_seconds: 4.5 },
+    { video_file: clip, start_seconds: 4.5, sound: true },
     { video_file: clip, end_seconds: 2, duration_seconds: 3 },
   ]);
   const scenes = calls.at(-1).arguments.scenes;
@@ -533,6 +534,8 @@ test("clip scenes trim, speed up and hold recorded videos, deriving their durati
       [3000, 0, 2000, 1],
     ],
   );
+  // Only the clip asked to keep its sound plays with it.
+  assert.deepEqual(scenes.map((scene: any) => scene.sound), [undefined, true, undefined]);
   assert.match(scenes[0].file, /\.mp4$/);
   assert.equal(scenes[0].device, "browser");
   assert.equal(result.duration_seconds, 9);
@@ -554,6 +557,7 @@ test("clip scenes trim, speed up and hold recorded videos, deriving their durati
   for (const scene of [
     { image_file: image, video_file: clip, duration_seconds: 1 },
     { image_file: image, duration_seconds: 1, speed: 2 },
+    { image_file: image, duration_seconds: 1, sound: true },
     { text: "Trimmed", duration_seconds: 1, end_seconds: 2 },
     { image_file: image },
     { video_file: clip, start_seconds: 3, end_seconds: 2 },
@@ -635,6 +639,32 @@ test("scenes that declare their words start when those words are spoken", () => 
   assert.throws(
     () => alignScenes([{}, { says: "I open" }], [1000, 1000], transcript),
     /at least 0.5 s/,
+  );
+
+  // A clip with its own sound pauses the voiceover after "Streaks." for its 10 s; the
+  // voice picks up with "I hit", and everything after it comes 10 s later.
+  const pauses: { at_ms: number; ms: number }[] = [];
+  assert.deepEqual(
+    alignScenes(
+      [{ says: "I open" }, { sound: true }, { says: "I hit" }, { says: "I copy" }],
+      [2000, 10000, 2000, 1000],
+      transcript,
+      pauses,
+    ),
+    [1200, 12800, 5000, 1000],
+  );
+  assert.deepEqual(pauses, [{ at_ms: 1200, ms: 10000 }]);
+  assert.deepEqual(
+    pausedTranscript(transcript, pauses).words!.map((w) => w.start),
+    [0.2, 0.5, 0.9, 14, 14.3, 14.6, 19, 19.3],
+  );
+  assert.throws(
+    () => alignScenes([{ says: "I open", sound: true }], [1000], transcript),
+    /nothing is said over it/,
+  );
+  assert.throws(
+    () => alignScenes([{}, { sound: true }, {}], [1000, 1000, 1000], transcript),
+    /give it says/,
   );
 });
 
