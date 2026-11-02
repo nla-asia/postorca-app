@@ -599,6 +599,12 @@ node_modules and create the founder-readable project once:
 node scripts/evals/packlight-fixture.mjs setup
 ```
 
+The fixture lifecycle also runs on Windows: setup invokes npm's JavaScript entry
+point, and cleanup verifies the recorded Metro process before stopping its process
+tree. Script-only runs can inspect the web preview and native sharing source;
+this does not verify the iOS share sheet live. Recording on iPhone still requires
+the Simulator on macOS.
+
 Add `~/PostOrca Evals/packlight` to Brand Profile projects. The ordinary fixture
 prepare/observe/cleanup hooks reset its owned source repository, start Metro at
 `http://127.0.0.1:4140`, check for source edits, and stop only the Metro process

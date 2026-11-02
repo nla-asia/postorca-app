@@ -12,7 +12,7 @@ import { createHash } from "node:crypto";
 import { existsSync, openSync, closeSync } from "node:fs";
 import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const folder = join(homedir(), "PostOrca Evals", "packlight");
@@ -47,7 +47,7 @@ async function scaffold() {
     recursive: true,
     filter: (path) =>
       !["node_modules", ".expo", "dist", "dist-ios", ".git"].includes(
-        path.slice(path.lastIndexOf("/") + 1),
+        basename(path),
       ),
   });
   await writeFile(join(folder, marker), "packlight\n");
@@ -68,10 +68,17 @@ async function scaffold() {
   );
 }
 function ownedProcess(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
   try {
-    return execFileSync("ps", ["-p", String(pid), "-o", "command="], {
-      encoding: "utf8",
-    }).includes(join(folder, "node_modules", "expo", "bin", "cli"));
+    const command = process.platform === "win32"
+      ? execFileSync("powershell.exe", [
+          "-NoProfile", "-NonInteractive", "-Command",
+          `(Get-CimInstance Win32_Process -Filter 'ProcessId = ${pid}').CommandLine`,
+        ], { encoding: "utf8", windowsHide: true })
+      : execFileSync("ps", ["-p", String(pid), "-o", "command="], {
+          encoding: "utf8",
+        });
+    return command.includes(join(folder, "node_modules", "expo", "bin", "cli"));
   } catch {
     return false;
   }
@@ -80,9 +87,16 @@ async function setup() {
   // Do not reset a fixture while a previous Metro is using it.
   await assertPortFree();
   await scaffold();
-  execFileSync("npm", ["ci", "--no-audit", "--no-fund"], {
+  const args = ["ci", "--no-audit", "--no-fund"];
+  // npm.cmd cannot be executed directly by execFile on Windows. Use npm's
+  // JavaScript entry point without introducing a shell or quoted command string.
+  const npm = process.env.npm_execpath ??
+    join(dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
+  execFileSync(process.platform === "win32" ? process.execPath : "npm",
+    process.platform === "win32" ? [npm, ...args] : args, {
     cwd: folder,
     stdio: ["ignore", process.stderr, process.stderr],
+    windowsHide: true,
   });
   await writeFile(join(folder, dependencies), await lockHash());
   return {
@@ -137,6 +151,7 @@ async function prepare(attempt) {
     {
       cwd: folder,
       detached: true,
+      windowsHide: true,
       stdio: ["ignore", log, log],
       env: { ...process.env, CI: "1", BROWSER: "none", EXPO_NO_TELEMETRY: "1" },
     },
@@ -204,7 +219,12 @@ async function cleanup(attempt) {
       stopped: false,
       reason: "This attempt’s Metro is already stopped.",
     };
-  process.kill(-pid, "SIGTERM");
+  if (process.platform === "win32")
+    execFileSync("taskkill.exe", ["/PID", String(pid), "/T", "/F"], {
+      stdio: "ignore",
+      windowsHide: true,
+    });
+  else process.kill(-pid, "SIGTERM");
   return { stopped: true };
 }
 if (["setup", "prepare", "observe", "cleanup"].includes(mode)) {
