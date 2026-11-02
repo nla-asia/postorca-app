@@ -1,4 +1,5 @@
-import AgentChat, { Mark } from "../components/AgentChat";
+import AgentChat from "../components/AgentChat";
+import Mark from "../components/BrandMark";
 import type { useAgentChat } from "../lib/useAgentChat";
 
 export default function Agent({

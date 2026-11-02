@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
 import AuthScreen from "./components/AuthScreen";
+import BrandMark from "./components/BrandMark";
 import Workspace from "./components/Workspace";
 import WorkingFolderSetup from "./components/WorkingFolderSetup";
 import {
@@ -67,7 +67,7 @@ export default function App() {
           role="status"
           aria-label="Loading account"
         >
-          <Sparkles size={24} />
+          <BrandMark large />
         </div>
       </div>
     );

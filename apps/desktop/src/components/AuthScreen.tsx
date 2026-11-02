@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { ArrowRight, Eye, EyeOff, LoaderCircle, Sparkles } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { Button } from "./ui";
+import BrandMark from "./BrandMark";
 
 import { authenticate, type AuthUser } from "../lib/api";
 import "./AuthScreen.css";
@@ -36,9 +37,7 @@ export default function AuthScreen({
       <main className="auth-main">
         <div className="auth-panel">
           <div className="auth-brand">
-            <span className="brand-mark">
-              <Sparkles size={22} strokeWidth={1.7} />
-            </span>
+            <BrandMark />
             <span>PostOrca</span>
           </div>
           <h1>{register ? "Create account" : "Log in"}</h1>
