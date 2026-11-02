@@ -159,7 +159,11 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       id: `${c.level === 3 ? "content" : "computer"}-${c.id}`,
       plugin: c.level === 3 ? "content" : "computer",
       title: c.name,
-      platform: "darwin",
+      // Script-only web/repository cases do not use native Mac apps. Quill's
+      // fixture still launches a macOS app, so retain its platform requirement.
+      ...(!c.script_only || c.fixture_script === "scripts/evals/quill-fixture.mjs"
+        ? { platform: "darwin" }
+        : {}),
       level: c.level,
       turns: [
         c.video

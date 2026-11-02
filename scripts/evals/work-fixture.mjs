@@ -17,6 +17,7 @@ import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { homedir } from "node:os";
 import { extname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export const folder = join(homedir(), "PostOrca Evals", "streaks");
 const port = 4110;
@@ -148,8 +149,9 @@ async function prepare(attempt) {
     });
   }
   const nonce = randomUUID();
-  const server = spawn(process.execPath, [new URL(import.meta.url).pathname, "serve", nonce], {
+  const server = spawn(process.execPath, [fileURLToPath(import.meta.url), "serve", nonce], {
     detached: true,
+    windowsHide: true,
     stdio: "ignore",
   });
   server.unref();
