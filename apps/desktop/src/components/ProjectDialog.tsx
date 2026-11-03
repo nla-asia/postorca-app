@@ -89,14 +89,14 @@ export default function ProjectDialog({
           />
         </label>
         <label>
-          What are you building?
+          What is this project about?
           <textarea
             maxLength={500}
             rows={3}
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             disabled={busy}
-            placeholder="Describe the product and what makes it useful."
+            placeholder="Describe the project and its purpose."
           />
         </label>
         <div className="project-folder-heading">
