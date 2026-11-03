@@ -40,6 +40,8 @@ PostOrca is a desktop app with an AI agent, Orca, that turns what you build into
 
 Requires Node.js 22.12+ and npm 11.
 
+The desktop keeps login tokens in `session.json` inside its local user-data profile, with owner-only file permissions (`0600`), without Keychain or `safeStorage`. Existing encrypted `session.bin` logins require one new sign-in; that replaces the old file. Logout removes both session files.
+
 ```sh
 npm install
 cp apps/api/.env.example apps/api/.env
