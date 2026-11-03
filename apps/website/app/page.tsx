@@ -55,7 +55,9 @@ const questions = [
   ],
 ];
 export default function Home() {
-  const configuredDownload = process.env.POSTORCA_MACOS_DOWNLOAD_URL;
+  const configuredDownload =
+    process.env.POSTORCA_MACOS_DOWNLOAD_URL ??
+    "https://github.com/nla-asia/postorca-app/releases/download/v0.3.1/PostOrca-0.3.1-arm64.dmg";
   const download = configuredDownload?.startsWith("https://")
     ? configuredDownload
     : null;
