@@ -26,18 +26,13 @@
   background: var(--accent-soft);
   color: var(--accent);
 }
-.project-disclosure {
-  padding: 8px 2px;
-  display: flex;
-  align-items: center;
-}
 .project-name {
   min-width: 0;
   flex: 1;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 5px;
+  padding: 9px 12px;
   text-align: left;
   font-size: 13px;
 }

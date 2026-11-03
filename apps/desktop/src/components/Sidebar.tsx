@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  ChevronDown,
-  ChevronRight,
   FolderOpen,
   Plus,
   Plug,
@@ -43,7 +41,6 @@ export default function Sidebar({
   user: AuthUser;
   reviewCount?: number;
 }) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [showAll, setShowAll] = useState<Set<string>>(new Set());
   const [plan, setPlan] = useState<{ userId: string; name: string } | null>(
     null,
@@ -140,7 +137,6 @@ export default function Sidebar({
           </button>
         )}
         {projects.map((project) => {
-          const expanded = !collapsed.has(project.id);
           const recent = tasks.filter(
             (task) => task.project_id === project.id && !task.archived_at,
           );
@@ -149,24 +145,6 @@ export default function Sidebar({
               <div
                 className={`sidebar-project-row ${projectId === project.id ? "active" : ""}`}
               >
-                <button
-                  className="project-disclosure"
-                  aria-label={`${expanded ? "Collapse" : "Expand"} ${project.name}`}
-                  aria-expanded={expanded}
-                  onClick={() =>
-                    setCollapsed((previous) => {
-                      const next = new Set(previous);
-                      if (!next.delete(project.id)) next.add(project.id);
-                      return next;
-                    })
-                  }
-                >
-                  {expanded ? (
-                    <ChevronDown size={14} />
-                  ) : (
-                    <ChevronRight size={14} />
-                  )}
-                </button>
                 <button
                   className="project-name"
                   title={`Open ${project.name} chat`}
@@ -181,7 +159,7 @@ export default function Sidebar({
                   <span>{project.name}</span>
                 </button>
               </div>
-              {expanded && (
+              {recent.length > 0 && (
                 <div className="sidebar-project-tasks">
                   {recent
                     .slice(0, showAll.has(project.id) ? undefined : 5)
