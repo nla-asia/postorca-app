@@ -216,7 +216,11 @@ export default function Workspace({
         }}
       />
       <main className="workspace" aria-label={page}>
-        <InAppNotifications onOpen={openWork} />
+        {/* The Inbox list already brings incoming work to the founder's attention.
+            Unmount its notification queue here so old banners do not return later. */}
+        {(page !== "Inbox" || selected) && (
+          <InAppNotifications onOpen={openWork} />
+        )}
         {page !== "Project" && !selected && (
           <header className="topbar">
             <h1 className="topbar-title">{page}</h1>
