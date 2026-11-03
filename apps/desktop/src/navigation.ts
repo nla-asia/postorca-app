@@ -28,7 +28,7 @@ export const navigation = [
     icon: Clock3,
   },
   {
-    name: "Brand Profile",
+    name: "Brand",
     icon: Target,
   },
 ] as const;

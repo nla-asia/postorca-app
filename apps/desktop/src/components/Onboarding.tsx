@@ -137,7 +137,7 @@ function OnboardingDone({
         <h2>You’re all set</h2>
         <p className="onboarding-done-lead">
           Orca now knows your brand and will start working on your accounts. You
-          can change any of this later in Brand Profile.
+          can change any of this later in Brand.
         </p>
         <section className="onboarding-card">
           <div className="onboarding-section">
