@@ -23,6 +23,22 @@ export async function getProfile(db: Database, userId: string) {
   );
   return profile;
 }
+/** Founder preferences plus the selected product, without the legacy single-company field. */
+export async function getAgentProfile(
+  db: Database,
+  userId: string,
+  projectId?: string | null,
+) {
+  const profile = await getProfile(db, userId);
+  delete profile.company;
+  if (projectId) {
+    profile.projects = profile.projects.filter(
+      (project: { id: string }) => project.id === projectId,
+    );
+    profile.active_project = profile.projects[0] ?? null;
+  }
+  return profile;
+}
 export async function saveProfile(
   db: Database,
   userId: string,
@@ -45,11 +61,11 @@ export async function saveProfile(
         ).rowCount;
     if (
       data.onboarding_status === "completed" &&
-      (!data.company.trim() || !data.topics.trim() || !hasSocialLink)
+      (!data.topics.trim() || !hasSocialLink)
     )
       throw new HttpError(
         400,
-        "Save what you’re building, primary topics, and at least one social account link, such as Instagram, LinkedIn, or X, before completing onboarding.",
+        "Save primary topics and at least one social account link, such as Instagram, LinkedIn, or X, before completing onboarding.",
       );
     if (saveLinks) {
       const ids = data.links.flatMap((link) => (link.id ? [link.id] : []));

@@ -236,12 +236,12 @@ test("onboarding uses its own instructions, and a question ends the turn until t
   requests.length = 0;
   script = async () =>
     reply("Saved. Next:", [
-      call("update_brand_profile", { company: "Customer feedback tool" }),
+      call("update_brand_profile", { topics: "Research lessons" }),
       call("request_user_input", {
         questions: [{ question: "Which platforms?", options: ["Instagram", "LinkedIn", "X"], multiple: true }],
       }),
     ]);
-  await post(url, `/${onboarding}/turns`, { message: "A customer feedback tool" }, founder.token);
+  await post(url, `/${onboarding}/turns`, { message: "I share research lessons" }, founder.token);
   const detail = await settled(founder.id, onboarding);
   // The fixed opening needed no model call; the answer needed exactly one.
   assert.equal(requests.length, 1);
@@ -253,8 +253,9 @@ test("onboarding uses its own instructions, and a question ends the turn until t
     detail.turns[1].messages.at(-1).content.result.status,
     "awaiting_user_input",
   );
-  const { rows } = await fixture.db.query("SELECT company FROM brand_profiles WHERE user_id=$1", [founder.id]);
-  assert.equal(rows[0].company, "Customer feedback tool");
+  const { rows } = await fixture.db.query("SELECT company, topics FROM brand_profiles WHERE user_id=$1", [founder.id]);
+  assert.equal(rows[0].company, "");
+  assert.equal(rows[0].topics, "Research lessons");
 });
 
 test("chat delegates background work that runs with work instructions and no chat-only tools", async () => {
@@ -467,4 +468,42 @@ test("the agent delegates project work and follow-ups retain that product contex
   assert.equal(updated.turns.length, 2);
   assert.match(requests.at(-1)!.instructions, /\/source\/mobile/);
   assert.doesNotMatch(requests.at(-1)!.instructions, /OtherProduct|\/source\/other/);
+});
+
+test("project chats use project context and shared voice without leaking the legacy company through profile tools", async () => {
+  const { addProject } = await import("../src/repositories/projects.js");
+  const { writeMemory } = await import("../src/memory.js");
+  const founder = await account();
+  await fixture.db.query("UPDATE brand_profiles SET company=$2, topics=$3, colors=$4 WHERE user_id=$1", [founder.id, "Autopilot Startup legacy company", "Product lessons", { background: "#123456" }]);
+  await writeMemory(founder.id, "voice.md", "---\ndescription: Shared founder voice\n---\n# Voice\nUse short, calm sentences.\n");
+  const project = (await addProject(fixture.db, founder.id, { name: "Tide", description: "A calendar product for independent teams", folders: ["/source/tide"] })).project;
+  const chat = await createTask(fixture.db, founder.id, "chat", "Orca", undefined, project.id);
+  requests.length = 0;
+  script = async () => requests.length === 1
+    ? reply("", [call("read_brand_profile", {})])
+    : requests.length === 2
+      ? reply("", [call("update_brand_profile", { topics: "Product lessons and research" })])
+      : reply("Let’s work on Tide.");
+  await post(url, `/${chat.id}/turns`, { message: "Tell me about this project" }, founder.token);
+  const detail = await settled(founder.id, chat.id);
+  assert.equal(requests.length, 3);
+  for (const request of requests) {
+    assert.match(request.instructions, /"name":"Tide"/);
+    assert.match(request.instructions, /A calendar product for independent teams/);
+    assert.match(request.instructions, /Use short, calm sentences/);
+    assert.doesNotMatch(request.instructions, /Autopilot Startup legacy company|"company":/);
+    const update = request.tools.find((tool) => tool.name === "update_brand_profile")!;
+    assert.ok(!("company" in (update.parameters as any).properties));
+  }
+  const profileResults = detail.turns[0].messages.filter((message: StoredMessage) => message.kind === "tool_result");
+  assert.equal(profileResults.length, 2);
+  for (const message of profileResults) {
+    assert.equal(message.content.result.company, undefined);
+    assert.equal(message.content.result.active_project.id, project.id);
+    assert.deepEqual(message.content.result.projects.map((item: { id: string }) => item.id), [project.id]);
+  }
+  const { rows: [saved] } = await fixture.db.query("SELECT company, topics, colors FROM brand_profiles WHERE user_id=$1", [founder.id]);
+  assert.equal(saved.company, "Autopilot Startup legacy company");
+  assert.equal(saved.topics, "Product lessons and research");
+  assert.deepEqual(saved.colors, { background: "#123456" });
 });

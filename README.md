@@ -22,7 +22,7 @@ PostOrca is a desktop app with an AI agent, Orca, that turns what you build into
 - **Calendar**: schedule one-time tasks.
 - **Routines**: work Orca does for you every day on its own, like checking what changed in your projects or how your posts did.
 - **Projects**: products you create content for, each with one or more local source folders and its own content tasks. Click a project in the sidebar to open its own Orca conversation. The project name appears in the chat header; its settings gear opens a dialog for folders, name, description, and removal. Work delegated from the conversation automatically stays with that project.
-- **Brand Profile**: your shared audience, voice, colours and social links.
+- **Brand Profile**: your shared audience, voice, content interests and social links. Product context comes from Projects.
 - **Content output folder**: where Orca saves generated plans, scripts, recordings and exports; separate from project source folders.
 - **Tools**: browser control through your own browser, computer use on macOS and Windows, media creation (images, voice, music, video), and Gmail/Google Drive connectors.
 

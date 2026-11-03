@@ -36,6 +36,11 @@ export const profileSchema = z.object({
   links: z.array(brandLinkSchema).max(50),
   onboarding_status: z.enum(["not_started", "in_progress", "completed"]),
 });
+/** Partial writes must not apply full-profile defaults to omitted fields. */
+export const profileChangesSchema = profileSchema
+  .partial()
+  .extend({ colors: brandColorsSchema.optional() })
+  .strict();
 const folderPath = z.string().trim().min(1).max(1000);
 const foldersSchema = z
   .array(folderPath)

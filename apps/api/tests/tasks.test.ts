@@ -216,7 +216,7 @@ test("onboarding opens once with the fixed completed greeting without a provider
   assert.match(detail.turns[0].messages[0].content.text, /about 3 minutes/);
   assert.match(
     detail.turns[0].messages[0].content.text,
-    /what are you building\?$/,
+    /which platforms.*Instagram, LinkedIn, or X\?$/,
   );
   assert.equal(
     (

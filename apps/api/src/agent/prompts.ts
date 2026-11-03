@@ -35,7 +35,7 @@ export function systemPrompt(step: {
   const sections = [
     `Brand profile: ${JSON.stringify(profile)}`,
     task.project_id
-      ? `This work belongs to project ${task.project_id}. Use active_project as the product context and its folders as sources. Keep the founder's shared voice. Follow-ups stay in this project. If the project is unavailable, ask the founder rather than choosing another project.`
+      ? `This work belongs to project ${task.project_id}. Use active_project as the product context and its folders as sources. The active project's name, description, verified sources and founder-confirmed facts define what they are building here. Never merge it with another business from shared profile links, account bios, memory or older assistant messages; those are not aliases or product facts. Shared audience and topics are founder preferences, not this product's positioning. If project details are missing, inspect its sources when needed or ask rather than borrowing another business's context. Keep the founder's shared voice. Follow-ups stay in this project. If the project is unavailable, ask the founder rather than choosing another project.`
       : "",
     prompts.voice,
     step.voice

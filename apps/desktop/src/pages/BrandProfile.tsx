@@ -3,7 +3,6 @@ import {
   ExternalLink,
   Globe,
   MessageSquare,
-  Palette,
   Target,
   Users,
 } from "lucide-react";
@@ -21,7 +20,6 @@ const tabs = [
     icon: Target,
     fields: [
       { key: "name", label: "Name" },
-      { key: "company", label: "What you’re building" },
       { key: "topics", label: "Primary topics" },
     ],
   },
@@ -31,13 +29,7 @@ const tabs = [
     fields: [{ key: "audience", label: "Target audience" }],
   },
   { name: "Voice", icon: MessageSquare, fields: [] },
-  { name: "Colours", icon: Palette, fields: [] },
   { name: "Links", icon: Globe, fields: [] },
-] as const;
-const colorFields = [
-  { key: "background", label: "Background", use: "Text cards" },
-  { key: "text", label: "Text", use: "Words on text cards" },
-  { key: "highlight", label: "Highlight", use: "Spoken word and accents" },
 ] as const;
 
 export default function BrandProfile({
@@ -99,7 +91,9 @@ export default function BrandProfile({
     <div className="page-content brand-page">
       <h1 className="brand-page-heading">Brand</h1>
       <p className="preview-note">
-        Your saved brand context. Ask Orca in Agent chat to change it.
+        Your shared voice, interests, audience, and social accounts. What you’re
+        building lives in Projects. Ask Orca in a project chat to update your
+        profile.
       </p>
       <div className="brand-layout">
         <nav
@@ -154,39 +148,6 @@ export default function BrandProfile({
         >
           {tab === "Voice" ? (
             <Voice />
-          ) : tab === "Colours" ? (
-            <>
-              <dl className="brand-values">
-                {colorFields.map((field) => {
-                  const value = brand.colors?.[field.key];
-                  return (
-                    <div key={field.key}>
-                      <dt>
-                        {field.label}{" "}
-                        <span className="muted">· {field.use}</span>
-                      </dt>
-                      <dd className="brand-color">
-                        {value ? (
-                          <>
-                            <span
-                              className="brand-swatch"
-                              style={{ backgroundColor: value }}
-                              aria-hidden="true"
-                            />
-                            {value.toUpperCase()}
-                          </>
-                        ) : (
-                          "Not set"
-                        )}
-                      </dd>
-                    </div>
-                  );
-                })}
-              </dl>
-              <p className="brand-empty">
-                Used in every video Orca makes. Ask Orca to change them.
-              </p>
-            </>
           ) : tab === "Links" ? (
             brand.links.length ? (
               <ul className="brand-links" aria-label="Brand links">

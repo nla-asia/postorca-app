@@ -9,6 +9,7 @@ import {
 } from "../repositories/projects.js";
 import {
   profileSchema,
+  profileChangesSchema,
   projectSchema,
   projectUpdateSchema,
 } from "../schemas/brand.js";
@@ -26,7 +27,7 @@ export function brandRoutes(db: Database) {
           res.locals.userId,
           profileSchema.parse({
             ...(await getProfile(db, res.locals.userId)),
-            ...profileSchema.partial().strict().parse(req.body),
+            ...profileChangesSchema.parse(req.body),
           }),
         )
       ).profile,
