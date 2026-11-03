@@ -66,7 +66,7 @@ export default function WorkingFolderSetup({
             <h1>Choose your working folder</h1>
             <div className="form-stack">
               <p>
-                Orca can create and update plans, scripts, recordings, and finished content here. Keep this writable working folder separate from your read-only project source folders.
+                Orca can create and update plans, scripts, recordings, and finished content here.
               </p>
               {error && (
                 <p className="auth-error" role="alert">
