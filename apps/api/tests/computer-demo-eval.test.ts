@@ -286,6 +286,22 @@ test("code to script reads the project and records nothing", () => {
   assert.deepEqual(names(script.slice(0, 3)), ["Saved the plan and the script in the task's folder"]);
 });
 
+test("script-only cases are portable except for the native Quill fixture", async () => {
+  const { builtinCases } = await import("../src/evals/shared/catalog.js");
+  const cases = builtinCases();
+  const scripts = cases.filter((entry) => entry.demo?.script_only);
+  assert.equal(scripts.length, 9);
+  for (const entry of scripts) {
+    assert.equal(entry.platform, entry.id === "content-script-quill-intro" ? "darwin" : undefined);
+    assert.ok(!entry.prerequisites.includes("screen_recording_permission"));
+    assert.ok(!entry.prerequisites.includes("simulator_iphone_booted"));
+  }
+  for (const entry of cases.filter((entry) => entry.demo && !entry.demo.script_only)) {
+    assert.equal(entry.platform, "darwin");
+    assert.ok(entry.prerequisites.includes("screen_recording_permission"));
+  }
+});
+
 test("a local web app opened as localhost counts as opened", () => {
   const entry = demo("demo-packlight-web-from-script");
   const names = failed(
