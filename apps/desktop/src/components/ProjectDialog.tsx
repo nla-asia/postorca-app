@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { FolderOpen, Plus, Trash2 } from "lucide-react";
 import type { BrandProject } from "../lib/brand";
+import { folderError } from "../lib/folders";
 import { api } from "../lib/api";
 import { Button, Modal } from "./ui";
 import "./forms.css";
@@ -32,7 +33,7 @@ export default function ProjectDialog({
       await work();
     } catch (failure) {
       setError(
-        failure instanceof Error ? failure.message : "Unable to save project.",
+        folderError(failure, "Unable to save project."),
       );
     } finally {
       setBusy(false);
@@ -99,12 +100,11 @@ export default function ProjectDialog({
           />
         </label>
         <div className="project-folder-heading">
-          <strong>Source folders</strong>
+          <strong>Source folders <span className="pill">Read-only</span></strong>
           <span className="muted">{folders.length}/20</span>
         </div>
         <p className="muted">
-          Add repositories, designs, or notes for this project. Orca can read
-          files in these folders.
+          Orca’s file tools can read these repositories, designs, or notes, but cannot write to them. Generated content goes in your separate working folder.
         </p>
         <ul className="project-folder-list">
           {folders.map((folder) => (

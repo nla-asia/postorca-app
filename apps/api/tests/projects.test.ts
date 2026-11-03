@@ -400,7 +400,7 @@ test("capture tools check their target and reach the desktop without project fol
   }
 });
 
-test("file transfer tools validate their arguments and never send project folders", async () => {
+test("file transfer tools validate arguments and protect registered sources during downloads", async () => {
   const founder = await onboarded([
     { name: "Founder on X", url: "https://x.com/transfer-founder", kind: "x" },
   ]);
@@ -454,6 +454,7 @@ test("file transfer tools validate their arguments and never send project folder
             url: "https://example.com/track.mp3",
             filename: "track.mp3",
             source_url: "https://example.com/music",
+            read_only_roots: ["/Users/founder/app"],
           },
           240_000,
         ],
@@ -912,4 +913,37 @@ test("account deletion still cascades with a legacy chat and multiple project ch
   await fixture.db.query("DELETE FROM users WHERE id=$1", [founder.id]);
   assert.equal((await fixture.db.query("SELECT count(*)::int AS n FROM tasks WHERE user_id=$1", [founder.id])).rows[0].n, 0);
   assert.equal((await fixture.db.query("SELECT count(*)::int AS n FROM brand_projects WHERE user_id=$1", [founder.id])).rows[0].n, 0);
+});
+
+test("content writers receive all owned read-only roots, not just the active project's folders", async () => {
+  const { callDesktop } = await import("../src/desktop/calls.js");
+  const founder = await account();
+  const other = await account();
+  const add = async (owner: typeof founder, name: string, folders: string[]) =>
+    (await request("/brand-profile/projects", "POST", { name, folders }, owner.token)).data.project;
+  const project = await add(founder, "Active", ["/source/active", "/source/docs"]);
+  await add(founder, "Other", ["/source/other"]);
+  await add(other, "Foreign", ["/source/foreign"]);
+  const task = await createTask(fixture.db, founder.id, "work", "Plan", "content", project.id);
+  const turn = await createTurn(fixture.db, founder.id, task.id, "Plan content");
+  const context = { db: fixture.db, userId: founder.id, taskId: task.id, turnId: turn.id };
+  const deviceToken = (await request("/desktop/device-token", "POST", { deviceId: randomUUID() }, founder.token)).data.token;
+  const ws = new WebSocket(`${base.replace(/^http/, "ws")}/desktop/socket?token=${encodeURIComponent(deviceToken)}`);
+  const calls: any[] = [];
+  ws.on("message", async (raw) => {
+    const { data: sent } = JSON.parse(raw.toString()); calls.push(sent);
+    await request("/desktop/tool-result", "POST", { executionId: sent.executionId, ok: true, result: { folder: "Content/Plan", path: "/output/Content/Plan/plan.md" } }, deviceToken);
+  });
+  await once(ws, "open");
+  try {
+    await executeTool(fixture.db, context, "save_content_file", { name: "plan.md", text: "# Plan" });
+    for (const name of ["screen_record_stop", "video_export"])
+      await callDesktop(context, name, { timeoutMs: 1000 }, { content_folder: "Content/Plan" });
+    for (const call of calls)
+      assert.deepEqual(call.arguments.read_only_roots, ["/source/active", "/source/docs", "/source/other"]);
+    await assert.rejects(executeTool(fixture.db, context, "save_content_file", { name: "plan.md", text: "x", read_only_roots: [] }), /Unrecognized key/);
+    const profile = await executeTool(fixture.db, context, "read_brand_profile", {}) as any;
+    assert.deepEqual(profile.folder_access, { source_folders: "read_only", working_folder: "read_write" });
+    assert.equal(calls.length, 3);
+  } finally { ws.close(); }
 });

@@ -13,7 +13,7 @@ contextBridge.exposeInMainWorld("postorca", {
   },
   workingFolder: {
     get: () => ipcRenderer.invoke("working-folder:get"),
-    choose: () => ipcRenderer.invoke("working-folder:choose"),
+    choose: (sources = []) => ipcRenderer.invoke("working-folder:choose", sources),
   },
   /** Calls back with a notification the OS wouldn't show; returns unsubscribe. */
   onNotification: (callback) => {

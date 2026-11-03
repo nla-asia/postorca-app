@@ -11,7 +11,7 @@ const {
 // Node HTTP fetch stays separate from Electron/Edge cookie jars. The app owns
 // the destination and limits; neither is supplied by model arguments.
 async function downloadPublicFile(
-  { url, filename, source_url },
+  { url, filename, source_url, read_only_roots = [] },
   context,
   { directory, fetchImpl = fetch, maxBytes = MAX_BYTES, timeoutMs = 180_000 },
 ) {
@@ -57,7 +57,7 @@ async function downloadPublicFile(
         reported_type: response.headers.get("content-type")?.split(";")[0],
       },
       { ...context, signal },
-      { directory, maxBytes },
+      { directory, maxBytes, readOnlyRoots: read_only_roots },
     );
   } finally {
     await response?.body?.cancel().catch(() => {});

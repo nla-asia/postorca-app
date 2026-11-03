@@ -29,7 +29,7 @@ function abortable(promise, signal, onLateValue = () => {}) {
 async function fetchBrowserFile(
   page,
   session,
-  { url, filename },
+  { url, filename, read_only_roots = [] },
   context,
   { directory, maxBytes = MAX_BYTES, timeoutMs = 180_000 },
 ) {
@@ -107,7 +107,7 @@ async function fetchBrowserFile(
         reported_type: headers.get("content-type")?.split(";")[0],
       },
       { ...context, signal },
-      { directory, maxBytes },
+      { directory, maxBytes, readOnlyRoots: read_only_roots },
     );
   } finally {
     if (handle) await close(handle);

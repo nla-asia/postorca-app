@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { chooseWorkingFolder, folderError } from "../lib/folders";
 import BillingUsage from "./BillingUsage";
 import {
   CircleHelp,
@@ -73,6 +75,7 @@ export default function SettingsModal({
 
           {tab === "General" && (
             <>
+              <WorkingFolderSetting />
               <span className="field-section-label">Appearance</span>
               <div className="settings-group">
                 <div className="setting-row">
@@ -165,4 +168,40 @@ export default function SettingsModal({
       </div>
     </Modal>
   );
+}
+
+
+function WorkingFolderSetting() {
+  const folders = window.postorca?.workingFolder;
+  const [folder, setFolder] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (!folders) return;
+    let active = true;
+    void folders.get().then((value) => { if (active) setFolder(value); })
+      .catch((failure) => { if (active) setError(folderError(failure, "Unable to read the working folder.")); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [folders]);
+  if (!folders) return null;
+  return <>
+    <span className="field-section-label">Files</span>
+    <div className="settings-group">
+      <div className="setting-row">
+        <div><strong>Working folder <span className="pill">Read &amp; write</span></strong>
+          <p style={{ overflowWrap: "anywhere" }}>{loading ? "Loading…" : folder || "Choose a working folder."}</p>
+          <p>Generated content is saved here. Keep it separate from read-only project source folders.</p>
+        </div>
+        <Button disabled={busy} onClick={async () => {
+          setBusy(true); setError("");
+          try { const selected = await chooseWorkingFolder(); if (selected) setFolder(selected); }
+          catch (failure) { setError(folderError(failure, "Unable to change the working folder.")); }
+          finally { setBusy(false); }
+        }}>{busy ? "Choosing…" : "Change folder"}</Button>
+      </div>
+      {error && <p className="auth-error" role="alert">{error}</p>}
+    </div>
+  </>;
 }

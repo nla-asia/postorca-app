@@ -3,6 +3,7 @@
 // Saved in the app's settings file in userData.
 const fs = require("node:fs");
 const path = require("node:path");
+const { assertSeparated } = require("./folder-access.cjs");
 
 const file = () =>
   path.join(require("electron").app.getPath("userData"), "settings.json");
@@ -29,18 +30,19 @@ function set(folder) {
 }
 
 /** Opens the folder picker over win; saves and returns the choice, or null. */
-async function choose(win) {
+async function choose(win, sources = []) {
   const { dialog } = require("electron");
   const current = get();
   const result = await dialog.showOpenDialog(win, {
-    title: "Choose your content output folder",
+    title: "Choose your working folder",
     message:
-      "Orca saves plans, scripts, recordings, and finished content here. Add project source folders separately in the sidebar.",
+      "Orca can create and update generated content here. Keep this writable working folder separate from read-only project source folders.",
     buttonLabel: "Use this folder",
     defaultPath: current ?? require("electron").app.getPath("documents"),
     properties: ["openDirectory", "createDirectory"],
   });
   if (result.canceled || !result.filePaths[0]) return null;
+  assertSeparated(result.filePaths[0], sources);
   set(result.filePaths[0]);
   return result.filePaths[0];
 }

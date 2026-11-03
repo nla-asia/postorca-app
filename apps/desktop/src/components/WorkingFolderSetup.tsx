@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { FolderOpen, LoaderCircle } from "lucide-react";
 import { Button } from "./ui";
 import BrandMark from "./BrandMark";
+import { chooseWorkingFolder, folderError } from "../lib/folders";
 import "./AuthScreen.css";
 import "./forms.css";
 
@@ -32,7 +33,7 @@ export default function WorkingFolderSetup({
       () => {
         if (!cancelled) {
           setError(
-            "Unable to check your content output folder. Choose a folder to continue.",
+            "Unable to check your working folder. Choose a folder to continue.",
           );
           setChecking(false);
         }
@@ -51,7 +52,7 @@ export default function WorkingFolderSetup({
         <div
           className="auth-loading"
           role="status"
-          aria-label="Checking content output folder"
+          aria-label="Checking working folder"
         >
           <LoaderCircle className="loading-icon" size={24} />
         </div>
@@ -62,11 +63,10 @@ export default function WorkingFolderSetup({
               <BrandMark />
               <span>PostOrca</span>
             </div>
-            <h1>Choose your content output folder</h1>
+            <h1>Choose your working folder</h1>
             <div className="form-stack">
               <p>
-                Choose where Orca saves plans, scripts, recordings, and finished
-                content. You can add source folders for each project separately.
+                Orca can create and update plans, scripts, recordings, and finished content here. Keep this writable working folder separate from your read-only project source folders.
               </p>
               {error && (
                 <p className="auth-error" role="alert">
@@ -82,12 +82,10 @@ export default function WorkingFolderSetup({
                   setBusy(true);
                   setError("");
                   try {
-                    const folder = await folders.choose();
+                    const folder = await chooseWorkingFolder();
                     if (folder) setReady(true);
-                  } catch {
-                    setError(
-                      "Unable to save your content output folder. Please try again.",
-                    );
+                  } catch (error) {
+                    setError(folderError(error, "Unable to save your working folder. Please try again."));
                   } finally {
                     setBusy(false);
                   }

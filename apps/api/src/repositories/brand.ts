@@ -31,6 +31,7 @@ export async function getAgentProfile(
 ) {
   const profile = await getProfile(db, userId);
   delete profile.company;
+  profile.folder_access = { source_folders: "read_only", working_folder: "read_write" };
   if (projectId) {
     profile.projects = profile.projects.filter(
       (project: { id: string }) => project.id === projectId,
