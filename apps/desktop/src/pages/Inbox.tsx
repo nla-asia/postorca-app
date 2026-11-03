@@ -231,7 +231,11 @@ export default function Inbox({
                             <span className="meta-dot">·</span>
                           </>
                         )}
-                        <span>{task.project_name || (task.routine_title ? "Routine" : "Work")}</span>
+                        <span>
+                          {task.project_name
+                            ? `Project: ${task.project_name}`
+                            : task.routine_title ? "Routine" : "Work"}
+                        </span>
                       </div>
                       <span className="proposal-time">
                         {timeAgo(task.created_at)}
