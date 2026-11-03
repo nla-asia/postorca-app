@@ -186,10 +186,7 @@ export default function Calendar({
                 ? (items ?? [])
                     .filter(
                       (item) =>
-                        projectFilter === "all" ||
-                        (projectFilter === "none"
-                          ? !item.project_id
-                          : item.project_id === projectFilter),
+                        projectFilter === "all" || item.project_id === projectFilter,
                     )
                     .filter(
                       (item) =>
@@ -307,9 +304,7 @@ export default function Calendar({
               item={selected}
               when={when}
               projectId={
-                projectFilter !== "all" && projectFilter !== "none"
-                  ? projectFilter
-                  : undefined
+                projectFilter !== "all" ? projectFilter : undefined
               }
               onSaved={() => {
                 setEditing(null);

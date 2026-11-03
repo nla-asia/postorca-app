@@ -13,6 +13,7 @@ const path = require("node:path");
 const { DesktopConnection } = require("./connection.cjs");
 const plugins = require("./plugins/index.cjs");
 const workingFolder = require("./working-folder.cjs");
+const { assertSeparated } = require("./folder-access.cjs");
 
 // Keep the login in this user's local app profile, without accessing the Keychain.
 const sessionFile = () => path.join(app.getPath("userData"), "session.json");
@@ -138,20 +139,23 @@ ipcMain.handle("project-folder:choose", async (event) => {
     {
       title: "Add a source folder",
       message:
-        "Orca can read what changes in this folder, such as code, docs and designs, to find content ideas in your work.",
-      buttonLabel: "Add project",
+        "Read-only source: Orca’s file tools can read this folder. It must be separate from your writable working folder.",
+      buttonLabel: "Add source folder",
       properties: ["openDirectory"],
     },
   );
-  return result.canceled ? null : (result.filePaths[0] ?? null);
+  const selected = result.canceled ? null : (result.filePaths[0] ?? null);
+  const working = workingFolder.get();
+  if (selected && working) assertSeparated(working, [selected]);
+  return selected;
 });
 
 ipcMain.handle("working-folder:get", (event) =>
   trusted(event) ? workingFolder.get() : null,
 );
-ipcMain.handle("working-folder:choose", (event) =>
+ipcMain.handle("working-folder:choose", (event, sources = []) =>
   trusted(event)
-    ? workingFolder.choose(BrowserWindow.fromWebContents(event.sender))
+    ? workingFolder.choose(BrowserWindow.fromWebContents(event.sender), sources)
     : null,
 );
 

@@ -178,10 +178,7 @@ export default function Workspace({
   const filteredTasks =
     work.tasks?.filter(
       (task) =>
-        projectFilter === "all" ||
-        (projectFilter === "none"
-          ? !task.project_id
-          : task.project_id === projectFilter),
+        projectFilter === "all" || task.project_id === projectFilter,
     ) ?? null;
   return (
     <div className="app-shell">
@@ -216,7 +213,11 @@ export default function Workspace({
         }}
       />
       <main className="workspace" aria-label={page}>
-        <InAppNotifications onOpen={openWork} />
+        {/* The Inbox list already brings incoming work to the founder's attention.
+            Unmount its notification queue here so old banners do not return later. */}
+        {(page !== "Inbox" || selected) && (
+          <InAppNotifications onOpen={openWork} />
+        )}
         {page !== "Project" && !selected && (
           <header className="topbar">
             <h1 className="topbar-title">{page}</h1>
@@ -240,7 +241,6 @@ export default function Workspace({
               onChange={(event) => setProjectFilter(event.target.value)}
             >
               <option value="all">All projects</option>
-              <option value="none">Without a project</option>
               {brand.projects.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}

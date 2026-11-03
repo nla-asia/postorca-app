@@ -1,3 +1,5 @@
+import type { Database } from "../db.js";
+import { listProjects } from "../repositories/projects.js";
 import { randomUUID } from "node:crypto";
 import { HttpError } from "../handlers/errors.js";
 import { desktopConnections } from "./connections.js";
@@ -24,6 +26,7 @@ const pending = new Map<string, Pending>();
 export async function callDesktop(
   context: {
     userId: string;
+    db?: Database;
     taskId?: string;
     turnId?: string;
     signal?: AbortSignal;
@@ -41,6 +44,10 @@ export async function callDesktop(
   if (!deviceId) {
     if (tool.offline) return tool.offline();
     throw new HttpError(503, "The desktop app is not connected.");
+  }
+  if (context.db && args && typeof args === "object" &&
+      (["write_content_file", "download_file", "browser_fetch_file"].includes(name) || (["screen_record_stop", "video_export"].includes(name) && "content_folder" in args))) {
+    args = { ...args, read_only_roots: (await listProjects(context.db, context.userId)).flatMap((project) => project.folders) };
   }
   const executionId = randomUUID();
   const outcome = await new Promise<Outcome>((resolve) => {

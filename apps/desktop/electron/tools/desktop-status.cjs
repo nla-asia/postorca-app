@@ -13,6 +13,7 @@ exports.run = async (_args, context) => ({
   window_open: BrowserWindow.getAllWindows().length > 0,
   // Where list_dir and read_file work besides project folders; null until chosen.
   working_folder: require("../working-folder.cjs").get(),
+  folder_access: { working_folder: "read_write", source_folders: "read_only" },
   plugins: await plugins.status(),
   tools: context.tools,
 });
