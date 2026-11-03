@@ -159,7 +159,7 @@ export default function WorkDetail({
           <button
             className="icon-button"
             onClick={onBack}
-            aria-label="Back to work"
+            aria-label="Back to Inbox"
           >
             <ArrowLeft size={19} />
           </button>
@@ -223,7 +223,7 @@ export default function WorkDetail({
         <button
           className="icon-button"
           onClick={onBack}
-          aria-label={task.project_id ? "Back to project" : "Back to Inbox"}
+          aria-label="Back to Inbox"
         >
           <ArrowLeft size={19} />
         </button>

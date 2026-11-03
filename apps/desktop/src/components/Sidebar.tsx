@@ -11,6 +11,7 @@ import { navigation, type Page } from "../navigation";
 import { api, type AuthUser } from "../lib/api";
 import type { BrandProject } from "../lib/brand";
 import type { WorkTask } from "../lib/schedules";
+import "./Projects.css";
 import { Button } from "./ui";
 
 export default function Sidebar({
@@ -18,7 +19,7 @@ export default function Sidebar({
   tasks,
   projectId,
   selectedTaskId,
-  onOpenProject,
+  onManageProject,
   onOpenTask,
   onAddProject,
   page,
@@ -32,7 +33,7 @@ export default function Sidebar({
   tasks: WorkTask[];
   projectId: string | null;
   selectedTaskId: string | null;
-  onOpenProject: (id: string) => void;
+  onManageProject: (id: string) => void;
   onOpenTask: (id: string) => void;
   onAddProject: () => void;
   page: Page;
@@ -43,6 +44,7 @@ export default function Sidebar({
   reviewCount?: number;
 }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [showAll, setShowAll] = useState<Set<string>>(new Set());
   const [plan, setPlan] = useState<{ userId: string; name: string } | null>(
     null,
   );
@@ -145,7 +147,7 @@ export default function Sidebar({
           return (
             <div key={project.id} className="sidebar-project-group">
               <div
-                className={`sidebar-project-row ${page === "Project" && projectId === project.id && !selectedTaskId ? "active" : ""}`}
+                className={`sidebar-project-row ${projectId === project.id ? "active" : ""}`}
               >
                 <button
                   className="project-disclosure"
@@ -167,7 +169,9 @@ export default function Sidebar({
                 </button>
                 <button
                   className="project-name"
-                  onClick={() => onOpenProject(project.id)}
+                  aria-haspopup="dialog"
+                  title={`Manage ${project.name} folders`}
+                  onClick={() => onManageProject(project.id)}
                 >
                   <FolderOpen size={17} />
                   <span>{project.name}</span>
@@ -175,28 +179,38 @@ export default function Sidebar({
               </div>
               {expanded && (
                 <div className="sidebar-project-tasks">
-                  {recent.slice(0, 5).map((task) => (
+                  {recent
+                    .slice(0, showAll.has(project.id) ? undefined : 5)
+                    .map((task) => (
+                      <button
+                        key={task.id}
+                        title={task.title}
+                        className={`project-task ${selectedTaskId === task.id ? "active" : ""}`}
+                        onClick={() => onOpenTask(task.id)}
+                      >
+                        <span>{task.title}</span>
+                        {["queued", "running"].includes(task.status ?? "") && (
+                          <span
+                            className="project-task-dot"
+                            aria-label="Working"
+                          />
+                        )}
+                      </button>
+                    ))}
+                  {recent.length > 5 && (
                     <button
-                      key={task.id}
-                      title={task.title}
-                      className={`project-task ${selectedTaskId === task.id ? "active" : ""}`}
-                      onClick={() => onOpenTask(task.id)}
+                      className="project-task project-more"
+                      onClick={() =>
+                        setShowAll((current) => {
+                          const next = new Set(current);
+                          if (!next.delete(project.id)) next.add(project.id);
+                          return next;
+                        })
+                      }
                     >
-                      <span>{task.title}</span>
-                      {["queued", "running"].includes(task.status ?? "") && (
-                        <span
-                          className="project-task-dot"
-                          aria-label="Working"
-                        />
-                      )}
+                      {showAll.has(project.id) ? "Show less" : "Show more"}
                     </button>
-                  ))}
-                  <button
-                    className="project-task project-more"
-                    onClick={() => onOpenProject(project.id)}
-                  >
-                    {recent.length > 5 ? "Show all work" : "View project"}
-                  </button>
+                  )}
                 </div>
               )}
             </div>

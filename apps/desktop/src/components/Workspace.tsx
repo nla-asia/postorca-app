@@ -20,7 +20,7 @@ import { useWorkTasks } from "../lib/useWorkTasks";
 import Routines from "../pages/Routines";
 import Calendar from "../pages/Calendar";
 import Posts from "../pages/Posts";
-import Project, { ProjectEditor } from "../pages/Project";
+import ProjectDialog from "./ProjectDialog";
 import BrandProfile from "../pages/BrandProfile";
 
 export default function Workspace({
@@ -34,7 +34,6 @@ export default function Workspace({
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
 }) {
-  const [projectId, setProjectId] = useState<string | null>(null);
   const [projectEditor, setProjectEditor] = useState<string | "new" | null>(
     null,
   );
@@ -53,7 +52,6 @@ export default function Workspace({
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState<InboxFilter>("review");
   const work = useWorkTasks(user.id);
-  const projectWork = useWorkTasks(projectId ? user.id : undefined, projectId);
   const [brand, setBrand] = useState<Brand | null>(null);
   const [brandError, setBrandError] = useState("");
   const loadBrand = useCallback(async () => {
@@ -96,17 +94,13 @@ export default function Workspace({
   }, [brand?.onboarding_status]); // eslint-disable-line react-hooks/exhaustive-deps
   const openWork = (id: string) => {
     setSelected(id);
-    const project = [...(work.tasks ?? []), ...(projectWork.tasks ?? [])].find(
-      (task) => task.id === id,
-    )?.project_id;
-    setProjectId(project ?? null);
-    setPage(project ? "Project" : "Inbox");
+    setPage("Inbox");
     void work.reload();
   };
   // Clicking a desktop notification (work finished) opens its task.
   useEffect(
     () => window.postorca?.onOpenTask((taskId) => openWork(taskId)),
-    [work.tasks, projectWork.tasks], // eslint-disable-line react-hooks/exhaustive-deps
+    [work.tasks], // eslint-disable-line react-hooks/exhaustive-deps
   );
   useEffect(() => {
     if (!notice) return;
@@ -166,7 +160,6 @@ export default function Workspace({
         {settingsDialog}
       </>
     );
-  const project = brand.projects.find((item) => item.id === projectId);
   const filteredTasks =
     work.tasks?.filter(
       (task) =>
@@ -180,20 +173,21 @@ export default function Workspace({
       <Sidebar
         projects={brand.projects}
         tasks={work.tasks ?? []}
-        projectId={projectId}
+        projectId={
+          projectEditor === "new"
+            ? null
+            : (projectEditor ??
+              work.tasks?.find((task) => task.id === selected)?.project_id ??
+              null)
+        }
         selectedTaskId={selected}
-        onOpenProject={(id) => {
-          setProjectId(id);
-          setSelected(null);
-          setPage("Project");
-        }}
+        onManageProject={setProjectEditor}
         onOpenTask={openWork}
         onAddProject={() => setProjectEditor("new")}
         user={{ ...user, name: profileName }}
         page={page}
         onNavigate={(next) => {
           setSelected(null);
-          setProjectId(null);
           setPage(next);
         }}
         reviewCount={work.attention}
@@ -205,7 +199,7 @@ export default function Workspace({
       />
       <main className="workspace" aria-label={page}>
         <InAppNotifications onOpen={openWork} />
-        {page !== "Agent" && page !== "Project" && !selected && (
+        {page !== "Agent" && !selected && (
           <header className="topbar">
             <h1 className="topbar-title">{page}</h1>
           </header>
@@ -229,25 +223,6 @@ export default function Workspace({
             </select>
           </label>
         )}
-        {page === "Project" && project && !selected && (
-          <Project
-            key={project.id}
-            project={project}
-            tasks={(projectWork.tasks ?? []).filter(
-              (task) => task.project_id === project.id,
-            )}
-            loading={projectWork.tasks === null}
-            error={projectWork.error}
-            onRetry={() => void projectWork.reload()}
-            onSettings={() => setProjectEditor(project.id)}
-            onOpenWork={openWork}
-            onCreated={(id) => {
-              setSelected(id);
-              void work.reload();
-              void projectWork.reload();
-            }}
-          />
-        )}
         {page === "Inbox" && !selected && (
           <Inbox
             tasks={filteredTasks}
@@ -263,12 +238,11 @@ export default function Workspace({
             onSelect={openWork}
             onChanged={() => {
               void work.reload();
-              void projectWork.reload();
             }}
             notify={setNotice}
           />
         )}
-        {(page === "Inbox" || page === "Project") && selected && (
+        {page === "Inbox" && selected && (
           <WorkDetail
             key={selected}
             taskId={selected}
@@ -280,7 +254,6 @@ export default function Workspace({
             onOpenTask={openWork}
             onChanged={() => {
               void work.reload();
-              void projectWork.reload();
             }}
             notify={setNotice}
           />
@@ -302,7 +275,7 @@ export default function Workspace({
         )}
       </main>
       {projectEditor && (
-        <ProjectEditor
+        <ProjectDialog
           key={projectEditor}
           project={
             brand.projects.find((item) => item.id === projectEditor) ?? null
@@ -323,9 +296,6 @@ export default function Workspace({
                   }
                 : current,
             );
-            setProjectId(saved.id);
-            setSelected(null);
-            setPage("Project");
           }}
           onDeleted={async () => {
             setBrand((current) =>
@@ -339,10 +309,7 @@ export default function Workspace({
                 : current,
             );
             await work.reload();
-            setProjectId(null);
-            setSelected(null);
-            setProjectFilter("all");
-            setPage("Inbox");
+            setProjectFilter((current) => current === projectEditor ? "all" : current);
           }}
         />
       )}

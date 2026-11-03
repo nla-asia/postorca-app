@@ -432,107 +432,39 @@ test("with no plugins enabled, routine work can still read core skills", async (
   assert.doesNotMatch(requests[0].instructions, /Plugins:/);
 });
 
-test("project content starts atomically from the UI and model context stays with its product on follow-up", async () => {
+test("the agent delegates project work and follow-ups retain that product context", async () => {
   const { addProject } = await import("../src/repositories/projects.js");
   const founder = await account();
-  const first = (
-    await addProject(fixture.db, founder.id, {
-      name: "Scholar",
-      folders: ["/source/mobile", "/source/docs"],
-      description: "Research tools",
-    })
-  ).project;
-  const other = (
-    await addProject(fixture.db, founder.id, {
-      name: "OtherProduct",
-      folders: ["/source/other"],
-      description: "Unrelated product",
-    })
-  ).project;
+  const first = (await addProject(fixture.db, founder.id, {
+    name: "Scholar", folders: ["/source/mobile", "/source/docs"], description: "Research tools",
+  })).project;
+  const other = (await addProject(fixture.db, founder.id, {
+    name: "OtherProduct", folders: ["/source/other"], description: "Unrelated product",
+  })).project;
+  const chat = await createTask(fixture.db, founder.id, "chat", "Orca");
   requests.length = 0;
-  script = async () => reply("Here is the proposed plan for your review.");
-  const started = await post(
-    url,
-    "",
-    {
-      kind: "work",
-      work_type: "content",
-      project_id: first.id,
-      title: "Release video",
-      message: "Plan the release video",
-    },
-    founder.token,
-  );
-  assert.equal(started.status, 201);
-  const detail = await settled(founder.id, started.data.id);
+  script = async (request) => request.cacheKey === chat.id && lastMessage(request).kind === "user"
+    ? reply("", [call("start_task", { title: "Release video", instructions: "Plan the release video", work_type: "content", project_id: first.id })])
+    : reply("Here is the proposed plan for your review.");
+  await post(url, `/${chat.id}/turns`, { message: "Plan a release video for Scholar" }, founder.token);
+  const conversation = await settled(founder.id, chat.id);
+  const dispatched = conversation.turns[0].messages.find((message: StoredMessage) => message.kind === "tool_result")!.content.result as { task_id: string };
+  const detail = await settled(founder.id, dispatched.task_id);
   assert.equal(detail.project_id, first.id);
   assert.equal(detail.work_type, "content");
-  assert.equal(detail.turns.length, 1);
-  assert.equal(
-    detail.turns[0].messages[0].content.text,
-    "Plan the release video",
-  );
-  assert.match(
-    requests[0].instructions,
-    /Use active_project as the product context/,
-  );
-  assert.match(requests[0].instructions, /\/source\/mobile/);
-  assert.match(requests[0].instructions, /\/source\/docs/);
-  assert.doesNotMatch(requests[0].instructions, /OtherProduct|\/source\/other/);
-  // Work in another project does not change the first task's saved context.
-  const another = await post(
-    url,
-    "",
-    {
-      kind: "work",
-      work_type: "content",
-      project_id: other.id,
-      title: "Other video",
-      message: "Plan another video",
-    },
-    founder.token,
-  );
-  await settled(founder.id, another.data.id);
-  await post(
-    url,
-    `/${detail.id}/turns`,
-    { message: "Make the script shorter" },
-    founder.token,
-  );
+  assert.equal(detail.turns[0].messages[0].content.text, "Plan the release video");
+  const workerRequest = requests.find((request) => request.cacheKey === detail.id)!;
+  assert.match(workerRequest.instructions, /Use active_project as the product context/);
+  assert.match(workerRequest.instructions, /\/source\/mobile/);
+  assert.match(workerRequest.instructions, /\/source\/docs/);
+  assert.doesNotMatch(workerRequest.instructions, /OtherProduct|\/source\/other/);
+  const another = await createWorkTask(fixture.db, founder.id, "Other video", "Plan another video", undefined, "content", other.id);
+  agent.dispatch(another.task.id, another.turn.id, founder.id);
+  await settled(founder.id, another.task.id);
+  await post(url, `/${detail.id}/turns`, { message: "Make the script shorter" }, founder.token);
   const updated = await settled(founder.id, detail.id);
   assert.equal(updated.project_id, first.id);
   assert.equal(updated.turns.length, 2);
   assert.match(requests.at(-1)!.instructions, /\/source\/mobile/);
-  assert.doesNotMatch(
-    requests.at(-1)!.instructions,
-    /OtherProduct|\/source\/other/,
-  );
-  const before = (
-    await fixture.db.query(
-      "SELECT count(*)::int AS n FROM tasks WHERE user_id=$1",
-      [founder.id],
-    )
-  ).rows[0].n;
-  const unavailable = await post(
-    offlineUrl,
-    "",
-    {
-      kind: "work",
-      work_type: "content",
-      project_id: first.id,
-      title: "Offline",
-      message: "Create content",
-    },
-    founder.token,
-  );
-  assert.equal(unavailable.status, 503);
-  assert.equal(
-    (
-      await fixture.db.query(
-        "SELECT count(*)::int AS n FROM tasks WHERE user_id=$1",
-        [founder.id],
-      )
-    ).rows[0].n,
-    before,
-  );
+  assert.doesNotMatch(requests.at(-1)!.instructions, /OtherProduct|\/source\/other/);
 });

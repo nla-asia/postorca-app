@@ -4,7 +4,6 @@ import { z } from "zod";
 import type { Database } from "../db.js";
 import {
   ownedTask,
-  createWorkTask,
   createTask,
   listTasks,
   reviewTask,
@@ -35,28 +34,8 @@ export function taskRoutes(db: Database, agent: AgentRouter | null) {
         // Background work only: a content task has a plan, an approved script, a folder.
         work_type: z.enum(["general", "content"]).optional(),
         project_id: z.uuid().optional(),
-        message: z.string().trim().min(1).max(30000).optional(),
       })
       .parse(req.body);
-    if (data.message) {
-      if (data.kind !== "work")
-        throw new HttpError(400, "Only work can start with a request.");
-      if (!agent)
-        throw new HttpError(503, "Orca’s model provider is not configured.");
-      await assertHasCredits(db, res.locals.userId);
-      const { task, turn } = await createWorkTask(
-        db,
-        res.locals.userId,
-        data.title,
-        data.message,
-        undefined,
-        data.work_type,
-        data.project_id,
-      );
-      agent.dispatch(task.id, turn.id, res.locals.userId);
-      res.status(201).json(task);
-      return;
-    }
     const task = await createTask(
       db,
       res.locals.userId,
