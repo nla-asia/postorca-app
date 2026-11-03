@@ -5,7 +5,6 @@ const {
   ipcMain,
   Menu,
   Notification,
-  safeStorage,
   shell,
 } = require("electron");
 const crypto = require("node:crypto");
@@ -15,15 +14,13 @@ const { DesktopConnection } = require("./connection.cjs");
 const plugins = require("./plugins/index.cjs");
 const workingFolder = require("./working-folder.cjs");
 
-// Persist the session with the OS keychain. Without encryption, keep it in memory.
-const sessionFile = () => path.join(app.getPath("userData"), "session.bin");
+// Keep the login in this user's local app profile, without accessing the Keychain.
+const sessionFile = () => path.join(app.getPath("userData"), "session.json");
+const legacySessionFile = () => path.join(app.getPath("userData"), "session.bin");
 let session = null;
 function readSession() {
   try {
-    if (!safeStorage.isEncryptionAvailable()) return null;
-    const saved = JSON.parse(
-      safeStorage.decryptString(fs.readFileSync(sessionFile())),
-    );
+    const saved = JSON.parse(fs.readFileSync(sessionFile(), "utf8"));
     return typeof saved?.token === "string" && typeof saved?.apiUrl === "string"
       ? saved
       : null;
@@ -33,16 +30,15 @@ function readSession() {
 }
 function writeSession(value) {
   session = value;
-  if (!safeStorage.isEncryptionAvailable()) return;
-  fs.writeFileSync(
-    sessionFile(),
-    safeStorage.encryptString(JSON.stringify(value)),
-    { mode: 0o600 },
-  );
+  fs.writeFileSync(sessionFile(), JSON.stringify(value), { mode: 0o600 });
+  fs.chmodSync(sessionFile(), 0o600);
+  // Old encrypted sessions are replaced only after a successful new sign-in.
+  fs.rmSync(legacySessionFile(), { force: true });
 }
 function clearSession() {
   session = null;
   fs.rmSync(sessionFile(), { force: true });
+  fs.rmSync(legacySessionFile(), { force: true });
 }
 let refreshing = null;
 /**
@@ -262,7 +258,7 @@ app.on("second-instance", () => {
 // Windows shows notifications only for an app with this ID.
 if (process.platform === "win32") app.setAppUserModelId("com.postorca.desktop");
 app.whenReady().then(() => {
-  // Keep the internal name (and its data/Keychain identity) stable; only brand
+  // Keep the internal name (and its profile path) stable; only brand
   // the visible native UI. Electron otherwise labels these with the npm name.
   app.setAboutPanelOptions({ applicationName: "PostOrca" });
   if (process.platform === "darwin") {
