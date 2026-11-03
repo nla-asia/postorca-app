@@ -3,7 +3,11 @@ import { api } from "./api";
 import type { WorkTask } from "./schedules";
 
 export type WorkState =
-  "working" | "failed" | "review" | "approved" | "archived";
+  | "working"
+  | "failed"
+  | "review"
+  | "approved"
+  | "archived";
 export function workState(task: WorkTask): WorkState {
   if (task.archived_at) return "archived";
   if (task.status === "queued" || task.status === "running") return "working";
@@ -13,7 +17,10 @@ export function workState(task: WorkTask): WorkState {
 }
 
 /** Inbox work items. Polls so routine runs started by the server appear on their own. */
-export function useWorkTasks(userId: string | undefined) {
+export function useWorkTasks(
+  userId: string | undefined,
+  projectId?: string | null,
+) {
   const [tasks, setTasks] = useState<WorkTask[] | null>(null);
   const [error, setError] = useState("");
   const requestController = useRef<AbortController | null>(null);
@@ -23,12 +30,15 @@ export function useWorkTasks(userId: string | undefined) {
     const controller = new AbortController();
     requestController.current = controller;
     try {
-      const saved = await api<WorkTask[]>("/tasks?kind=work", {
-        signal: AbortSignal.any([
-          controller.signal,
-          AbortSignal.timeout(15000),
-        ]),
-      });
+      const saved = await api<WorkTask[]>(
+        `/tasks?kind=work${projectId ? `&project_id=${encodeURIComponent(projectId)}` : ""}`,
+        {
+          signal: AbortSignal.any([
+            controller.signal,
+            AbortSignal.timeout(15000),
+          ]),
+        },
+      );
       if (controller.signal.aborted) return;
       setTasks(saved);
       setError("");
@@ -43,7 +53,7 @@ export function useWorkTasks(userId: string | undefined) {
       if (requestController.current === controller)
         requestController.current = null;
     }
-  }, [userId]);
+  }, [userId, projectId]);
   useEffect(() => {
     setTasks(null);
     void reload();

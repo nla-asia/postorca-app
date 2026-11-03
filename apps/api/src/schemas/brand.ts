@@ -36,14 +36,25 @@ export const profileSchema = z.object({
   links: z.array(brandLinkSchema).max(50),
   onboarding_status: z.enum(["not_started", "in_progress", "completed"]),
 });
-/** A folder on the founder's computer where they build; see brand_projects. */
+const folderPath = z.string().trim().min(1).max(1000);
+const foldersSchema = z
+  .array(folderPath)
+  .min(1)
+  .max(20)
+  .refine(
+    (folders) => new Set(folders).size === folders.length,
+    "Each folder must be different.",
+  );
+/** A product with one or more local source folders. path accepts older clients. */
 export const projectSchema = z
   .object({
     name: z.string().trim().min(1).max(80),
-    path: z.string().trim().min(1).max(1000),
+    path: folderPath.optional(),
+    folders: foldersSchema.optional(),
     description: z.string().trim().max(500).default(""),
   })
   .strict();
+export const projectUpdateSchema = projectSchema.omit({ path: true });
 export type ProjectInput = z.infer<typeof projectSchema>;
 export type BrandLinkInput = z.infer<typeof brandLinkSchema>;
 export type ProfileInput = z.infer<typeof profileSchema>;

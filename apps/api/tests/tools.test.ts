@@ -101,7 +101,8 @@ test("unknown tools are refused with a message the model can act on", async () =
 test("link tools save or delete one owned link and profile updates leave links alone", async () => {
   const userId = await account();
   const other = await account();
-  const context = { userId, taskId: "unused", turnId: "unused" };
+  const task = await createTask(fixture.db, userId, "chat", "Orca");
+  const context = { userId, taskId: task.id, turnId: "unused" };
   const first = await run(context, "save_brand_link", {
     name: "Website",
     url: "https://example.com",

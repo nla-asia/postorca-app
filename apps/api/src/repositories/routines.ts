@@ -1,5 +1,6 @@
 import { transaction, type Database, type Queryable } from "../db.js";
 import { HttpError } from "../handlers/errors.js";
+import { assertProject } from "./projects.js";
 import { appendMessage } from "./tasks.js";
 import { startPublication } from "./publications.js";
 import {
@@ -25,6 +26,7 @@ export type RoutineRow = {
   title: string;
   instructions: string;
   work_type?: WorkType;
+  project_id?: string | null;
   run_at?: Date | string | null;
 };
 export type RoutineFields = {
@@ -37,6 +39,7 @@ export type RoutineFields = {
   timezone: string;
   active: boolean;
   work_type?: WorkType;
+  project_id?: string | null;
 };
 export type StartedRun = {
   runId: string;
@@ -54,11 +57,13 @@ export type OnceFields = {
   /** The idea artifact this schedule turns into content. */
   source_artifact_id?: string;
   work_type?: WorkType;
+  project_id?: string | null;
 };
 
 // Client-facing routine shape, including the most recent run and its live status.
 const routineSelect = `
-  SELECT r.id, r.platform, r.title, r.instructions, r.work_type,
+  SELECT r.id, r.platform, r.title, r.instructions, r.work_type, r.project_id,
+    (SELECT name FROM brand_projects WHERE id=r.project_id) AS project_name,
     to_char(r.time_of_day, 'HH24:MI') AS time, r.days, r.timezone, r.active,
     r.next_run_at, r.run_at, r.created_at,
     lr.created_at AS last_run_at, lr.trigger AS last_run_trigger,
@@ -101,8 +106,8 @@ export async function startRoutineRun(
   const {
     rows: [task],
   } = await client.query(
-    `INSERT INTO tasks(user_id, kind, title, platform, work_type)
-     VALUES ($1, 'work', $2, $3, (SELECT work_type FROM routines WHERE id = $4)) RETURNING id`,
+    `INSERT INTO tasks(user_id, kind, title, platform, work_type, project_id)
+     SELECT $1, 'work', $2, $3, work_type, project_id FROM routines WHERE id=$4 RETURNING id`,
     [routine.user_id, routine.title, routine.platform, routine.id],
   );
   const {
@@ -209,7 +214,7 @@ export async function queueIdeaContent(
   const {
     rows: [idea],
   } = await db.query(
-    `SELECT a.id, a.title, a.content, t.platform, coalesce(u.timezone, 'UTC') AS timezone
+    `SELECT a.id, a.title, a.content, t.platform, t.project_id, coalesce(u.timezone, 'UTC') AS timezone
      FROM artifacts a JOIN tasks t ON t.id = a.task_id JOIN users u ON u.id = t.user_id
      WHERE a.id = $1 AND a.task_id = $2 AND t.user_id = $3 AND a.kind = 'idea'`,
     [artifactId, taskId, userId],
@@ -228,6 +233,7 @@ export async function queueIdeaContent(
       run_at: new Date(Date.now() + IDEA_QUEUE_DELAY_MS).toISOString(),
       timezone: idea.timezone,
       source_artifact_id: idea.id,
+      project_id: idea.project_id,
       work_type: "content",
     });
     return getRoutine(db, userId, routineId);
@@ -246,6 +252,7 @@ export async function createRoutine(
   data: RoutineFields | OnceFields,
 ): Promise<string> {
   return transaction(db, async (client) => {
+    await assertProject(client, userId, data.project_id);
     // Serialize creation per user so the cap holds under concurrency.
     await client.query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [
       userId,
@@ -265,8 +272,8 @@ export async function createRoutine(
       const {
         rows: [created],
       } = await client.query(
-        `INSERT INTO routines(user_id, platform, title, instructions, timezone, run_at, next_run_at, source_artifact_id, work_type)
-         VALUES ($1,$2,$3,$4,$5,$6,$6,$7,coalesce($8,'general')) RETURNING id`,
+        `INSERT INTO routines(user_id, platform, title, instructions, timezone, run_at, next_run_at, source_artifact_id, work_type, project_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$6,$7,coalesce($8,'general'),$9) RETURNING id`,
         [
           userId,
           data.platform ?? null,
@@ -276,6 +283,7 @@ export async function createRoutine(
           data.run_at,
           data.source_artifact_id ?? null,
           data.work_type ?? null,
+          data.project_id ?? null,
         ],
       );
       return created.id;
@@ -283,9 +291,9 @@ export async function createRoutine(
     const {
       rows: [created],
     } = await client.query(
-      `INSERT INTO routines(user_id, platform, title, instructions, time_of_day, days, timezone, active, next_run_at, work_type)
+      `INSERT INTO routines(user_id, platform, title, instructions, time_of_day, days, timezone, active, next_run_at, work_type, project_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
-         ${NEXT_RUN}, coalesce($9, 'general'))
+         ${NEXT_RUN}, coalesce($9, 'general'), $10)
        RETURNING id`,
       [
         userId,
@@ -297,6 +305,7 @@ export async function createRoutine(
         data.timezone,
         data.active,
         data.work_type ?? null,
+        data.project_id ?? null,
       ],
     );
     return created.id;
@@ -643,7 +652,10 @@ export async function startManualRun(
     );
     if (!routine) throw new HttpError(404, "Routine not found.");
     if (routine.run_at)
-      throw new HttpError(400, "Calendar tasks run once at their scheduled time.");
+      throw new HttpError(
+        400,
+        "Calendar tasks run once at their scheduled time.",
+      );
     const {
       rows: [busy],
     } = await client.query(

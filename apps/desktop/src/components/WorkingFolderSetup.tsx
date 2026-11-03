@@ -31,12 +31,16 @@ export default function WorkingFolderSetup({
       },
       () => {
         if (!cancelled) {
-          setError("Unable to check your working folder. Choose a folder to continue.");
+          setError(
+            "Unable to check your content output folder. Choose a folder to continue.",
+          );
           setChecking(false);
         }
       },
     );
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [folders]);
 
   if (ready) return children;
@@ -44,7 +48,11 @@ export default function WorkingFolderSetup({
     <div className="auth-screen">
       <div className="auth-titlebar" />
       {checking ? (
-        <div className="auth-loading" role="status" aria-label="Checking working folder">
+        <div
+          className="auth-loading"
+          role="status"
+          aria-label="Checking content output folder"
+        >
           <LoaderCircle className="loading-icon" size={24} />
         </div>
       ) : (
@@ -54,10 +62,17 @@ export default function WorkingFolderSetup({
               <BrandMark />
               <span>PostOrca</span>
             </div>
-            <h1>Choose your working folder</h1>
+            <h1>Choose your content output folder</h1>
             <div className="form-stack">
-              <p>Set a working folder to continue. Orca can read and use files here, such as images, music and notes for your content.</p>
-              {error && <p className="auth-error" role="alert">{error}</p>}
+              <p>
+                Choose where Orca saves plans, scripts, recordings, and finished
+                content. You can add source folders for each project separately.
+              </p>
+              {error && (
+                <p className="auth-error" role="alert">
+                  {error}
+                </p>
+              )}
               <Button
                 variant="primary"
                 className="auth-submit"
@@ -70,17 +85,27 @@ export default function WorkingFolderSetup({
                     const folder = await folders.choose();
                     if (folder) setReady(true);
                   } catch {
-                    setError("Unable to save your working folder. Please try again.");
+                    setError(
+                      "Unable to save your content output folder. Please try again.",
+                    );
                   } finally {
                     setBusy(false);
                   }
                 }}
               >
-                {busy ? <LoaderCircle className="loading-icon" size={16} /> : <FolderOpen size={16} />}
+                {busy ? (
+                  <LoaderCircle className="loading-icon" size={16} />
+                ) : (
+                  <FolderOpen size={16} />
+                )}
                 {busy ? "Choosing folder…" : "Choose folder"}
               </Button>
             </div>
-            <p className="auth-switch"><button disabled={busy} onClick={onLogOut}>Log out</button></p>
+            <p className="auth-switch">
+              <button disabled={busy} onClick={onLogOut}>
+                Log out
+              </button>
+            </p>
           </div>
         </main>
       )}

@@ -110,6 +110,12 @@ export class AgentLoop {
         controller.signal.throwIfAborted();
         // Re-read each step: tools such as update_brand_profile change it mid-turn.
         const profile = await getProfile(this.db, userId);
+        if (task.project_id) {
+          profile.projects = profile.projects.filter(
+            (project: { id: string }) => project.id === task.project_id,
+          );
+          profile.active_project = profile.projects[0] ?? null;
+        }
         // Activation changes the task's plugin mid-turn, so it is re-read too.
         const plugins = await loadPluginState(this.db, taskId);
         const lastStep = step === limits.responses;

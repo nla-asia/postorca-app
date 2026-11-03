@@ -7,7 +7,11 @@ import {
   deleteProject,
   updateProject,
 } from "../repositories/projects.js";
-import { profileSchema, projectSchema } from "../schemas/brand.js";
+import {
+  profileSchema,
+  projectSchema,
+  projectUpdateSchema,
+} from "../schemas/brand.js";
 import { readVoice } from "../voice.js";
 export function brandRoutes(db: Database) {
   const router = Router();
@@ -46,7 +50,7 @@ export function brandRoutes(db: Database) {
         db,
         res.locals.userId,
         z.uuid().parse(req.params.id),
-        projectSchema.omit({ path: true }).parse(req.body),
+        projectUpdateSchema.parse(req.body),
       ),
     ),
   );

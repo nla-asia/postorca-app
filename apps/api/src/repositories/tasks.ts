@@ -1,3 +1,4 @@
+import { assertProject } from "./projects.js";
 import { taskPublication } from "./publications.js";
 import { transaction, type Database, type Queryable } from "../db.js";
 import { HttpError } from "../handlers/errors.js";
@@ -11,7 +12,7 @@ export async function ownedTask(db: Queryable, userId: string, taskId: string) {
   const {
     rows: [task],
   } = await db.query(
-    "SELECT t.*,r.status FROM tasks t LEFT JOIN turns r ON r.id=t.current_turn_id WHERE t.id=$1 AND t.user_id=$2",
+    "SELECT t.*,(SELECT name FROM brand_projects WHERE id=t.project_id) AS project_name,r.status FROM tasks t LEFT JOIN turns r ON r.id=t.current_turn_id WHERE t.id=$1 AND t.user_id=$2",
     [taskId, userId],
   );
   if (!task) throw new HttpError(404, "Task not found.");
@@ -179,13 +180,15 @@ export async function createWorkTask(
   instructions: string,
   platform?: string,
   workType: "general" | "content" = "general",
+  projectId?: string | null,
 ) {
   return transaction(db, async (client) => {
+    await assertProject(client, userId, projectId);
     const {
       rows: [task],
     } = await client.query(
-      "INSERT INTO tasks(user_id,kind,title,platform,work_type) VALUES ($1,'work',$2,$3,$4) RETURNING *",
-      [userId, title, platform ?? null, workType],
+      "INSERT INTO tasks(user_id,kind,title,platform,work_type,project_id) VALUES ($1,'work',$2,$3,$4,$5) RETURNING *",
+      [userId, title, platform ?? null, workType, projectId ?? null],
     );
     const turn = await createTurnInTransaction(
       client,
@@ -264,7 +267,11 @@ export async function createTask(
   kind: TaskKind,
   title: string,
   workType: "general" | "content" = "general",
+  projectId?: string | null,
 ) {
+  await assertProject(db, userId, projectId);
+  if (projectId && kind !== "work")
+    throw new HttpError(400, "Only work can belong to a project.");
   // Agent chat and onboarding are one conversation per founder; reuse it.
   const {
     rows: [task],
@@ -275,8 +282,8 @@ export async function createTask(
           [userId, kind, title],
         )
       : await db.query(
-          "INSERT INTO tasks(user_id,kind,title,work_type) VALUES ($1,'work',$2,$3) RETURNING *",
-          [userId, title, workType],
+          "INSERT INTO tasks(user_id,kind,title,work_type,project_id) VALUES ($1,'work',$2,$3,$4) RETURNING *",
+          [userId, title, workType, projectId ?? null],
         );
   return task;
 }
@@ -286,17 +293,18 @@ export async function listTasks(
   db: Queryable,
   userId: string,
   kind?: TaskKind,
+  projectId?: string,
 ) {
   return (
     await db.query(
-      `SELECT t.*,r.status,r.finished_at,CASE WHEN ro.run_at IS NULL THEN ro.title END AS routine_title,
+      `SELECT t.*,(SELECT name FROM brand_projects WHERE id=t.project_id) AS project_name,r.status,r.finished_at,CASE WHEN ro.run_at IS NULL THEN ro.title END AS routine_title,
         (SELECT left(m.content->>'text',280) FROM messages m JOIN turns mt ON mt.id=m.turn_id
          WHERE mt.task_id=t.id AND m.kind='assistant' AND coalesce(m.content->>'text','')<>''
          ORDER BY m.id DESC LIMIT 1) AS summary
        FROM tasks t LEFT JOIN turns r ON r.id=t.current_turn_id
        LEFT JOIN routine_runs rr ON rr.task_id=t.id LEFT JOIN routines ro ON ro.id=rr.routine_id
-       WHERE t.user_id=$1 AND ($2::text IS NULL OR t.kind=$2) ORDER BY t.created_at DESC,t.id LIMIT 100`,
-      [userId, kind ?? null],
+       WHERE t.user_id=$1 AND ($2::text IS NULL OR t.kind=$2) AND ($3::uuid IS NULL OR t.project_id=$3) ORDER BY t.created_at DESC,t.id LIMIT 100`,
+      [userId, kind ?? null, projectId ?? null],
     )
   ).rows;
 }
@@ -306,12 +314,19 @@ export async function taskKind(
   db: Queryable,
   taskId: string,
 ): Promise<
-  { kind: TaskKind; platform: string | null; title: string } | undefined
+  | {
+      kind: TaskKind;
+      platform: string | null;
+      title: string;
+      project_id: string | null;
+    }
+  | undefined
 > {
   return (
-    await db.query("SELECT kind, platform, title FROM tasks WHERE id=$1", [
-      taskId,
-    ])
+    await db.query(
+      "SELECT kind, platform, title, project_id FROM tasks WHERE id=$1",
+      [taskId],
+    )
   ).rows[0];
 }
 

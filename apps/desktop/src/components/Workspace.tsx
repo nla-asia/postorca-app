@@ -7,6 +7,7 @@ import SettingsModal, { type SettingsTab } from "./SettingsModal";
 import type { Page } from "../navigation";
 import type { Theme } from "../lib/useTheme";
 import { api, onAllowanceRequired, type AuthUser } from "../lib/api";
+import { workState } from "../lib/useWorkTasks";
 import type { Brand } from "../lib/brand";
 import { useAgentChat } from "../lib/useAgentChat";
 import InAppNotifications from "./InAppNotifications";
@@ -19,6 +20,7 @@ import { useWorkTasks } from "../lib/useWorkTasks";
 import Routines from "../pages/Routines";
 import Calendar from "../pages/Calendar";
 import Posts from "../pages/Posts";
+import Project, { ProjectEditor } from "../pages/Project";
 import BrandProfile from "../pages/BrandProfile";
 
 export default function Workspace({
@@ -32,6 +34,11 @@ export default function Workspace({
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
 }) {
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectEditor, setProjectEditor] = useState<string | "new" | null>(
+    null,
+  );
+  const [projectFilter, setProjectFilter] = useState("all");
   const [page, setPage] = useState<Page>("Inbox");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("General");
@@ -46,6 +53,7 @@ export default function Workspace({
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState<InboxFilter>("review");
   const work = useWorkTasks(user.id);
+  const projectWork = useWorkTasks(projectId ? user.id : undefined, projectId);
   const [brand, setBrand] = useState<Brand | null>(null);
   const [brandError, setBrandError] = useState("");
   const loadBrand = useCallback(async () => {
@@ -88,13 +96,17 @@ export default function Workspace({
   }, [brand?.onboarding_status]); // eslint-disable-line react-hooks/exhaustive-deps
   const openWork = (id: string) => {
     setSelected(id);
-    setPage("Inbox");
+    const project = [...(work.tasks ?? []), ...(projectWork.tasks ?? [])].find(
+      (task) => task.id === id,
+    )?.project_id;
+    setProjectId(project ?? null);
+    setPage(project ? "Project" : "Inbox");
     void work.reload();
   };
   // Clicking a desktop notification (work finished) opens its task.
   useEffect(
     () => window.postorca?.onOpenTask((taskId) => openWork(taskId)),
-    [], // eslint-disable-line react-hooks/exhaustive-deps
+    [work.tasks, projectWork.tasks], // eslint-disable-line react-hooks/exhaustive-deps
   );
   useEffect(() => {
     if (!notice) return;
@@ -154,13 +166,34 @@ export default function Workspace({
         {settingsDialog}
       </>
     );
+  const project = brand.projects.find((item) => item.id === projectId);
+  const filteredTasks =
+    work.tasks?.filter(
+      (task) =>
+        projectFilter === "all" ||
+        (projectFilter === "none"
+          ? !task.project_id
+          : task.project_id === projectFilter),
+    ) ?? null;
   return (
     <div className="app-shell">
       <Sidebar
+        projects={brand.projects}
+        tasks={work.tasks ?? []}
+        projectId={projectId}
+        selectedTaskId={selected}
+        onOpenProject={(id) => {
+          setProjectId(id);
+          setSelected(null);
+          setPage("Project");
+        }}
+        onOpenTask={openWork}
+        onAddProject={() => setProjectEditor("new")}
         user={{ ...user, name: profileName }}
         page={page}
         onNavigate={(next) => {
           setSelected(null);
+          setProjectId(null);
           setPage(next);
         }}
         reviewCount={work.attention}
@@ -172,26 +205,70 @@ export default function Workspace({
       />
       <main className="workspace" aria-label={page}>
         <InAppNotifications onOpen={openWork} />
-        {page !== "Agent" && !(page === "Inbox" && selected) && (
+        {page !== "Agent" && page !== "Project" && !selected && (
           <header className="topbar">
             <h1 className="topbar-title">{page}</h1>
           </header>
         )}
         {page === "Agent" && <Agent chat={chat} />}
+        {((page === "Inbox" && !selected) || page === "Calendar") && (
+          <label className="project-filter">
+            Project
+            <select
+              aria-label="Filter by project"
+              value={projectFilter}
+              onChange={(event) => setProjectFilter(event.target.value)}
+            >
+              <option value="all">All projects</option>
+              <option value="none">Without a project</option>
+              {brand.projects.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {page === "Project" && project && !selected && (
+          <Project
+            key={project.id}
+            project={project}
+            tasks={(projectWork.tasks ?? []).filter(
+              (task) => task.project_id === project.id,
+            )}
+            loading={projectWork.tasks === null}
+            error={projectWork.error}
+            onRetry={() => void projectWork.reload()}
+            onSettings={() => setProjectEditor(project.id)}
+            onOpenWork={openWork}
+            onCreated={(id) => {
+              setSelected(id);
+              void work.reload();
+              void projectWork.reload();
+            }}
+          />
+        )}
         {page === "Inbox" && !selected && (
           <Inbox
-            tasks={work.tasks}
+            tasks={filteredTasks}
             error={work.error}
             onRetry={() => void work.reload()}
-            reviewCount={work.attention}
+            reviewCount={
+              (filteredTasks ?? []).filter((task) =>
+                ["review", "failed"].includes(workState(task)),
+              ).length
+            }
             filter={filter}
             onFilterChange={setFilter}
             onSelect={openWork}
-            onChanged={() => void work.reload()}
+            onChanged={() => {
+              void work.reload();
+              void projectWork.reload();
+            }}
             notify={setNotice}
           />
         )}
-        {page === "Inbox" && selected && (
+        {(page === "Inbox" || page === "Project") && selected && (
           <WorkDetail
             key={selected}
             taskId={selected}
@@ -201,7 +278,10 @@ export default function Workspace({
             }
             onBack={() => setSelected(null)}
             onOpenTask={openWork}
-            onChanged={() => void work.reload()}
+            onChanged={() => {
+              void work.reload();
+              void projectWork.reload();
+            }}
             notify={setNotice}
           />
         )}
@@ -210,7 +290,8 @@ export default function Workspace({
         )}
         {page === "Calendar" && (
           <Calendar
-            tasks={work.tasks ?? []}
+            tasks={filteredTasks ?? []}
+            projectFilter={projectFilter}
             onOpenWork={openWork}
             onApprovedSelect={openWork}
           />
@@ -220,6 +301,51 @@ export default function Workspace({
           <BrandProfile onNameChange={setProfileName} notify={setNotice} />
         )}
       </main>
+      {projectEditor && (
+        <ProjectEditor
+          key={projectEditor}
+          project={
+            brand.projects.find((item) => item.id === projectEditor) ?? null
+          }
+          onClose={() => setProjectEditor(null)}
+          onSaved={(saved) => {
+            setBrand((current) =>
+              current
+                ? {
+                    ...current,
+                    projects: current.projects.some(
+                      (item) => item.id === saved.id,
+                    )
+                      ? current.projects.map((item) =>
+                          item.id === saved.id ? saved : item,
+                        )
+                      : [...current.projects, saved],
+                  }
+                : current,
+            );
+            setProjectId(saved.id);
+            setSelected(null);
+            setPage("Project");
+          }}
+          onDeleted={async () => {
+            setBrand((current) =>
+              current
+                ? {
+                    ...current,
+                    projects: current.projects.filter(
+                      (item) => item.id !== projectEditor,
+                    ),
+                  }
+                : current,
+            );
+            await work.reload();
+            setProjectId(null);
+            setSelected(null);
+            setProjectFilter("all");
+            setPage("Inbox");
+          }}
+        />
+      )}
       <ConnectApps open={connectAppsOpen} onOpenChange={setConnectAppsOpen} />
       {settingsDialog}
       {notice && (

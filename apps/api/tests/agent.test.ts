@@ -431,3 +431,108 @@ test("with no plugins enabled, routine work can still read core skills", async (
   );
   assert.doesNotMatch(requests[0].instructions, /Plugins:/);
 });
+
+test("project content starts atomically from the UI and model context stays with its product on follow-up", async () => {
+  const { addProject } = await import("../src/repositories/projects.js");
+  const founder = await account();
+  const first = (
+    await addProject(fixture.db, founder.id, {
+      name: "Scholar",
+      folders: ["/source/mobile", "/source/docs"],
+      description: "Research tools",
+    })
+  ).project;
+  const other = (
+    await addProject(fixture.db, founder.id, {
+      name: "OtherProduct",
+      folders: ["/source/other"],
+      description: "Unrelated product",
+    })
+  ).project;
+  requests.length = 0;
+  script = async () => reply("Here is the proposed plan for your review.");
+  const started = await post(
+    url,
+    "",
+    {
+      kind: "work",
+      work_type: "content",
+      project_id: first.id,
+      title: "Release video",
+      message: "Plan the release video",
+    },
+    founder.token,
+  );
+  assert.equal(started.status, 201);
+  const detail = await settled(founder.id, started.data.id);
+  assert.equal(detail.project_id, first.id);
+  assert.equal(detail.work_type, "content");
+  assert.equal(detail.turns.length, 1);
+  assert.equal(
+    detail.turns[0].messages[0].content.text,
+    "Plan the release video",
+  );
+  assert.match(
+    requests[0].instructions,
+    /Use active_project as the product context/,
+  );
+  assert.match(requests[0].instructions, /\/source\/mobile/);
+  assert.match(requests[0].instructions, /\/source\/docs/);
+  assert.doesNotMatch(requests[0].instructions, /OtherProduct|\/source\/other/);
+  // Work in another project does not change the first task's saved context.
+  const another = await post(
+    url,
+    "",
+    {
+      kind: "work",
+      work_type: "content",
+      project_id: other.id,
+      title: "Other video",
+      message: "Plan another video",
+    },
+    founder.token,
+  );
+  await settled(founder.id, another.data.id);
+  await post(
+    url,
+    `/${detail.id}/turns`,
+    { message: "Make the script shorter" },
+    founder.token,
+  );
+  const updated = await settled(founder.id, detail.id);
+  assert.equal(updated.project_id, first.id);
+  assert.equal(updated.turns.length, 2);
+  assert.match(requests.at(-1)!.instructions, /\/source\/mobile/);
+  assert.doesNotMatch(
+    requests.at(-1)!.instructions,
+    /OtherProduct|\/source\/other/,
+  );
+  const before = (
+    await fixture.db.query(
+      "SELECT count(*)::int AS n FROM tasks WHERE user_id=$1",
+      [founder.id],
+    )
+  ).rows[0].n;
+  const unavailable = await post(
+    offlineUrl,
+    "",
+    {
+      kind: "work",
+      work_type: "content",
+      project_id: first.id,
+      title: "Offline",
+      message: "Create content",
+    },
+    founder.token,
+  );
+  assert.equal(unavailable.status, 503);
+  assert.equal(
+    (
+      await fixture.db.query(
+        "SELECT count(*)::int AS n FROM tasks WHERE user_id=$1",
+        [founder.id],
+      )
+    ).rows[0].n,
+    before,
+  );
+});

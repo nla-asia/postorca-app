@@ -15,7 +15,22 @@ export const brandTools: Tool[] = [
       description: "Read the founder’s saved brand profile.",
       parameters: object({}, []),
     },
-    run: ({ db, userId }) => getProfile(db, userId),
+    run: async ({ db, userId, taskId }) => {
+      const profile = await getProfile(db, userId);
+      const {
+        rows: [task],
+      } = await db.query(
+        "SELECT project_id FROM tasks WHERE id=$1 AND user_id=$2",
+        [taskId, userId],
+      );
+      if (task?.project_id) {
+        profile.projects = profile.projects.filter(
+          (project: { id: string }) => project.id === task.project_id,
+        );
+        profile.active_project = profile.projects[0] ?? null;
+      }
+      return profile;
+    },
   },
   {
     definition: {

@@ -33,4 +33,4 @@ export const navigation = [
   },
 ] as const;
 export type NavigationItem = (typeof navigation)[number];
-export type Page = NavigationItem["name"];
+export type Page = NavigationItem["name"] | "Project";

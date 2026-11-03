@@ -473,3 +473,364 @@ test("file transfer tools validate their arguments and never send project folder
     ws.close();
   }
 });
+
+test("a project owns multiple source folders and content keeps its project through follow-ups and schedules", async () => {
+  const { createWorkTask, taskDetail } = await import(
+    "../src/repositories/tasks.js"
+  );
+  const { completeTurn } = await import("../src/repositories/turns.js");
+  const { queueIdeaContent, startRoutineRun } = await import(
+    "../src/repositories/routines.js"
+  );
+  const { schedulePost } = await import("../src/repositories/publications.js");
+  const founder = await account();
+  const other = await account();
+  const folders = [
+    "/Users/founder/mobile",
+    "/Users/founder/site",
+    "/Users/founder/designs",
+  ];
+  const added = await request(
+    "/brand-profile/projects",
+    "POST",
+    { name: "Scholar", folders },
+    founder.token,
+  );
+  assert.equal(added.status, 201);
+  const project = added.data.project;
+  assert.deepEqual(project.folders, folders);
+  assert.equal(project.path, folders[0]);
+  assert.equal(
+    (
+      await request(
+        "/brand-profile/projects",
+        "POST",
+        { name: "No folders" },
+        founder.token,
+      )
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request(
+        "/brand-profile/projects",
+        "POST",
+        { name: "Duplicates", folders: ["/a", "/a"] },
+        founder.token,
+      )
+    ).status,
+    400,
+  );
+  const changed = await request(
+    `/brand-profile/projects/${project.id}`,
+    "PATCH",
+    { name: "Scholar", folders: folders.slice(1) },
+    founder.token,
+  );
+  assert.equal(changed.status, 200);
+  assert.deepEqual(changed.data.folders, folders.slice(1));
+  assert.equal(changed.data.path, folders[1]);
+  // Legacy metadata updates preserve every folder.
+  await request(
+    `/brand-profile/projects/${project.id}`,
+    "PATCH",
+    { name: "KG Scholar" },
+    founder.token,
+  );
+  const profile = (
+    await request("/brand-profile", "GET", undefined, founder.token)
+  ).data;
+  assert.deepEqual(profile.projects[0].folders, folders.slice(1));
+  assert.equal(
+    (
+      await request(
+        `/brand-profile/projects/${project.id}`,
+        "PATCH",
+        { name: "Stolen", folders: ["/other"] },
+        other.token,
+      )
+    ).status,
+    404,
+  );
+  assert.equal(
+    (
+      await request(
+        `/brand-profile/projects/${project.id}`,
+        "PATCH",
+        { name: "Empty", folders: [] },
+        founder.token,
+      )
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request(
+        "/tasks",
+        "POST",
+        { kind: "work", title: "Foreign", project_id: project.id },
+        other.token,
+      )
+    ).status,
+    404,
+  );
+  assert.equal(
+    (
+      await request(
+        "/tasks",
+        "POST",
+        { kind: "chat", title: "Wrong kind", project_id: project.id },
+        founder.token,
+      )
+    ).status,
+    400,
+  );
+  await assert.rejects(
+    createWorkTask(
+      fixture.db,
+      other.id,
+      "Foreign",
+      "Work",
+      undefined,
+      "content",
+      project.id,
+    ),
+    /Project not found/,
+  );
+  const { task, turn } = await createWorkTask(
+    fixture.db,
+    founder.id,
+    "Release video",
+    "Plan a video",
+    undefined,
+    "content",
+    project.id,
+  );
+  const unscoped = await createTask(
+    fixture.db,
+    founder.id,
+    "work",
+    "Existing work",
+  );
+  const second = (
+    await request(
+      "/brand-profile/projects",
+      "POST",
+      { name: "Other product", folders: ["/Users/founder/other"] },
+      founder.token,
+    )
+  ).data.project;
+  await createTask(
+    fixture.db,
+    founder.id,
+    "work",
+    "Other work",
+    "content",
+    second.id,
+  );
+  const scoped = await request(
+    `/tasks?kind=work&project_id=${project.id}`,
+    "GET",
+    undefined,
+    founder.token,
+  );
+  assert.deepEqual(
+    scoped.data.map((row: any) => row.id),
+    [task.id],
+  );
+  assert.equal(scoped.data[0].project_name, "KG Scholar");
+  assert.ok(
+    (
+      await request("/tasks?kind=work", "GET", undefined, founder.token)
+    ).data.some(
+      (row: any) => row.id === unscoped.id && row.project_id === null,
+    ),
+  );
+  await completeTurn(fixture.db, turn.id);
+  await createTurn(fixture.db, founder.id, task.id, "Make it shorter");
+  const detail = await taskDetail(fixture.db, founder.id, task.id);
+  assert.equal(detail.project_id, project.id);
+  assert.equal(detail.turns.length, 2);
+  const context = { userId: founder.id, taskId: task.id, turnId: turn.id };
+  const readProfile = (await executeTool(
+    fixture.db,
+    context,
+    "read_brand_profile",
+    {},
+  )) as any;
+  assert.deepEqual(
+    readProfile.projects.map((row: any) => row.id),
+    [project.id],
+  );
+  assert.deepEqual(readProfile.active_project.folders, folders.slice(1));
+  const {
+    rows: [idea],
+  } = await fixture.db.query(
+    "INSERT INTO artifacts(task_id,turn_id,kind,title,content) VALUES ($1,$2,'idea','Launch','Announce release') RETURNING id",
+    [task.id, turn.id],
+  );
+  const scheduled = await queueIdeaContent(
+    fixture.db,
+    founder.id,
+    task.id,
+    idea.id,
+  );
+  assert.equal(scheduled.project_id, project.id);
+  const { transaction } = await import("../src/db.js");
+  const { rows: [routine] } = await fixture.db.query("SELECT * FROM routines WHERE id=$1", [scheduled.id]);
+  const run = (await transaction(fixture.db, (client) => startRoutineRun(client, routine, "schedule", routine.run_at)))!;
+  assert.equal(
+    (await taskDetail(fixture.db, founder.id, run.taskId)).project_id,
+    project.id,
+  );
+  const {
+    rows: [document],
+  } = await fixture.db.query(
+    "INSERT INTO artifacts(task_id,turn_id,kind,title,content) VALUES ($1,$2,'document','Release post','We shipped') RETURNING id",
+    [task.id, turn.id],
+  );
+  const publication = await schedulePost(
+    fixture.db,
+    founder.id,
+    task.id,
+    document.id,
+    {
+      text: "We shipped",
+      post_at: new Date(Date.now() + 3600000).toISOString(),
+      publisher: "founder",
+      platform: "X",
+    },
+  );
+  const { rows: [published] } = await fixture.db.query("SELECT routine_id FROM publications WHERE id=$1", [publication.id]);
+  const publishSchedule = (
+    await request("/routines?once=true", "GET", undefined, founder.token)
+  ).data.find((row: any) => row.id === published.routine_id);
+  assert.equal(publishSchedule.project_id, project.id);
+  // Removing a project preserves tasks, artifacts, schedules and follow-up history.
+  assert.equal(
+    (
+      await request(
+        `/brand-profile/projects/${project.id}`,
+        "DELETE",
+        undefined,
+        founder.token,
+      )
+    ).status,
+    204,
+  );
+  const retained = await taskDetail(fixture.db, founder.id, task.id);
+  assert.equal(retained.project_id, null);
+  assert.equal(retained.turns.length, 2);
+  assert.equal(retained.turns[0].artifacts.length, 2);
+});
+
+test("project file tools pass all selected folders and exclude other products", async () => {
+  const founder = await account();
+  const folders = ["/Users/founder/app", "/Users/founder/docs"];
+  const project = (
+    await request(
+      "/brand-profile/projects",
+      "POST",
+      { name: "App", folders },
+      founder.token,
+    )
+  ).data.project;
+  await request(
+    "/brand-profile/projects",
+    "POST",
+    { name: "Other product", folders: ["/Users/founder/other"] },
+    founder.token,
+  );
+  const task = await createTask(
+    fixture.db,
+    founder.id,
+    "work",
+    "Demo",
+    "content",
+    project.id,
+  );
+  const turn = await createTurn(
+    fixture.db,
+    founder.id,
+    task.id,
+    "Read both folders",
+  );
+  const deviceToken = (
+    await request(
+      "/desktop/device-token",
+      "POST",
+      { deviceId: randomUUID() },
+      founder.token,
+    )
+  ).data.token;
+  const ws = new WebSocket(
+    `${base.replace(/^http/, "ws")}/desktop/socket?token=${encodeURIComponent(deviceToken)}`,
+  );
+  const calls: any[] = [];
+  ws.on("message", async (raw) => {
+    const { data: call } = JSON.parse(raw.toString());
+    calls.push(call);
+    await request(
+      "/desktop/tool-result",
+      "POST",
+      { executionId: call.executionId, ok: true, result: {} },
+      deviceToken,
+    );
+  });
+  await once(ws, "open");
+  try {
+    await executeTool(
+      fixture.db,
+      { userId: founder.id, taskId: task.id, turnId: turn.id },
+      "list_dir",
+      { path: folders[1] },
+    );
+    assert.deepEqual(calls[0].arguments.roots, folders);
+  } finally {
+    ws.close();
+  }
+});
+
+test("the workspace migration preserves IDs and backfills existing single-folder projects", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const isolated = await temporaryPostgres();
+  try {
+    await isolated.db
+      .query(`CREATE TABLE brand_projects(id uuid PRIMARY KEY, path text NOT NULL);
+      CREATE TABLE tasks(id uuid PRIMARY KEY); CREATE TABLE routines(id uuid PRIMARY KEY);`);
+    const id = randomUUID();
+    await isolated.db.query(
+      "INSERT INTO brand_projects(id,path) VALUES ($1,'/existing')",
+      [id],
+    );
+    await isolated.db.query(
+      await readFile(
+        new URL(
+          "../src/migrations/023_project_workspaces.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
+    const {
+      rows: [project],
+    } = await isolated.db.query("SELECT * FROM brand_projects WHERE id=$1", [
+      id,
+    ]);
+    assert.deepEqual(project.folders, ["/existing"]);
+    assert.equal(project.path, "/existing");
+    // Older callers may still insert only path, read through the fallback.
+    await isolated.db.query(
+      "INSERT INTO brand_projects(id,path) VALUES ($1,'/legacy')",
+      [randomUUID()],
+    );
+    assert.equal(
+      (await isolated.db.query("SELECT count(*)::int AS n FROM brand_projects"))
+        .rows[0].n,
+      2,
+    );
+  } finally {
+    await isolated.close();
+  }
+});

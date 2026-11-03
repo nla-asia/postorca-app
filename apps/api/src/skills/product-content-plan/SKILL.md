@@ -15,7 +15,7 @@ The stages, each its own skill:
 
 ## 1. Understand the product
 
-Read the project in the founder's Brand Profile projects (`list_dir`, `read_file`, `git_activity`):
+Read the selected project and all relevant source folders in its `folders` list (`list_dir`, `read_file`, `git_activity`). Use `active_project` when supplied; otherwise identify the intended project from the brand profile and ask if ambiguous. Older records may expose only `path`:
 
 - **README and docs:** what the product says it is, who it's for, how it runs and where (its local address).
 - **The app's screens:** the pages, routes and main components show what a user can actually do. Name things in the app's own words.

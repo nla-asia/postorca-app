@@ -27,7 +27,8 @@ function backgroundDispatch(context: ToolContext): DispatchTask {
 /** The founder's own background work task named by the model. */
 async function workTask(context: ToolContext, taskId: string) {
   const task = await ownedTask(context.db, context.userId, taskId);
-  if (task.kind !== "work") throw new HttpError(400, "Use an execution task ID.");
+  if (task.kind !== "work")
+    throw new HttpError(400, "Use an execution task ID.");
   return task;
 }
 
@@ -41,6 +42,11 @@ export const taskTools: Tool[] = [
       parameters: object(
         {
           title: { type: "string" },
+          project_id: {
+            type: "string",
+            description:
+              "Project ID from the brand profile, when the work is for a specific product.",
+          },
           instructions: { type: "string" },
           platform: { type: "string", enum: [...platforms] },
           work_type: {
@@ -59,6 +65,7 @@ export const taskTools: Tool[] = [
       const data = z
         .object({
           title: z.string().trim().min(1).max(200),
+          project_id: z.uuid().optional(),
           instructions: message,
           platform: z.enum(platforms).optional(),
           work_type: z.enum(["general", "content"]).optional(),
@@ -73,6 +80,7 @@ export const taskTools: Tool[] = [
         data.instructions,
         data.platform,
         data.work_type,
+        data.project_id,
       );
       dispatch(task.id, turn.id, context.userId);
       return {

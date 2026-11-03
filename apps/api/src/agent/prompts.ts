@@ -22,7 +22,7 @@ const prompts = {
 };
 
 export function systemPrompt(step: {
-  task: { kind: TaskKind; platform: string | null };
+  task: { kind: TaskKind; platform: string | null; project_id?: string | null };
   profile: { onboarding_status: string };
   plugins: PluginState;
   /** memoryIndex(): one line per memory file, read at the start of the turn. */
@@ -34,6 +34,9 @@ export function systemPrompt(step: {
   const { task, profile } = step;
   const sections = [
     `Brand profile: ${JSON.stringify(profile)}`,
+    task.project_id
+      ? `This work belongs to project ${task.project_id}. Use active_project as the product context and its folders as sources. Keep the founder's shared voice. Follow-ups stay in this project. If the project is unavailable, ask the founder rather than choosing another project.`
+      : "",
     prompts.voice,
     step.voice
       ? `voice.md (from the start of this turn):\n${step.voice}`
