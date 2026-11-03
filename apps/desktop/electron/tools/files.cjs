@@ -186,7 +186,7 @@ async function allowed(requested, roots) {
   const folders = sharedFolders(roots);
   if (!folders.length)
     throw new Error(
-      "No working folder or project folder is set. Ask the founder to choose a working folder in Settings or add a project in their Brand Profile.",
+      "No working folder or project folder is set. Ask the founder to choose a working folder in Settings or add a project in their Brand.",
     );
   const real = await fs
     .realpath(

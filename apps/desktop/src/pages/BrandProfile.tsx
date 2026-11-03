@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import {
   ExternalLink,
   FolderGit2,
-  Globe2,
+  Globe,
   MessageSquare,
   Palette,
   Target,
@@ -33,7 +33,7 @@ const tabs = [
   },
   { name: "Voice", icon: MessageSquare, fields: [] },
   { name: "Colours", icon: Palette, fields: [] },
-  { name: "Links", icon: Globe2, fields: [] },
+  { name: "Links", icon: Globe, fields: [] },
   { name: "Projects", icon: FolderGit2, fields: [] },
 ] as const;
 const colorFields = [
@@ -68,7 +68,7 @@ export default function BrandProfile({
           setError(
             failure instanceof Error
               ? failure.message
-              : "Unable to load Brand Profile.",
+              : "Unable to load Brand.",
           );
       });
     return () => controller.abort();
@@ -77,7 +77,7 @@ export default function BrandProfile({
   if (!brand)
     return (
       <div className="page-content brand-page">
-        <h1 className="brand-page-heading">Brand Profile</h1>
+        <h1 className="brand-page-heading">Brand</h1>
         {error ? (
           <div className="brand-load-error">
             <p role="alert">{error}</p>
@@ -92,14 +92,14 @@ export default function BrandProfile({
           </div>
         ) : (
           <p className="brand-loading" role="status">
-            Loading Brand Profile…
+            Loading Brand…
           </p>
         )}
       </div>
     );
   return (
     <div className="page-content brand-page">
-      <h1 className="brand-page-heading">Brand Profile</h1>
+      <h1 className="brand-page-heading">Brand</h1>
       <p className="preview-note">
         Your saved brand context. Ask Orca in Agent chat to change it.
       </p>
@@ -107,7 +107,7 @@ export default function BrandProfile({
         <nav
           className="tabs brand-tabs"
           role="tablist"
-          aria-label="Brand profile sections"
+          aria-label="Brand sections"
           aria-orientation="horizontal"
         >
           {tabs.map(({ name, icon: Icon }) => (

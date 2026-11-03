@@ -216,7 +216,7 @@ export default function Workspace({
           />
         )}
         {page === "Posts" && <Posts notify={setNotice} />}
-        {page === "Brand Profile" && (
+        {page === "Brand" && (
           <BrandProfile onNameChange={setProfileName} notify={setNotice} />
         )}
       </main>
