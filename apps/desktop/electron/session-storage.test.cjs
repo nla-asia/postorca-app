@@ -29,7 +29,7 @@ async function launch({ saved, legacy, contents, fetch: fetchImpl } = {}) {
     maximize() { this.maximized = true; }
   }
   const electron = {
-    app: { getPath: () => profile, requestSingleInstanceLock: () => true, on() {}, whenReady: () => Promise.resolve(), setAboutPanelOptions() {} },
+    app: { isPackaged: true, getPath: () => profile, requestSingleInstanceLock: () => true, on() {}, whenReady: () => Promise.resolve(), setAboutPanelOptions() {} },
     BrowserWindow, ipcMain: { handle: (name, handler) => handlers.set(name, handler) },
     Menu: { buildFromTemplate: () => [], setApplicationMenu() {} }, Notification: { isSupported: () => false },
     shell: {}, dialog: {},
