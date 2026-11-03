@@ -233,7 +233,7 @@ export default function Inbox({
                         )}
                         <span>
                           {task.project_name
-                            ? `Project: ${task.project_name}`
+                            ? task.project_name
                             : task.routine_title ? "Routine" : "Work"}
                         </span>
                       </div>
