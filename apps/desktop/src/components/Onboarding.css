@@ -14,7 +14,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 20px;
+  /* Leave room for the hidden-inset window controls. */
+  padding: 0 20px 0 100px;
   border-bottom: 1px solid var(--line);
 }
 
