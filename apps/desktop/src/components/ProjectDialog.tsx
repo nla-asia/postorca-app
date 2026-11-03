@@ -85,7 +85,7 @@ export default function ProjectDialog({
             value={name}
             onChange={(event) => setName(event.target.value)}
             disabled={busy}
-            placeholder="e.g. KG Scholar"
+            placeholder="Enter your project name"
           />
         </label>
         <label>
