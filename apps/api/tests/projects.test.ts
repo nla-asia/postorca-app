@@ -580,7 +580,7 @@ test("a project owns multiple source folders and content keeps its project throu
       await request(
         "/tasks",
         "POST",
-        { kind: "chat", title: "Wrong kind", project_id: project.id },
+        { kind: "onboarding", title: "Wrong kind", project_id: project.id },
         founder.token,
       )
     ).status,
@@ -833,4 +833,83 @@ test("the workspace migration preserves IDs and backfills existing single-folder
   } finally {
     await isolated.close();
   }
+});
+
+test("project chats are persistent, owned, separate from onboarding and retain history when their project is removed", async () => {
+  const { appendMessage, taskDetail } = await import("../src/repositories/tasks.js");
+  const { completeTurn } = await import("../src/repositories/turns.js");
+  const founder = await account();
+  const stranger = await account();
+  const add = async (name: string, path: string) => (await request("/brand-profile/projects", "POST", { name, folders: [path] }, founder.token)).data.project;
+  const first = await add("First product", "/source/first");
+  const second = await add("Second product", "/source/second");
+  const legacy = await createTask(fixture.db, founder.id, "chat", "Previous general chat");
+  const legacyTurn = await createTurn(fixture.db, founder.id, legacy.id, "Previous general history");
+  await completeTurn(fixture.db, legacyTurn.id);
+  const chats = await Promise.all(Array.from({ length: 8 }, () => request("/tasks", "POST", { kind: "chat", title: "Orca", project_id: first.id }, founder.token)));
+  assert.ok(chats.every((response) => response.status === 201 && response.data.id === chats[0].data.id));
+  const firstChat = chats[0].data;
+  const secondChat = (await request("/tasks", "POST", { kind: "chat", title: "Orca", project_id: second.id }, founder.token)).data;
+  assert.notEqual(firstChat.id, secondChat.id);
+  assert.notEqual(firstChat.id, legacy.id);
+  assert.equal(firstChat.project_id, first.id);
+  assert.equal((await request("/tasks", "POST", { kind: "chat", title: "Orca", project_id: first.id }, stranger.token)).status, 404);
+  assert.equal((await request(`/tasks/${firstChat.id}`, "GET", undefined, stranger.token)).status, 404);
+  assert.equal((await request("/tasks", "POST", { kind: "onboarding", title: "Orca", project_id: first.id }, founder.token)).status, 400);
+  const firstTurn = await createTurn(fixture.db, founder.id, firstChat.id, "First product message");
+  await appendMessage(fixture.db, firstTurn.id, "assistant", { text: "First product response" });
+  await completeTurn(fixture.db, firstTurn.id);
+  const secondTurn = await createTurn(fixture.db, founder.id, secondChat.id, "Second product message");
+  await completeTurn(fixture.db, secondTurn.id);
+  const reopened = await createTask(fixture.db, founder.id, "chat", "Changed title", undefined, first.id);
+  assert.equal(reopened.id, firstChat.id);
+  const history = await taskDetail(fixture.db, founder.id, reopened.id);
+  assert.deepEqual(history.turns[0].messages.map((message: any) => message.content.text), ["First product message", "First product response"]);
+  assert.equal((await taskDetail(fixture.db, founder.id, secondChat.id)).turns[0].messages[0].content.text, "Second product message");
+  // Retiring a project chat must not collide with the retained general chat.
+  assert.equal((await request(`/brand-profile/projects/${first.id}`, "DELETE", undefined, founder.token)).status, 204);
+  const retained = await taskDetail(fixture.db, founder.id, firstChat.id);
+  assert.equal(retained.project_id, null);
+  assert.ok(retained.archived_at);
+  await assert.rejects(executeTool(fixture.db, { userId: founder.id, taskId: firstChat.id, turnId: firstTurn.id }, "start_task", { title: "Old work", instructions: "Continue" }), /conversation is archived/);
+  assert.equal(retained.turns[0].messages.length, 2);
+  assert.equal((await createTask(fixture.db, founder.id, "chat", "Orca")).id, legacy.id);
+  assert.equal((await taskDetail(fixture.db, founder.id, legacy.id)).turns[0].messages[0].content.text, "Previous general history");
+  const other = await taskDetail(fixture.db, founder.id, secondChat.id);
+  assert.equal(other.project_id, second.id);
+  assert.equal(other.archived_at, null);
+  await request(`/brand-profile/projects/${second.id}`, "DELETE", undefined, founder.token);
+  assert.ok((await taskDetail(fixture.db, founder.id, secondChat.id)).archived_at);
+});
+
+test("delegation inherits the chat's project even when another project is supplied, and follow-ups cannot cross projects", async () => {
+  const founder = await account();
+  const add = async (name: string) => (await request("/brand-profile/projects", "POST", { name, folders: [`/source/${name}`] }, founder.token)).data.project;
+  const first = await add("one");
+  const second = await add("two");
+  const chat = await createTask(fixture.db, founder.id, "chat", "Orca", undefined, first.id);
+  const chatTurn = await createTurn(fixture.db, founder.id, chat.id, "Make content");
+  const dispatched: string[] = [];
+  const context = { userId: founder.id, taskId: chat.id, turnId: chatTurn.id, dispatchTask: (taskId: string) => { dispatched.push(taskId); } };
+  const result = await executeTool(fixture.db, context, "start_task", { title: "Video", instructions: "Make a video", work_type: "content", project_id: second.id }, context.dispatchTask) as any;
+  const { taskDetail } = await import("../src/repositories/tasks.js");
+  assert.equal((await taskDetail(fixture.db, founder.id, result.task_id)).project_id, first.id);
+  assert.deepEqual(dispatched, [result.task_id]);
+  const other = await createTask(fixture.db, founder.id, "work", "Other product", "content", second.id);
+  await assert.rejects(executeTool(fixture.db, context, "get_task", { task_id: other.id }), /Task not found in this project/);
+  await assert.rejects(executeTool(fixture.db, context, "follow_up_task", { task_id: other.id, message: "Change it" }), /Task not found in this project/);
+  assert.deepEqual(dispatched, [result.task_id]);
+});
+
+
+test("account deletion still cascades with a legacy chat and multiple project chats", async () => {
+  const founder = await account();
+  await createTask(fixture.db, founder.id, "chat", "Previous chat");
+  for (const name of ["one", "two"]) {
+    const project = (await request("/brand-profile/projects", "POST", { name, folders: [`/source/${name}`] }, founder.token)).data.project;
+    await createTask(fixture.db, founder.id, "chat", "Orca", undefined, project.id);
+  }
+  await fixture.db.query("DELETE FROM users WHERE id=$1", [founder.id]);
+  assert.equal((await fixture.db.query("SELECT count(*)::int AS n FROM tasks WHERE user_id=$1", [founder.id])).rows[0].n, 0);
+  assert.equal((await fixture.db.query("SELECT count(*)::int AS n FROM brand_projects WHERE user_id=$1", [founder.id])).rows[0].n, 0);
 });

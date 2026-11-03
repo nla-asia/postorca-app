@@ -2,15 +2,10 @@ import {
   CalendarDays,
   Clock3,
   Inbox,
-  MessageSquare,
   Newspaper,
   Target,
 } from "lucide-react";
 export const navigation = [
-  {
-    name: "Agent",
-    icon: MessageSquare,
-  },
   {
     name: "Inbox",
     icon: Inbox,
@@ -33,4 +28,4 @@ export const navigation = [
   },
 ] as const;
 export type NavigationItem = (typeof navigation)[number];
-export type Page = NavigationItem["name"];
+export type Page = NavigationItem["name"] | "Project";

@@ -19,7 +19,7 @@ export default function Sidebar({
   tasks,
   projectId,
   selectedTaskId,
-  onManageProject,
+  onOpenProject,
   onOpenTask,
   onAddProject,
   page,
@@ -33,7 +33,7 @@ export default function Sidebar({
   tasks: WorkTask[];
   projectId: string | null;
   selectedTaskId: string | null;
-  onManageProject: (id: string) => void;
+  onOpenProject: (id: string) => void;
   onOpenTask: (id: string) => void;
   onAddProject: () => void;
   page: Page;
@@ -169,9 +169,13 @@ export default function Sidebar({
                 </button>
                 <button
                   className="project-name"
-                  aria-haspopup="dialog"
-                  title={`Manage ${project.name} folders`}
-                  onClick={() => onManageProject(project.id)}
+                  title={`Open ${project.name} chat`}
+                  aria-current={
+                    page === "Project" && projectId === project.id
+                      ? "page"
+                      : undefined
+                  }
+                  onClick={() => onOpenProject(project.id)}
                 >
                   <FolderOpen size={17} />
                   <span>{project.name}</span>

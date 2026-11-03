@@ -29,6 +29,13 @@ async function workTask(context: ToolContext, taskId: string) {
   const task = await ownedTask(context.db, context.userId, taskId);
   if (task.kind !== "work")
     throw new HttpError(400, "Use an execution task ID.");
+  const conversation = await ownedTask(
+    context.db,
+    context.userId,
+    context.taskId,
+  );
+  if (conversation.project_id && conversation.project_id !== task.project_id)
+    throw new HttpError(404, "Task not found in this project.");
   return task;
 }
 
@@ -45,7 +52,7 @@ export const taskTools: Tool[] = [
           project_id: {
             type: "string",
             description:
-              "Project ID from the brand profile, when the work is for a specific product.",
+              "Only for the legacy general chat or onboarding. Project chats automatically supply their own project ID; it cannot be overridden.",
           },
           instructions: { type: "string" },
           platform: { type: "string", enum: [...platforms] },
@@ -61,7 +68,7 @@ export const taskTools: Tool[] = [
     },
     chatOnly: true,
     run: async (context, args) => {
-      await requireChatTask(context, CHAT_ONLY);
+      const conversation = await requireChatTask(context, CHAT_ONLY);
       const data = z
         .object({
           title: z.string().trim().min(1).max(200),
@@ -80,7 +87,7 @@ export const taskTools: Tool[] = [
         data.instructions,
         data.platform,
         data.work_type,
-        data.project_id,
+        conversation.project_id ?? data.project_id,
       );
       dispatch(task.id, turn.id, context.userId);
       return {

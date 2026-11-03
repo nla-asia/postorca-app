@@ -6,9 +6,9 @@ PostOrca is a desktop app with an AI agent, Orca, that turns what you build into
 
 ## Preview
 
-| Agent chat | Calendar |
+| Project chat | Calendar |
 | --- | --- |
-| ![Agent chat](docs/screenshots/agent.png) | ![Calendar](docs/screenshots/calendar.png) |
+| ![Project chat](docs/screenshots/project-workspaces.png) | ![Calendar](docs/screenshots/calendar.png) |
 
 | Routines | Brand Profile |
 | --- | --- |
@@ -17,11 +17,11 @@ PostOrca is a desktop app with an AI agent, Orca, that turns what you build into
 ## Features
 
 - **Product content**: ask for a launch video, a feature announcement, a how-to or a what's-new round-up. Orca plans it from your code, you approve the script, and Orca records and edits the video.
-- **Agent**: chat with Orca, who onboards you, edits your Brand Profile and does work on request.
+- **Project chats**: talk to Orca in a separate conversation for each product. Orca reads that project’s source folders and does the work you request.
 - **Inbox**: review, edit, approve or follow up on everything Orca produces.
 - **Calendar**: schedule one-time tasks.
 - **Routines**: work Orca does for you every day on its own, like checking what changed in your projects or how your posts did.
-- **Projects**: products you create content for, each with one or more local source folders and its own content tasks. Click a project in the sidebar to manage its folders, name, description, or removal in a dialog. Ask Orca in Agent chat to create content.
+- **Projects**: products you create content for, each with one or more local source folders and its own content tasks. Click a project in the sidebar to open its own Orca conversation. The project name appears in the chat header; its settings gear opens a dialog for folders, name, description, and removal. Work delegated from the conversation automatically stays with that project.
 - **Brand Profile**: your shared audience, voice, colours and social links.
 - **Content output folder**: where Orca saves generated plans, scripts, recordings and exports; separate from project source folders.
 - **Tools**: browser control through your own browser, computer use on macOS and Windows, media creation (images, voice, music, video), and Gmail/Google Drive connectors.

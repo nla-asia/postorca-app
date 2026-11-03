@@ -103,9 +103,19 @@ export async function updateProject(
 }
 
 export async function deleteProject(db: Database, userId: string, id: string) {
-  const { rowCount } = await db.query(
-    "DELETE FROM brand_projects WHERE id=$1 AND user_id=$2",
-    [id, userId],
-  );
-  if (!rowCount) throw new HttpError(404, "Project not found.");
+  await transaction(db, async (client) => {
+    const { rowCount } = await client.query(
+      "SELECT id FROM brand_projects WHERE id=$1 AND user_id=$2 FOR UPDATE",
+      [id, userId],
+    );
+    if (!rowCount) throw new HttpError(404, "Project not found.");
+    await client.query(
+      "UPDATE tasks SET archived_at=coalesce(archived_at,now()) WHERE project_id=$1 AND user_id=$2 AND kind='chat'",
+      [id, userId],
+    );
+    await client.query(
+      "DELETE FROM brand_projects WHERE id=$1 AND user_id=$2",
+      [id, userId],
+    );
+  });
 }

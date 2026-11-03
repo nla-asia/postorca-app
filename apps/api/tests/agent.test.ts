@@ -441,10 +441,10 @@ test("the agent delegates project work and follow-ups retain that product contex
   const other = (await addProject(fixture.db, founder.id, {
     name: "OtherProduct", folders: ["/source/other"], description: "Unrelated product",
   })).project;
-  const chat = await createTask(fixture.db, founder.id, "chat", "Orca");
+  const chat = await createTask(fixture.db, founder.id, "chat", "Orca", undefined, first.id);
   requests.length = 0;
   script = async (request) => request.cacheKey === chat.id && lastMessage(request).kind === "user"
-    ? reply("", [call("start_task", { title: "Release video", instructions: "Plan the release video", work_type: "content", project_id: first.id })])
+    ? reply("", [call("start_task", { title: "Release video", instructions: "Plan the release video", work_type: "content" })])
     : reply("Here is the proposed plan for your review.");
   await post(url, `/${chat.id}/turns`, { message: "Plan a release video for Scholar" }, founder.token);
   const conversation = await settled(founder.id, chat.id);

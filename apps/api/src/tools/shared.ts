@@ -77,4 +77,6 @@ export function applyEdits(
 export async function requireChatTask(context: ToolContext, refusal: string) {
   const task = await ownedTask(context.db, context.userId, context.taskId);
   if (task.kind === "work") throw new HttpError(400, refusal);
+  if (task.archived_at) throw new HttpError(409, "This conversation is archived.");
+  return task;
 }

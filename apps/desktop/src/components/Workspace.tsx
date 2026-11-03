@@ -34,6 +34,8 @@ export default function Workspace({
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
 }) {
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const initialNavigation = useRef(false);
   const [projectEditor, setProjectEditor] = useState<string | "new" | null>(
     null,
   );
@@ -58,6 +60,16 @@ export default function Workspace({
     try {
       const profile = await api<Brand>("/brand-profile");
       setBrand(profile);
+      if (
+        !initialNavigation.current &&
+        profile.onboarding_status === "completed"
+      ) {
+        initialNavigation.current = true;
+        if (profile.projects[0]) {
+          setProjectId(profile.projects[0].id);
+          setPage("Project");
+        }
+      }
       setProfileName(profile.name);
       setBrandError("");
     } catch (error) {
@@ -70,10 +82,10 @@ export default function Workspace({
     void loadBrand();
   }, [loadBrand]);
   const completed = brand?.onboarding_status === "completed";
-  // Agent chat once the brand is set up; the onboarding conversation until then.
+  // Only onboarding lives at workspace level; each project owns its agent chat.
   const chat = useAgentChat(
-    brand ? user.id : undefined,
-    completed ? "chat" : "onboarding",
+    brand && !completed ? user.id : undefined,
+    "onboarding",
   );
   // Orca's tools change the profile, so re-read it after each turn.
   useEffect(() => {
@@ -152,7 +164,9 @@ export default function Workspace({
           onFinish={() => {
             setSetupDone(false);
             setSelected(null);
-            setPage("Inbox");
+            const first = brand.projects[0];
+            setProjectId(first?.id ?? null);
+            setPage(first ? "Project" : "Inbox");
           }}
           onLogOut={onLogOut}
           onOpenBilling={openBilling}
@@ -160,6 +174,7 @@ export default function Workspace({
         {settingsDialog}
       </>
     );
+  const project = brand.projects.find((item) => item.id === projectId);
   const filteredTasks =
     work.tasks?.filter(
       (task) =>
@@ -174,14 +189,17 @@ export default function Workspace({
         projects={brand.projects}
         tasks={work.tasks ?? []}
         projectId={
-          projectEditor === "new"
-            ? null
-            : (projectEditor ??
-              work.tasks?.find((task) => task.id === selected)?.project_id ??
+          page === "Project"
+            ? projectId
+            : (work.tasks?.find((task) => task.id === selected)?.project_id ??
               null)
         }
         selectedTaskId={selected}
-        onManageProject={setProjectEditor}
+        onOpenProject={(id) => {
+          setProjectId(id);
+          setSelected(null);
+          setPage("Project");
+        }}
         onOpenTask={openWork}
         onAddProject={() => setProjectEditor("new")}
         user={{ ...user, name: profileName }}
@@ -199,12 +217,20 @@ export default function Workspace({
       />
       <main className="workspace" aria-label={page}>
         <InAppNotifications onOpen={openWork} />
-        {page !== "Agent" && !selected && (
+        {page !== "Project" && !selected && (
           <header className="topbar">
             <h1 className="topbar-title">{page}</h1>
           </header>
         )}
-        {page === "Agent" && <Agent chat={chat} />}
+        {page === "Project" && project && (
+          <Agent
+            key={project.id}
+            userId={user.id}
+            project={project}
+            onSettings={() => setProjectEditor(project.id)}
+            onTurnComplete={loadBrand}
+          />
+        )}
         {((page === "Inbox" && !selected) || page === "Calendar") && (
           <label className="project-filter">
             Project
@@ -296,6 +322,9 @@ export default function Workspace({
                   }
                 : current,
             );
+            setProjectId(saved.id);
+            setSelected(null);
+            setPage("Project");
           }}
           onDeleted={async () => {
             setBrand((current) =>
@@ -308,8 +337,17 @@ export default function Workspace({
                   }
                 : current,
             );
+            if (projectId === projectEditor) {
+              const next = brand.projects.find(
+                (item) => item.id !== projectEditor,
+              );
+              setProjectId(next?.id ?? null);
+              setPage(next ? "Project" : "Inbox");
+            }
             await work.reload();
-            setProjectFilter((current) => current === projectEditor ? "all" : current);
+            setProjectFilter((current) =>
+              current === projectEditor ? "all" : current,
+            );
           }}
         />
       )}

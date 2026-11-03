@@ -5,7 +5,7 @@ import { HttpError } from "../handlers/errors.js";
 import type { StoredMessage } from "../schemas/tasks.js";
 import { completeTurn } from "./turns.js";
 
-/** Agent chat and onboarding (one conversation each per founder), or Inbox work. */
+/** Project agent chats, the retained general chat, onboarding, or Inbox work. */
 export const TASK_KINDS = ["chat", "onboarding", "work"] as const;
 export type TaskKind = (typeof TASK_KINDS)[number];
 export async function ownedTask(db: Queryable, userId: string, taskId: string) {
@@ -260,7 +260,7 @@ export async function taskDetail(
   };
 }
 
-/** A founder has one Agent chat: creating it again returns the existing one. */
+/** Reopens the project chat, legacy general chat or onboarding; work is independent. */
 export async function createTask(
   db: Queryable,
   userId: string,
@@ -270,15 +270,27 @@ export async function createTask(
   projectId?: string | null,
 ) {
   await assertProject(db, userId, projectId);
-  if (projectId && kind !== "work")
-    throw new HttpError(400, "Only work can belong to a project.");
-  // Agent chat and onboarding are one conversation per founder; reuse it.
+  if (projectId && kind === "onboarding")
+    throw new HttpError(400, "Onboarding cannot belong to a project.");
+  // A project conversation has a stable ID; opening it never changes another chat.
+  if (kind === "chat" && projectId) {
+    const {
+      rows: [chat],
+    } = await db.query(
+      `INSERT INTO tasks(user_id,kind,title,project_id) VALUES ($1,'chat',$2,$3)
+       ON CONFLICT (user_id,project_id) WHERE kind='chat' AND project_id IS NOT NULL
+       DO UPDATE SET user_id=EXCLUDED.user_id RETURNING *`,
+      [userId, title, projectId],
+    );
+    return chat;
+  }
+  // Preserve the legacy general conversation and the separate onboarding chat.
   const {
     rows: [task],
   } =
     kind !== "work"
       ? await db.query(
-          `INSERT INTO tasks(user_id,kind,title) VALUES ($1,$2,$3) ON CONFLICT (user_id) WHERE kind='${kind}' DO UPDATE SET user_id=EXCLUDED.user_id RETURNING *`,
+          `INSERT INTO tasks(user_id,kind,title) VALUES ($1,$2,$3) ON CONFLICT (user_id) WHERE kind='${kind}'${kind === "chat" ? " AND project_id IS NULL AND archived_at IS NULL" : ""} DO UPDATE SET user_id=EXCLUDED.user_id RETURNING *`,
           [userId, kind, title],
         )
       : await db.query(
