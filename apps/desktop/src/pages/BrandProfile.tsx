@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import {
   ExternalLink,
   FolderGit2,
-  Globe2,
+  Globe,
   MessageSquare,
   Palette,
   Target,
@@ -33,7 +33,7 @@ const tabs = [
   },
   { name: "Voice", icon: MessageSquare, fields: [] },
   { name: "Colours", icon: Palette, fields: [] },
-  { name: "Links", icon: Globe2, fields: [] },
+  { name: "Links", icon: Globe, fields: [] },
   { name: "Projects", icon: FolderGit2, fields: [] },
 ] as const;
 const colorFields = [
