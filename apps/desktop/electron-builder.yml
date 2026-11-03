@@ -28,16 +28,16 @@ extraResources:
   - from: build/remotion
     to: remotion-bundle
 mac:
-  # Sign the complete bundle locally so native helpers share PostOrca's TCC identity.
-  # null skips signing and leaves Electron's unbound linker signature in place.
-  identity: "-"
+  # Sign the bundle and native helpers with the installed Developer ID certificate.
+  identity: "Nay Lin Aung (AK79PF3L9Z)"
+  forceCodeSigning: true
   extraResources:
     - from: build/computer-use/computer-native
       to: computer-native
   binaries:
     - Contents/Resources/computer-native
   category: public.app-category.productivity
-  notarize: false
+  notarize: true
   target:
     - target: dmg
       arch: arm64

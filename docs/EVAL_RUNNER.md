@@ -346,6 +346,10 @@ Two separate evals use it, matching the product:
   criteria written for that product and task: the journey or change that matters, what
   the product really does, and what has to stay out. They set direction and flow, not
   wording.
+  Script-only cases have no OS restriction unless their fixture starts a native
+  macOS app (currently Quill). They still need a connected desktop for project
+  files, and web cases need the browser connection to inspect the running app.
+  Recording and Simulator cases retain their macOS requirements.
 - `content-script-ledgerly-intro`: the same on Ledgerly (`scripts/evals/ledgerly-fixture.mjs`,
   port 4130), an invoicing SaaS with sign-in (local demo login in its README), a
   dashboard chart, invoices with line items and live totals, status changes, a status
@@ -594,6 +598,12 @@ node_modules and create the founder-readable project once:
 ```sh
 node scripts/evals/packlight-fixture.mjs setup
 ```
+
+The fixture lifecycle also runs on Windows: setup invokes npm's JavaScript entry
+point, and cleanup verifies the recorded Metro process before stopping its process
+tree. Script-only runs can inspect the web preview and native sharing source;
+this does not verify the iOS share sheet live. Recording on iPhone still requires
+the Simulator on macOS.
 
 Add `~/PostOrca Evals/packlight` to Brand Profile projects. The ordinary fixture
 prepare/observe/cleanup hooks reset its owned source repository, start Metro at

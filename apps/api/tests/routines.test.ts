@@ -586,7 +586,7 @@ const completeProfile = {
   links: [{ name: "Founder on X", url: "https://x.com/founder", kind: "x" }],
 };
 
-test("completed profiles seed defaults once per social link after learning a valid timezone", async () => {
+test("completed profiles seed only founder defaults after learning a valid timezone", async () => {
   const a = await account();
   assert.equal(
     (
@@ -610,7 +610,7 @@ test("completed profiles seed defaults once per social link after learning a val
   assert.deepEqual((await request("", "GET", undefined, a.token)).data, []);
   assert.equal((await timezone(a.token, "Asia/Bangkok")).status, 200);
   const seeded = (await request("", "GET", undefined, a.token)).data;
-  assert.equal(seeded.length, 11);
+  assert.equal(seeded.length, 2);
   // A posts sync and a voice review for all accounts, with no platform of their own.
   assert.deepEqual(
     seeded
@@ -632,77 +632,32 @@ test("completed profiles seed defaults once per social link after learning a val
   );
   assert.equal(sync.time, "07:00");
   assert.deepEqual(sync.days, [1, 2, 3, 4, 5, 6, 7]);
-  assert.equal(seeded.filter((item: any) => item.platform === "X").length, 6);
-  assert.equal(
-    seeded.filter((item: any) => item.platform === "Instagram").length,
-    3,
-  );
+  assert.ok(seeded.every((item: any) => item.platform === null));
   assert.ok(
     seeded.every(
       (item: any) =>
-        item.timezone === "Asia/Bangkok" && item.active && item.next_run_at,
-    ),
-  );
-  const ideas = seeded.find(
-    (item: any) => item.platform === "X" && item.title === "Content ideas",
-  );
-  assert.equal(
-    ideas.instructions,
-    "Read the find-content-ideas skill with read_skill, then follow it for Founder on X (https://x.com/founder).",
-  );
-  assert.equal(ideas.time, "09:00");
-  assert.deepEqual(ideas.days, [1, 2, 3, 4, 5]);
-  const research = seeded.find(
-    (item: any) =>
-      item.platform === "X" && item.title === "Weekly strategy research",
-  );
-  assert.equal(research.time, "10:00");
-  assert.deepEqual(research.days, [1]);
-  // Each default carries its work type, so the app labels its deliverables.
-  assert.deepEqual(
-    Object.fromEntries(
-      seeded
-        .filter((item: any) => item.platform === "X")
-        .map((item: any) => [item.title, item.work_type]),
-    ),
-    {
-      "Content ideas": "ideas",
-      "Conversations to join": "conversations",
-      "Weekly strategy research": "strategy",
-      "People to connect": "conversations",
-      "Connect post": "content",
-      "Daily quote": "content",
-    },
-  );
-  const quote = seeded.find(
-    (item: any) => item.platform === "Instagram" && item.title === "Daily quote",
-  );
-  assert.equal(quote.time, "18:00");
-  assert.deepEqual(quote.days, [1, 2, 3, 4, 5, 6, 7]);
-  assert.ok(
-    !seeded.some(
-      (item: any) =>
-        item.platform === "Instagram" &&
-        ["People to connect", "Connect post"].includes(item.title),
+        item.timezone === "Asia/Bangkok" &&
+        item.active &&
+        item.next_run_at &&
+        item.work_type === "general",
     ),
   );
   // Editing/deleting defaults and learning a different zone must not recreate them.
   await request(
-    `/${research.id}`,
+    `/${review.id}`,
     "PATCH",
-    { instructions: "My own research process", active: false },
+    { instructions: "My own voice review process", active: false },
     a.token,
   );
-  await request(`/${ideas.id}`, "DELETE", undefined, a.token);
   await request(`/${sync.id}`, "DELETE", undefined, a.token);
   await profile(a.token, { topics: "AI products" });
   await timezone(a.token, "Europe/Berlin");
   const kept = (await request("", "GET", undefined, a.token)).data;
-  assert.equal(kept.length, 9);
+  assert.equal(kept.length, 1);
   assert.ok(!kept.some((item: any) => item.title === "Read my posts"));
   assert.equal(
-    kept.find((item: any) => item.id === research.id).instructions,
-    "My own research process",
+    kept.find((item: any) => item.id === review.id).instructions,
+    "My own voice review process",
   );
   assert.ok(kept.every((item: any) => item.timezone === "Asia/Bangkok"));
   const current = (await profile(a.token)).data;
@@ -723,32 +678,17 @@ test("completed profiles seed defaults once per social link after learning a val
     200,
   );
   const added = (await request("", "GET", undefined, a.token)).data;
-  assert.equal(added.length, 21);
-  assert.equal(
-    added.filter((item: any) => item.platform === "LinkedIn").length,
-    6,
-  );
-  assert.equal(
-    added.filter((item: any) => item.instructions.includes("Product on X"))
-      .length,
-    6,
-  );
-  assert.ok(
-    added
-      .filter((item: any) => item.platform === "LinkedIn")
-      .every((item: any) => item.timezone === "Europe/Berlin"),
-  );
+  assert.equal(added.length, 1);
+  assert.equal(added[0].id, review.id);
+  // New accounts do not receive the retired per-account defaults.
   const markers = (
     await fixture.db.query(
-      "SELECT kind,routines_seeded_at FROM brand_profile_links WHERE user_id=$1",
+      "SELECT routines_seeded_at, seeded_routines FROM brand_profile_links WHERE user_id=$1",
       [a.id],
     )
   ).rows;
-  assert.equal(markers.filter((item) => item.routines_seeded_at).length, 4);
-  assert.equal(
-    markers.find((item) => item.kind === "website")!.routines_seeded_at,
-    null,
-  );
+  assert.ok(markers.every((item) => item.routines_seeded_at === null));
+  assert.ok(markers.every((item) => item.seeded_routines.length === 0));
 });
 
 test("known-zone profile completion is idempotent under concurrent saves and ignores incomplete profiles", async () => {
@@ -771,7 +711,7 @@ test("known-zone profile completion is idempotent under concurrent saves and ign
   assert.ok(results.every((result) => result.status === 200));
   await timezone(a.token, "UTC");
   await profile(a.token, { audience: "Builders" });
-  assert.equal((await request("", "GET", undefined, a.token)).data.length, 8);
+  assert.equal((await request("", "GET", undefined, a.token)).data.length, 2);
   assert.equal(
     (await request("?once=true", "GET", undefined, a.token)).data.length,
     0,
@@ -788,6 +728,15 @@ test("removing a profile link pauses only its routines and clears their link ref
       { name: "Threads", url: "https://threads.net/@founder", kind: "threads" },
     ],
   });
+  await fixture.db.query(
+    `INSERT INTO routines(user_id,platform,title,instructions,time_of_day,days,timezone,active,next_run_at,link_id)
+     SELECT $1,CASE kind WHEN 'x' THEN 'X' ELSE 'Threads' END,'Existing account routine',
+       'Read the conversations-to-join skill with read_skill, then follow it.',
+       '13:00',ARRAY[1]::smallint[],'UTC',true,
+       routine_next_run('13:00'::time,ARRAY[1]::smallint[],'UTC',now()),id
+     FROM brand_profile_links WHERE user_id=$1`,
+    [a.id],
+  );
   const manual = (await request("", "POST", routine, a.token)).data;
   const current = (await profile(a.token)).data;
   const x = current.links.find((link: any) => link.kind === "x");
@@ -807,7 +756,7 @@ test("removing a profile link pauses only its routines and clears their link ref
       [a.id],
     )
   ).rows;
-  assert.equal(rows.length, 15);
+  assert.equal(rows.length, 5);
   // The posts sync covers every account, so it keeps running.
   assert.ok(
     rows.find((item) => item.platform === null && item.link_id === null)
@@ -826,7 +775,7 @@ test("removing a profile link pauses only its routines and clears their link ref
       .filter((item) => item.platform === "Threads")
       .every((item) => item.active && item.next_run_at),
   );
-  assert.equal(rows.filter((item) => item.link_id !== null).length, 6);
+  assert.equal(rows.filter((item) => item.link_id !== null).length, 1);
   assert.ok(
     (await request("", "GET", undefined, a.token)).data.find(
       (item: any) => item.id === manual.id,
@@ -834,46 +783,27 @@ test("removing a profile link pauses only its routines and clears their link ref
   );
 });
 
-test("seeding respects the shared cap and defers a whole account's defaults until there is room", async () => {
+test("seeding respects the shared cap and defers founder defaults until both fit", async () => {
   const a = await account();
   await timezone(a.token, "UTC");
   await fixture.db.query(
     `INSERT INTO routines(user_id,platform,title,instructions,time_of_day,days,timezone,active)
-    SELECT $1,'Threads','Manual '||n,'Find ideas','09:00',ARRAY[1]::smallint[],'UTC',false FROM generate_series(1,43) n`,
+    SELECT $1,'Threads','Manual '||n,'Find ideas','09:00',ARRAY[1]::smallint[],'UTC',false FROM generate_series(1,49) n`,
     [a.id],
   );
-  // The posts sync and voice review fit; the X account's six defaults wait for room.
   assert.equal((await profile(a.token, completeProfile)).status, 200);
-  assert.equal((await request("", "GET", undefined, a.token)).data.length, 45);
-  assert.equal(
-    (
-      await fixture.db.query(
-        "SELECT routines_seeded_at FROM brand_profile_links WHERE user_id=$1",
-        [a.id],
-      )
-    ).rows[0].routines_seeded_at,
-    null,
-  );
+  assert.equal((await request("", "GET", undefined, a.token)).data.length, 49);
   const first = (await request("", "GET", undefined, a.token)).data[0];
   await request(`/${first.id}`, "DELETE", undefined, a.token);
   assert.equal((await profile(a.token, { topics: "More ideas" })).status, 200);
-  assert.equal((await request("", "GET", undefined, a.token)).data.length, 50);
-  assert.equal(
-    (
-      await fixture.db.query(
-        "SELECT 1 FROM routines WHERE user_id=$1 AND link_id IS NOT NULL",
-        [a.id],
-      )
-    ).rowCount,
-    6,
-  );
-  assert.ok(
-    (
-      await fixture.db.query(
-        "SELECT routines_seeded_at FROM brand_profile_links WHERE user_id=$1",
-        [a.id],
-      )
-    ).rows[0].routines_seeded_at,
+  const seeded = (await request("", "GET", undefined, a.token)).data;
+  assert.equal(seeded.length, 50);
+  assert.deepEqual(
+    seeded
+      .filter((item: any) => item.platform === null)
+      .map((item: any) => item.title)
+      .sort(),
+    ["Read my posts", "Voice review"],
   );
   assert.equal((await request("", "POST", onceTask(), a.token)).status, 409);
 });
@@ -920,87 +850,61 @@ test("failed seeding rolls back both profile completion and newly learned timezo
     );
   }
   assert.equal((await timezone(b.token, "UTC")).status, 200);
-  assert.equal((await request("", "GET", undefined, b.token)).data.length, 8);
+  assert.equal((await request("", "GET", undefined, b.token)).data.length, 2);
 });
 
-test("migrate gives links seeded before new defaults only the ones they are missing", async () => {
+test("migrate preserves existing social routines without adding retired defaults", async () => {
   const a = await account();
   await timezone(a.token, "UTC");
   await profile(a.token, completeProfile);
-  const seeded = (await request("", "GET", undefined, a.token)).data;
-  assert.equal(seeded.length, 8);
-  // Back to how the account looked before the growth defaults, the posts sync and the voice review
-  // existed, with the founder having deleted Content ideas and added their own
-  // People to connect.
-  await fixture.db.query(
-    "DELETE FROM routines WHERE user_id=$1 AND title = ANY($2)",
-    [
-      a.id,
-      [
-        "People to connect",
-        "Connect post",
-        "Daily quote",
-        "Content ideas",
-        "Read my posts",
-        "Voice review",
-      ],
-    ],
-  );
+  // Simulate an older profile missing founder defaults, with a customized social routine.
+  await fixture.db.query("DELETE FROM routines WHERE user_id=$1", [a.id]);
   await fixture.db.query(
     "UPDATE brand_profiles SET seeded_routines = '{}' WHERE user_id=$1",
     [a.id],
   );
+  const legacyKeys = [
+    "find-content-ideas",
+    "conversations-to-join",
+    "weekly-strategy-research",
+  ];
   await fixture.db.query(
-    `UPDATE brand_profile_links SET seeded_routines =
-       ARRAY['find-content-ideas','conversations-to-join','weekly-strategy-research']
-     WHERE user_id=$1`,
-    [a.id],
+    "UPDATE brand_profile_links SET seeded_routines = $2 WHERE user_id=$1",
+    [a.id, legacyKeys],
   );
-  await fixture.db.query(
+  const {
+    rows: [existing],
+  } = await fixture.db.query(
     `INSERT INTO routines(user_id,platform,title,instructions,time_of_day,days,timezone,active,next_run_at,link_id)
      SELECT $1,'X','My connects','Read the people-to-connect skill with read_skill, then follow it my way.','08:00',ARRAY[1]::smallint[],'UTC',true,
        routine_next_run('08:00'::time,ARRAY[1]::smallint[],'UTC',now()),id
-     FROM brand_profile_links WHERE user_id=$1`,
+     FROM brand_profile_links WHERE user_id=$1 RETURNING *`,
     [a.id],
   );
   await migrate(fixture.db);
-  const titles = (await request("", "GET", undefined, a.token)).data
-    .map((item: any) => item.title)
-    .sort();
-  assert.deepEqual(titles, [
-    "Connect post",
-    "Conversations to join",
-    "Daily quote",
+  const seeded = (await request("", "GET", undefined, a.token)).data;
+  assert.deepEqual(seeded.map((item: any) => item.title).sort(), [
     "My connects",
     "Read my posts",
     "Voice review",
-    "Weekly strategy research",
   ]);
+  assert.deepEqual(
+    (await fixture.db.query("SELECT * FROM routines WHERE id=$1", [existing.id]))
+      .rows[0],
+    existing,
+  );
   assert.deepEqual(
     (
       await fixture.db.query(
         "SELECT seeded_routines FROM brand_profile_links WHERE user_id=$1",
         [a.id],
       )
-    ).rows[0].seeded_routines.sort(),
-    [
-      "connect-post",
-      "conversations-to-join",
-      "daily-quote",
-      "find-content-ideas",
-      "people-to-connect",
-      "weekly-strategy-research",
-    ],
+    ).rows[0].seeded_routines,
+    legacyKeys,
   );
-  // Running it again, or deleting a backfilled default, creates nothing more.
-  const quote = (await request("", "GET", undefined, a.token)).data.find(
-    (item: any) => item.title === "Daily quote",
-  );
-  await request(`/${quote.id}`, "DELETE", undefined, a.token);
-  const sync = (await request("", "GET", undefined, a.token)).data.find(
-    (item: any) => item.title === "Read my posts",
-  );
+  // Deleted founder defaults stay deleted on subsequent migration runs too.
+  const sync = seeded.find((item: any) => item.title === "Read my posts");
   await request(`/${sync.id}`, "DELETE", undefined, a.token);
   await migrate(fixture.db);
-  assert.equal((await request("", "GET", undefined, a.token)).data.length, 5);
+  assert.equal((await request("", "GET", undefined, a.token)).data.length, 2);
 });

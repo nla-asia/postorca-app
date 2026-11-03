@@ -242,6 +242,7 @@ async function prepare(attempt) {
   const nonce = randomUUID();
   const server = spawn(process.execPath, [fileURLToPath(import.meta.url), "serve", nonce], {
     detached: true,
+    windowsHide: true,
     stdio: "ignore",
   });
   server.unref();

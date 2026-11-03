@@ -1,13 +1,8 @@
 /**
- * Routines PostOrca ships with. When onboarding is completed, each social link whose
- * kind is listed in `kinds` gets its own copy, scheduled in the founder's time zone
- * on that link's platform. Founders edit, pause, or delete them like any routine.
- *
- * Each is keyed by its core skill (src/skills), recorded on the link when created, so
- * a default added here later also reaches links seeded before it. Instructions name
- * that skill, which holds the process, with
- * {{account}} (the link's name) and {{url}}; the brand profile itself is already in
- * Orca's context for every run.
+ * Routines PostOrca ships with. Founder-wide defaults cover all social accounts;
+ * the project routine finds content ideas in the founder's actual work. Each is
+ * keyed by its core skill so seeding does not recreate deleted defaults or rewrite
+ * routines the founder has edited.
  */
 import type { WorkType } from "../repositories/routines.js";
 
@@ -35,71 +30,9 @@ export type DefaultRoutine = {
   instructions: string;
 };
 
-export const DEFAULT_ROUTINES: DefaultRoutine[] = [
-  {
-    kinds: ["x", "threads", "instagram", "facebook", "linkedin"],
-    title: "Content ideas",
-    time: "09:00",
-    days: [1, 2, 3, 4, 5],
-    workType: "ideas",
-    skill: "find-content-ideas",
-    instructions:
-      "Read the find-content-ideas skill with read_skill, then follow it for {{account}} ({{url}}).",
-  },
-  {
-    kinds: ["x", "threads", "linkedin"],
-    title: "Conversations to join",
-    time: "13:00",
-    days: [1, 2, 3, 4, 5],
-    workType: "conversations",
-    skill: "conversations-to-join",
-    instructions:
-      "Read the conversations-to-join skill with read_skill, then follow it for {{account}} ({{url}}).",
-  },
-  {
-    kinds: ["x", "threads", "instagram", "facebook", "linkedin"],
-    title: "Weekly strategy research",
-    time: "10:00",
-    days: [1],
-    workType: "strategy",
-    skill: "weekly-strategy-research",
-    instructions:
-      "Read the weekly-strategy-research skill with read_skill, then follow it for {{account}} ({{url}}).",
-  },
-  // Growth for small accounts: people asking to connect, and a weekly post inviting
-  // them. Bigger accounts are told once that they can pause these.
-  {
-    kinds: ["x", "threads", "linkedin"],
-    title: "People to connect",
-    time: "11:00",
-    days: [1, 2, 3, 4, 5],
-    workType: "conversations",
-    skill: "people-to-connect",
-    instructions:
-      "Read the people-to-connect skill with read_skill, then follow it for {{account}} ({{url}}).",
-  },
-  {
-    kinds: ["x", "threads", "linkedin"],
-    title: "Connect post",
-    time: "10:00",
-    days: [3],
-    workType: "content",
-    skill: "connect-post",
-    instructions:
-      "Read the connect-post skill with read_skill, then follow it for {{account}} ({{url}}).",
-  },
-  // A fallback that keeps the account active: it skips days the founder already posted.
-  {
-    kinds: ["x", "threads", "instagram", "facebook", "linkedin"],
-    title: "Daily quote",
-    time: "18:00",
-    days: [1, 2, 3, 4, 5, 6, 7],
-    workType: "content",
-    skill: "daily-quote",
-    instructions:
-      "Read the daily-quote skill with read_skill, then follow it for {{account}} ({{url}}).",
-  },
-];
+// Social growth routines are no longer added by default. Keep existing routines
+// and their skills available; founder-wide and project routines remain below.
+export const DEFAULT_ROUTINES: DefaultRoutine[] = [];
 
 /** A routine that covers all of the founder's social accounts in one run. */
 export type FounderRoutine = Omit<DefaultRoutine, "kinds">;
