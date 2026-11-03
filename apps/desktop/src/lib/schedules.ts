@@ -27,6 +27,8 @@ export type Routine = {
   id: string;
   /** Null when the routine covers every social account. */
   platform: PlatformName | null;
+  project_id?: string | null;
+  project_name?: string | null;
   title: string;
   instructions: string;
   time: string;
@@ -48,6 +50,8 @@ export type RoutineInput = Omit<
   | "last_run_trigger"
   | "last_task_id"
   | "last_run_status"
+  | "project_id"
+  | "project_name"
 >;
 
 export type ScheduledTask = Omit<Routine, "platform" | "time" | "days"> & {
@@ -59,6 +63,8 @@ export type WorkTask = {
   kind: "work";
   title: string;
   platform: PlatformName | null;
+  project_id?: string | null;
+  project_name?: string | null;
   work_type: WorkType;
   routine_title: string | null;
   summary: string | null;

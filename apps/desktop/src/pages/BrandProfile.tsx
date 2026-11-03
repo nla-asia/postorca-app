@@ -1,14 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
 import {
   ExternalLink,
-  FolderGit2,
-  Globe2,
+  Globe,
   MessageSquare,
-  Palette,
   Target,
   Users,
 } from "lucide-react";
-import type { Brand, BrandProject } from "../lib/brand";
+import type { Brand } from "../lib/brand";
 import { api } from "../lib/api";
 import { Button } from "../components/ui";
 import Markdown from "../components/Markdown";
@@ -22,7 +20,6 @@ const tabs = [
     icon: Target,
     fields: [
       { key: "name", label: "Name" },
-      { key: "company", label: "What you’re building" },
       { key: "topics", label: "Primary topics" },
     ],
   },
@@ -32,14 +29,7 @@ const tabs = [
     fields: [{ key: "audience", label: "Target audience" }],
   },
   { name: "Voice", icon: MessageSquare, fields: [] },
-  { name: "Colours", icon: Palette, fields: [] },
-  { name: "Links", icon: Globe2, fields: [] },
-  { name: "Projects", icon: FolderGit2, fields: [] },
-] as const;
-const colorFields = [
-  { key: "background", label: "Background", use: "Text cards" },
-  { key: "text", label: "Text", use: "Words on text cards" },
-  { key: "highlight", label: "Highlight", use: "Spoken word and accents" },
+  { name: "Links", icon: Globe, fields: [] },
 ] as const;
 
 export default function BrandProfile({
@@ -68,7 +58,7 @@ export default function BrandProfile({
           setError(
             failure instanceof Error
               ? failure.message
-              : "Unable to load Brand Profile.",
+              : "Unable to load Brand.",
           );
       });
     return () => controller.abort();
@@ -77,7 +67,7 @@ export default function BrandProfile({
   if (!brand)
     return (
       <div className="page-content brand-page">
-        <h1 className="brand-page-heading">Brand Profile</h1>
+        <h1 className="brand-page-heading">Brand</h1>
         {error ? (
           <div className="brand-load-error">
             <p role="alert">{error}</p>
@@ -92,22 +82,24 @@ export default function BrandProfile({
           </div>
         ) : (
           <p className="brand-loading" role="status">
-            Loading Brand Profile…
+            Loading Brand…
           </p>
         )}
       </div>
     );
   return (
     <div className="page-content brand-page">
-      <h1 className="brand-page-heading">Brand Profile</h1>
+      <h1 className="brand-page-heading">Brand</h1>
       <p className="preview-note">
-        Your saved brand context. Ask Orca in Agent chat to change it.
+        Your shared voice, interests, audience, and social accounts. What you’re
+        building lives in Projects. Ask Orca in a project chat to update your
+        profile.
       </p>
       <div className="brand-layout">
         <nav
           className="tabs brand-tabs"
           role="tablist"
-          aria-label="Brand profile sections"
+          aria-label="Brand sections"
           aria-orientation="horizontal"
         >
           {tabs.map(({ name, icon: Icon }) => (
@@ -156,41 +148,6 @@ export default function BrandProfile({
         >
           {tab === "Voice" ? (
             <Voice />
-          ) : tab === "Projects" ? (
-            <Projects brand={brand} onChange={setBrand} notify={notify} />
-          ) : tab === "Colours" ? (
-            <>
-              <dl className="brand-values">
-                {colorFields.map((field) => {
-                  const value = brand.colors?.[field.key];
-                  return (
-                    <div key={field.key}>
-                      <dt>
-                        {field.label}{" "}
-                        <span className="muted">· {field.use}</span>
-                      </dt>
-                      <dd className="brand-color">
-                        {value ? (
-                          <>
-                            <span
-                              className="brand-swatch"
-                              style={{ backgroundColor: value }}
-                              aria-hidden="true"
-                            />
-                            {value.toUpperCase()}
-                          </>
-                        ) : (
-                          "Not set"
-                        )}
-                      </dd>
-                    </div>
-                  );
-                })}
-              </dl>
-              <p className="brand-empty">
-                Used in every video Orca makes. Ask Orca to change them.
-              </p>
-            </>
           ) : tab === "Links" ? (
             brand.links.length ? (
               <ul className="brand-links" aria-label="Brand links">
@@ -299,188 +256,5 @@ function Voice() {
       No voice yet. Orca asks about it in onboarding and learns it from your
       posts.
     </p>
-  );
-}
-
-type Draft = Omit<BrandProject, "id"> & { id?: string };
-
-/** Folders where the founder builds: added with the system picker, read by Orca. */
-function Projects({
-  brand,
-  onChange,
-  notify,
-}: {
-  brand: Brand;
-  onChange: (brand: Brand) => void;
-  notify: (message: string) => void;
-}) {
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [removing, setRemoving] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const reload = async () => onChange(await api<Brand>("/brand-profile"));
-  const act = async (work: () => Promise<void>) => {
-    setBusy(true);
-    try {
-      await work();
-    } catch (error) {
-      notify(error instanceof Error ? error.message : "Something went wrong.");
-    } finally {
-      setBusy(false);
-    }
-  };
-  const add = () =>
-    act(async () => {
-      const path = await window.postorca?.projectFolder.choose();
-      if (!path) return;
-      setDraft({
-        name: path.split(/[\\/]/).filter(Boolean).at(-1) ?? "",
-        path,
-        description: "",
-      });
-    });
-  const save = (event: FormEvent) => {
-    event.preventDefault();
-    if (!draft) return;
-    void act(async () => {
-      if (draft.id) {
-        await api(`/brand-profile/projects/${draft.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({
-            name: draft.name,
-            description: draft.description,
-          }),
-        });
-      } else {
-        const { createdRoutine } = await api<{
-          createdRoutine: { title: string; account: string } | null;
-        }>("/brand-profile/projects", {
-          method: "POST",
-          body: JSON.stringify(draft),
-        });
-        if (createdRoutine)
-          notify(
-            `Added the “${createdRoutine.title}” routine: weekdays at 6 PM for ${createdRoutine.account}.`,
-          );
-      }
-      setDraft(null);
-      await reload();
-    });
-  };
-  const remove = (project: BrandProject) =>
-    act(async () => {
-      await api(`/brand-profile/projects/${project.id}`, { method: "DELETE" });
-      setRemoving(null);
-      await reload();
-    });
-  return (
-    <div className="brand-projects">
-      <p className="brand-empty">
-        Folders where you build. Orca reads what changes in them (commits, docs,
-        designs) to suggest posts from your work. It never reads .env files,
-        keys or credentials.
-      </p>
-      {brand.projects.length > 0 && (
-        <ul className="brand-links" aria-label="Projects">
-          {brand.projects.map((project) =>
-            draft?.id === project.id ? null : (
-              <li className="brand-link-item" key={project.id}>
-                <header>
-                  <div>
-                    <strong>{project.name}</strong>
-                    <span className="muted brand-project-path">
-                      {project.path}
-                    </span>
-                  </div>
-                  {removing === project.id ? (
-                    <span className="brand-project-actions brand-project-confirm">
-                      Remove? Orca will stop reading it.
-                      <Button
-                        disabled={busy}
-                        onClick={() => void remove(project)}
-                      >
-                        Remove
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        disabled={busy}
-                        onClick={() => setRemoving(null)}
-                      >
-                        Keep
-                      </Button>
-                    </span>
-                  ) : (
-                    <div className="brand-project-actions">
-                      <Button
-                        variant="ghost"
-                        disabled={busy}
-                        onClick={() => setDraft({ ...project })}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        disabled={busy}
-                        onClick={() => setRemoving(project.id)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  )}
-                </header>
-                <p>{project.description || "No description."}</p>
-              </li>
-            ),
-          )}
-        </ul>
-      )}
-      {draft ? (
-        <form className="brand-project-form" onSubmit={save}>
-          <span className="muted brand-project-path">{draft.path}</span>
-          <label>
-            Name
-            <input
-              value={draft.name}
-              maxLength={80}
-              required
-              onChange={(event) =>
-                setDraft({ ...draft, name: event.target.value })
-              }
-            />
-          </label>
-          <label>
-            What it is
-            <textarea
-              value={draft.description}
-              maxLength={500}
-              rows={2}
-              placeholder="e.g. PostOrca: an AI agent that grows a founder's personal brand"
-              onChange={(event) =>
-                setDraft({ ...draft, description: event.target.value })
-              }
-            />
-          </label>
-          <div className="brand-project-actions">
-            <Button variant="primary" type="submit" disabled={busy}>
-              {draft.id ? "Save" : "Add project"}
-            </Button>
-            <Button
-              variant="ghost"
-              disabled={busy}
-              onClick={() => setDraft(null)}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      ) : window.postorca ? (
-        <Button disabled={busy} onClick={() => void add()}>
-          Add project folder
-        </Button>
-      ) : (
-        <p className="brand-empty">
-          Open the desktop app to add project folders.
-        </p>
-      )}
-    </div>
   );
 }

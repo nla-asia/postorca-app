@@ -7,7 +7,7 @@ import { memoryIndex } from "../memory.js";
 import { moveProfileVoice, readVoice } from "../voice.js";
 import { loadPluginState, releaseComputer } from "../plugins/service.js";
 import { ContextTooLongError, type Provider } from "../providers/types.js";
-import { getProfile } from "../repositories/brand.js";
+import { getAgentProfile } from "../repositories/brand.js";
 import { appendMessage, taskKind } from "../repositories/tasks.js";
 import {
   claimQueuedTurn,
@@ -109,7 +109,7 @@ export class AgentLoop {
       for (let step = 1; step <= limits.responses; step++) {
         controller.signal.throwIfAborted();
         // Re-read each step: tools such as update_brand_profile change it mid-turn.
-        const profile = await getProfile(this.db, userId);
+        const profile = await getAgentProfile(this.db, userId, task.project_id);
         // Activation changes the task's plugin mid-turn, so it is re-read too.
         const plugins = await loadPluginState(this.db, taskId);
         const lastStep = step === limits.responses;

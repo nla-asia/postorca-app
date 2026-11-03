@@ -236,12 +236,12 @@ test("onboarding uses its own instructions, and a question ends the turn until t
   requests.length = 0;
   script = async () =>
     reply("Saved. Next:", [
-      call("update_brand_profile", { company: "Customer feedback tool" }),
+      call("update_brand_profile", { topics: "Research lessons" }),
       call("request_user_input", {
         questions: [{ question: "Which platforms?", options: ["Instagram", "LinkedIn", "X"], multiple: true }],
       }),
     ]);
-  await post(url, `/${onboarding}/turns`, { message: "A customer feedback tool" }, founder.token);
+  await post(url, `/${onboarding}/turns`, { message: "I share research lessons" }, founder.token);
   const detail = await settled(founder.id, onboarding);
   // The fixed opening needed no model call; the answer needed exactly one.
   assert.equal(requests.length, 1);
@@ -253,8 +253,9 @@ test("onboarding uses its own instructions, and a question ends the turn until t
     detail.turns[1].messages.at(-1).content.result.status,
     "awaiting_user_input",
   );
-  const { rows } = await fixture.db.query("SELECT company FROM brand_profiles WHERE user_id=$1", [founder.id]);
-  assert.equal(rows[0].company, "Customer feedback tool");
+  const { rows } = await fixture.db.query("SELECT company, topics FROM brand_profiles WHERE user_id=$1", [founder.id]);
+  assert.equal(rows[0].company, "");
+  assert.equal(rows[0].topics, "Research lessons");
 });
 
 test("chat delegates background work that runs with work instructions and no chat-only tools", async () => {
@@ -430,4 +431,79 @@ test("with no plugins enabled, routine work can still read core skills", async (
     /\nSkills: when a task names a skill, or its work matches one, read it with read_skill first and follow it\. A follow-up that revises earlier work counts: read that work's skill again before revising, since the earlier read may no longer be in view\.\n- connect-post: [^\n]+\n- conversations-to-join: [^\n]+\n- create-content: [^\n]+\n- daily-quote: [^\n]+\n- find-content-ideas: Find up to five content ideas/,
   );
   assert.doesNotMatch(requests[0].instructions, /Plugins:/);
+});
+
+test("the agent delegates project work and follow-ups retain that product context", async () => {
+  const { addProject } = await import("../src/repositories/projects.js");
+  const founder = await account();
+  const first = (await addProject(fixture.db, founder.id, {
+    name: "Scholar", folders: ["/source/mobile", "/source/docs"], description: "Research tools",
+  })).project;
+  const other = (await addProject(fixture.db, founder.id, {
+    name: "OtherProduct", folders: ["/source/other"], description: "Unrelated product",
+  })).project;
+  const chat = await createTask(fixture.db, founder.id, "chat", "Orca", undefined, first.id);
+  requests.length = 0;
+  script = async (request) => request.cacheKey === chat.id && lastMessage(request).kind === "user"
+    ? reply("", [call("start_task", { title: "Release video", instructions: "Plan the release video", work_type: "content" })])
+    : reply("Here is the proposed plan for your review.");
+  await post(url, `/${chat.id}/turns`, { message: "Plan a release video for Scholar" }, founder.token);
+  const conversation = await settled(founder.id, chat.id);
+  const dispatched = conversation.turns[0].messages.find((message: StoredMessage) => message.kind === "tool_result")!.content.result as { task_id: string };
+  const detail = await settled(founder.id, dispatched.task_id);
+  assert.equal(detail.project_id, first.id);
+  assert.equal(detail.work_type, "content");
+  assert.equal(detail.turns[0].messages[0].content.text, "Plan the release video");
+  const workerRequest = requests.find((request) => request.cacheKey === detail.id)!;
+  assert.match(workerRequest.instructions, /Use active_project as the product context/);
+  assert.match(workerRequest.instructions, /\/source\/mobile/);
+  assert.match(workerRequest.instructions, /\/source\/docs/);
+  assert.doesNotMatch(workerRequest.instructions, /OtherProduct|\/source\/other/);
+  const another = await createWorkTask(fixture.db, founder.id, "Other video", "Plan another video", undefined, "content", other.id);
+  agent.dispatch(another.task.id, another.turn.id, founder.id);
+  await settled(founder.id, another.task.id);
+  await post(url, `/${detail.id}/turns`, { message: "Make the script shorter" }, founder.token);
+  const updated = await settled(founder.id, detail.id);
+  assert.equal(updated.project_id, first.id);
+  assert.equal(updated.turns.length, 2);
+  assert.match(requests.at(-1)!.instructions, /\/source\/mobile/);
+  assert.doesNotMatch(requests.at(-1)!.instructions, /OtherProduct|\/source\/other/);
+});
+
+test("project chats use project context and shared voice without leaking the legacy company through profile tools", async () => {
+  const { addProject } = await import("../src/repositories/projects.js");
+  const { writeMemory } = await import("../src/memory.js");
+  const founder = await account();
+  await fixture.db.query("UPDATE brand_profiles SET company=$2, topics=$3, colors=$4 WHERE user_id=$1", [founder.id, "Autopilot Startup legacy company", "Product lessons", { background: "#123456" }]);
+  await writeMemory(founder.id, "voice.md", "---\ndescription: Shared founder voice\n---\n# Voice\nUse short, calm sentences.\n");
+  const project = (await addProject(fixture.db, founder.id, { name: "Tide", description: "A calendar product for independent teams", folders: ["/source/tide"] })).project;
+  const chat = await createTask(fixture.db, founder.id, "chat", "Orca", undefined, project.id);
+  requests.length = 0;
+  script = async () => requests.length === 1
+    ? reply("", [call("read_brand_profile", {})])
+    : requests.length === 2
+      ? reply("", [call("update_brand_profile", { topics: "Product lessons and research" })])
+      : reply("Let’s work on Tide.");
+  await post(url, `/${chat.id}/turns`, { message: "Tell me about this project" }, founder.token);
+  const detail = await settled(founder.id, chat.id);
+  assert.equal(requests.length, 3);
+  for (const request of requests) {
+    assert.match(request.instructions, /"name":"Tide"/);
+    assert.match(request.instructions, /A calendar product for independent teams/);
+    assert.match(request.instructions, /Use short, calm sentences/);
+    assert.doesNotMatch(request.instructions, /Autopilot Startup legacy company|"company":/);
+    const update = request.tools.find((tool) => tool.name === "update_brand_profile")!;
+    assert.ok(!("company" in (update.parameters as any).properties));
+  }
+  const profileResults = detail.turns[0].messages.filter((message: StoredMessage) => message.kind === "tool_result");
+  assert.equal(profileResults.length, 2);
+  for (const message of profileResults) {
+    assert.equal(message.content.result.company, undefined);
+    assert.equal(message.content.result.active_project.id, project.id);
+    assert.deepEqual(message.content.result.projects.map((item: { id: string }) => item.id), [project.id]);
+  }
+  const { rows: [saved] } = await fixture.db.query("SELECT company, topics, colors FROM brand_profiles WHERE user_id=$1", [founder.id]);
+  assert.equal(saved.company, "Autopilot Startup legacy company");
+  assert.equal(saved.topics, "Product lessons and research");
+  assert.deepEqual(saved.colors, { background: "#123456" });
 });

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { callDesktop } from "../desktop/calls.js";
+import { ownedTask } from "../repositories/tasks.js";
 import { listProjects } from "../repositories/projects.js";
 import { contentFolder } from "./content.js";
 import { object, type Tool, type ToolContext } from "./shared.js";
@@ -54,12 +55,18 @@ const captureTargetArgs = z.discriminatedUnion("type", [
     })
     .strict(),
   z
-    .object({ type: z.literal("window"), window_id: z.number().int().positive() })
+    .object({
+      type: z.literal("window"),
+      window_id: z.number().int().positive(),
+    })
     .strict(),
   z
     .object({
       type: z.literal("simulator"),
-      udid: z.string().regex(/^[0-9A-F-]{36}$/i).optional(),
+      udid: z
+        .string()
+        .regex(/^[0-9A-F-]{36}$/i)
+        .optional(),
     })
     .strict(),
 ]);
@@ -299,7 +306,12 @@ export const desktopToolset: Tool[] = desktopTools.map((tool) => ({
   run: async (context: ToolContext, rawArgs: unknown) => {
     const args = tool.args.parse(rawArgs);
     const folder =
-      tool.definition.name === "screen_record_stop" ? await contentFolder(context) : null;
+      tool.definition.name === "screen_record_stop"
+        ? await contentFolder(context)
+        : null;
+    const projectId = tool.readsProjects
+      ? (await ownedTask(context.db, context.userId, context.taskId)).project_id
+      : null;
     return callDesktop(
       context,
       tool.definition.name,
@@ -307,9 +319,9 @@ export const desktopToolset: Tool[] = desktopTools.map((tool) => ({
       tool.readsProjects
         ? {
             ...args,
-            roots: (await listProjects(context.db, context.userId)).map(
-              (project) => project.path,
-            ),
+            roots: (await listProjects(context.db, context.userId))
+              .filter((project) => !projectId || project.id === projectId)
+              .flatMap((project) => project.folders),
           }
         : { ...args, ...(folder && { content_folder: folder }) },
     );

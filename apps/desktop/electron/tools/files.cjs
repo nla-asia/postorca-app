@@ -8,6 +8,7 @@
 // MP3) to the server like a screenshot, returning its file key; upload_file saves a
 // file to the server unchanged.
 const fs = require("node:fs/promises");
+const { assertWritable } = require("../folder-access.cjs");
 const os = require("node:os");
 const path = require("node:path");
 const { execFile } = require("node:child_process");
@@ -186,7 +187,7 @@ async function allowed(requested, roots) {
   const folders = sharedFolders(roots);
   if (!folders.length)
     throw new Error(
-      "No working folder or project folder is set. Ask the founder to choose a working folder in Settings or add a project in their Brand Profile.",
+      "No working folder or project folder is set. Ask the founder to choose a working folder in Settings or add project source folders in the sidebar.",
     );
   const real = await fs
     .realpath(
@@ -304,11 +305,23 @@ const uploadFile = {
   },
 };
 
+// Replace the destination entry atomically instead of following an existing file link.
+// This also leaves a source file untouched when the destination was a hard link to it.
+async function writeGenerated(file, data) {
+  const temporary = path.join(path.dirname(file), `.orca-${require("node:crypto").randomUUID()}.tmp`);
+  try {
+    await fs.writeFile(temporary, data, { flag: "wx" });
+    await fs.rename(temporary, file);
+  } finally {
+    await fs.rm(temporary, { force: true });
+  }
+}
+
 // A content task's plan.md or script.md, written into its folder in the working
 // folder (apps/api/src/tools/content.ts). The server names the folder; a new one that
 // is already taken gets a number, so two tasks never share a folder.
 const writeContentFile = {
-  run: async ({ folder, name, text, new_folder }) => {
+  run: async ({ folder, name, text, new_folder, read_only_roots = [] }) => {
     const base = workingFolder();
     if (!base)
       throw new Error(
@@ -325,25 +338,28 @@ const writeContentFile = {
       for (let n = 2; await fs.stat(path.join(root, relative)).then(() => true, () => false); n++)
         relative = `${parts.join("/")} ${n}`;
     const dir = path.join(root, relative);
+    assertWritable(dir, root, read_only_roots);
     await fs.mkdir(dir, { recursive: true });
     const real = await fs.realpath(dir);
     if (real !== root && !real.startsWith(root + path.sep))
       throw new Error("The content folder must be inside the working folder.");
     const file = path.join(real, name);
-    await fs.writeFile(file, String(text));
+    assertWritable(file, root, read_only_roots);
+    await writeGenerated(file, String(text));
     return { folder: relative, path: file };
   },
 };
 
 // A copy of a recording or an export in a content task's folder, so everything for one
 // piece of content sits together. A name already taken gets a number.
-async function saveToContentFolder(folder, name, data) {
+async function saveToContentFolder(folder, name, data, readOnlyRoots = []) {
   const base = workingFolder();
   const parts = String(folder ?? "").split(/[\\/]+/).filter(Boolean);
   if (!base || !parts.length || path.isAbsolute(String(folder)) || parts.some((part) => part === ".." || part === "."))
     return null;
   const root = await fs.realpath(base);
   const dir = path.join(root, ...parts);
+  assertWritable(dir, root, readOnlyRoots);
   await fs.mkdir(dir, { recursive: true });
   const real = await fs.realpath(dir);
   if (real !== root && !real.startsWith(root + path.sep)) return null;
@@ -351,7 +367,8 @@ async function saveToContentFolder(folder, name, data) {
   const stem = name.slice(0, name.length - ext.length).replace(/[^\w .-]+/g, "").trim().slice(0, 80) || "video";
   let file = path.join(real, stem + ext);
   for (let n = 2; await fs.stat(file).then(() => true, () => false); n++) file = path.join(real, `${stem} ${n}${ext}`);
-  await fs.writeFile(file, data);
+  assertWritable(file, root, readOnlyRoots);
+  await writeGenerated(file, data);
   return file;
 }
 

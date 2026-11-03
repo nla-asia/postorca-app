@@ -12,14 +12,14 @@ interface Window {
       refresh(): Promise<string | null>;
       clear(): Promise<void>;
     };
-    /** Picks a folder for a Brand Profile project; doesn't save it. */
+    /** Picks a read-only source folder for a project; doesn't save it. */
     projectFolder: {
       choose(): Promise<string | null>;
     };
     /** The folder Orca's file tools use; choose() opens the picker and saves it. */
     workingFolder: {
       get(): Promise<string | null>;
-      choose(): Promise<string | null>;
+      choose(readOnlySources?: string[]): Promise<string | null>;
     };
     /** Subscribes to notifications the OS wouldn't show; returns unsubscribe. */
     onNotification(

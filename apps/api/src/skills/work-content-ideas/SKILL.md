@@ -79,9 +79,9 @@ Refer to the founder by name, or as "they". Do not guess pronouns.
 
 ## Process
 
-1. Check the brand profile's projects. If there are none, stop and tell the founder to add a project folder in their Brand Profile (Projects). Check `desktop_status`; the file tools need the desktop app. If it is offline, stop and say so.
+1. Check the brand profile's projects. If there are none, stop and tell the founder to add a project and its source folders using Projects in the sidebar. Check `desktop_status`; the file tools need the desktop app. If it is offline, stop and say so.
 2. Read your memory `work-ideas.md`: when the last run covered work up to, and which moments were already used.
-3. For each project, see what changed since the last run (or the last 24 hours on a first run; at most the last 7 days):
+3. For each project, check every source folder in its `folders` list (fall back to `path` for older records) and see what changed since the last run (or the last 24 hours on a first run; at most the last 7 days):
    - In a git repository: `git_activity` with `since`. It lists commits and uncommitted work. For promising commits, call it again with `commit` to read the changes.
    - Outside git, or for files git doesn't track: `recent_files`, then `read_file` for the ones that matter (notes, docs, plans).
 4. Check `list_my_posts` for the founder's saved recent posts, so an idea doesn't repeat what they already posted. Don't open the founder's social accounts for this: finding ideas in their work needs no browsing.

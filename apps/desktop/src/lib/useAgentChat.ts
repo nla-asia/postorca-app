@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
-import type { ChatQuestion, TaskArtifact, TaskDetail, TaskMessage } from "./tasks";
+import type {
+  ChatQuestion,
+  TaskArtifact,
+  TaskDetail,
+  TaskMessage,
+} from "./tasks";
 import { artifactMedia, messageMedia, type MediaAttachment } from "./media";
 import { turnActions, type WorkAction } from "./toolActions";
 
@@ -33,6 +38,7 @@ const isQuestion = (message: TaskMessage) =>
 export function useAgentChat(
   userId: string | undefined,
   kind: "chat" | "onboarding",
+  projectId?: string,
 ) {
   const [task, setTask] = useState<ChatTask | null>(null);
   const [sending, setSending] = useState(false);
@@ -44,10 +50,14 @@ export function useAgentChat(
     setError("");
     if (!userId) return;
     setLoading(true);
-    // One conversation of each kind per founder: this opens or reuses it.
+    // Open or reuse this project conversation (or the separate onboarding chat).
     void api<{ id: string }>("/tasks", {
       method: "POST",
-      body: JSON.stringify({ kind, title: "Orca" }),
+      body: JSON.stringify({
+        kind,
+        title: "Orca",
+        ...(projectId ? { project_id: projectId } : {}),
+      }),
     })
       .then((chat) => api<ChatTask>(`/tasks/${chat.id}`))
       .then((detail) => {
@@ -62,7 +72,7 @@ export function useAgentChat(
     return () => {
       cancelled = true;
     };
-  }, [userId, kind]);
+  }, [userId, kind, projectId]);
   const running = !!task?.turns.some((turn) => isActive(turn.status));
   // Poll while Orca works, so its steps appear as they happen.
   useEffect(() => {

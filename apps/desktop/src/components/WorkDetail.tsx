@@ -228,6 +228,7 @@ export default function WorkDetail({
           <ArrowLeft size={19} />
         </button>
         <div className="work-heading">
+          {task.project_name && <small className="muted">{task.project_name}</small>}
           <h1>{task.title}</h1>
         </div>
         {task.platform && (

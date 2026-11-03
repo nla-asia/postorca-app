@@ -1,3 +1,4 @@
+const { assertSeparated } = require("../folder-access.cjs");
 const { createWriteStream } = require("node:fs");
 const fs = require("node:fs/promises");
 const path = require("node:path");
@@ -50,10 +51,11 @@ async function saveOriginal(
   input,
   metadata,
   { signal, uploadFile },
-  { directory, maxBytes = MAX_BYTES },
+  { directory, maxBytes = MAX_BYTES, readOnlyRoots = [] },
 ) {
   const name = safeFilename(metadata.filename);
   assertFileResponse(metadata.reported_type, name);
+  assertSeparated(directory, readOnlyRoots);
   const operationDirectory = path.join(
     path.resolve(directory),
     crypto.randomUUID(),

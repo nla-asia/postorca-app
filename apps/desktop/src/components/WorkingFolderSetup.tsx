@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { FolderOpen, LoaderCircle } from "lucide-react";
 import { Button } from "./ui";
 import BrandMark from "./BrandMark";
+import { chooseWorkingFolder, folderError } from "../lib/folders";
 import "./AuthScreen.css";
 import "./forms.css";
 
@@ -31,12 +32,16 @@ export default function WorkingFolderSetup({
       },
       () => {
         if (!cancelled) {
-          setError("Unable to check your working folder. Choose a folder to continue.");
+          setError(
+            "Unable to check your working folder. Choose a folder to continue.",
+          );
           setChecking(false);
         }
       },
     );
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [folders]);
 
   if (ready) return children;
@@ -44,7 +49,11 @@ export default function WorkingFolderSetup({
     <div className="auth-screen">
       <div className="auth-titlebar" />
       {checking ? (
-        <div className="auth-loading" role="status" aria-label="Checking working folder">
+        <div
+          className="auth-loading"
+          role="status"
+          aria-label="Checking working folder"
+        >
           <LoaderCircle className="loading-icon" size={24} />
         </div>
       ) : (
@@ -56,8 +65,14 @@ export default function WorkingFolderSetup({
             </div>
             <h1>Choose your working folder</h1>
             <div className="form-stack">
-              <p>Set a working folder to continue. Orca can read and use files here, such as images, music and notes for your content.</p>
-              {error && <p className="auth-error" role="alert">{error}</p>}
+              <p>
+                Orca can create and update plans, scripts, recordings, and finished content here.
+              </p>
+              {error && (
+                <p className="auth-error" role="alert">
+                  {error}
+                </p>
+              )}
               <Button
                 variant="primary"
                 className="auth-submit"
@@ -67,20 +82,28 @@ export default function WorkingFolderSetup({
                   setBusy(true);
                   setError("");
                   try {
-                    const folder = await folders.choose();
+                    const folder = await chooseWorkingFolder();
                     if (folder) setReady(true);
-                  } catch {
-                    setError("Unable to save your working folder. Please try again.");
+                  } catch (error) {
+                    setError(folderError(error, "Unable to save your working folder. Please try again."));
                   } finally {
                     setBusy(false);
                   }
                 }}
               >
-                {busy ? <LoaderCircle className="loading-icon" size={16} /> : <FolderOpen size={16} />}
+                {busy ? (
+                  <LoaderCircle className="loading-icon" size={16} />
+                ) : (
+                  <FolderOpen size={16} />
+                )}
                 {busy ? "Choosing folder…" : "Choose folder"}
               </Button>
             </div>
-            <p className="auth-switch"><button disabled={busy} onClick={onLogOut}>Log out</button></p>
+            <p className="auth-switch">
+              <button disabled={busy} onClick={onLogOut}>
+                Log out
+              </button>
+            </p>
           </div>
         </main>
       )}

@@ -453,7 +453,7 @@ class FounderBrowser {
     await settle(page);
     return this.afterAction(id);
   }
-  async fetchFile(id, { url, ref, filename }, context) {
+  async fetchFile(id, { url, ref, filename, read_only_roots = [] }, context) {
     const { page } = this.tab(id);
     if (ref) {
       const { element } = this.locator(id, ref);
@@ -461,7 +461,7 @@ class FounderBrowser {
       if (!url) throw new Error("This ref has no file URL. JavaScript-only file buttons are not supported.");
     }
     const session = await page.context().getExistingCDPSession(page);
-    return fetchBrowserFile(page, session, { url, filename }, context, {
+    return fetchBrowserFile(page, session, { url, filename, read_only_roots }, context, {
       directory: path.join(app.getPath("downloads"), "PostOrca"),
     });
   }

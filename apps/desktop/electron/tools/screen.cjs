@@ -400,7 +400,7 @@ function createScreenTools({
     return { id: recording.id, target, max_seconds: maxSeconds };
   };
 
-  const stop = async ({ id, content_folder }, context) => {
+  const stop = async ({ id, content_folder, read_only_roots = [] }, context) => {
     const recording = typeof id === "string" && recordings.get(id);
     if (!recording)
       throw new Error("No recording with that id: it was already saved, or the desktop app restarted.");
@@ -417,7 +417,7 @@ function createScreenTools({
     // A failed upload keeps the clip, so stopping again retries it.
     const key = await context.upload(data, "video/mp4");
     const saved = content_folder
-      ? await saveToContentFolder(path.join(content_folder, "Recordings"), "recording.mp4", data).catch(() => null)
+      ? await saveToContentFolder(path.join(content_folder, "Recordings"), "recording.mp4", data, read_only_roots).catch(() => null)
       : null;
     recordings.delete(id);
     await fs.rm(recording.dir, { recursive: true, force: true });

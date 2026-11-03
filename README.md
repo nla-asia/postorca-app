@@ -6,9 +6,9 @@ PostOrca is a desktop app with an AI agent, Orca, that turns what you build into
 
 ## Preview
 
-| Agent chat | Calendar |
+| Project chat | Calendar |
 | --- | --- |
-| ![Agent chat](docs/screenshots/agent.png) | ![Calendar](docs/screenshots/calendar.png) |
+| ![Project chat](docs/screenshots/project-workspaces.png) | ![Calendar](docs/screenshots/calendar.png) |
 
 | Routines | Brand Profile |
 | --- | --- |
@@ -17,11 +17,14 @@ PostOrca is a desktop app with an AI agent, Orca, that turns what you build into
 ## Features
 
 - **Product content**: ask for a launch video, a feature announcement, a how-to or a what's-new round-up. Orca plans it from your code, you approve the script, and Orca records and edits the video.
-- **Agent**: chat with Orca, who onboards you, edits your Brand Profile and does work on request.
+- **Project chats**: talk to Orca in a separate conversation for each product. Orca reads that project’s source folders and does the work you request.
 - **Inbox**: review, edit, approve or follow up on everything Orca produces.
 - **Calendar**: schedule one-time tasks.
 - **Routines**: work Orca does for you every day on its own, like checking what changed in your projects or how your posts did.
-- **Brand Profile**: your audience, voice, colours, social links and project folders.
+- **Projects**: products you create content for, each with one or more local source folders and its own content tasks. Click a project in the sidebar to open its own Orca conversation. The project name appears in the chat header; its settings gear opens a dialog for folders, name, description, and removal. Work delegated from the conversation automatically stays with that project.
+- **Brand Profile**: your shared audience, voice, content interests and social links. Product context comes from Projects.
+- **Working folder**: the writable folder Orca uses for generated plans, scripts, recordings and exports. Choose it during setup and change it in Settings → General.
+- **Source folders**: read-only inputs for Orca's file tools. They must be separate from the working folder, including parent/child overlaps and symlink aliases. Sources are registered in PostgreSQL (`brand_projects.folders`); the working folder remains local in the app profile's `settings.json` (`workingFolder`). Roles are derived from those stores, not per-folder database flags. The agent sees source paths and their role in its project context, and discovers the local working path and role through `desktop_status`. File-tool write checks enforce this separation; general computer automation is not an OS-level filesystem sandbox.
 - **Tools**: browser control through your own browser, computer use on macOS and Windows, media creation (images, voice, music, video), and Gmail/Google Drive connectors.
 
 ## Project structure
@@ -37,6 +40,8 @@ PostOrca is a desktop app with an AI agent, Orca, that turns what you build into
 ## Getting started
 
 Requires Node.js 22.12+ and npm 11.
+
+The desktop keeps login tokens in `session.json` inside its local user-data profile, with owner-only file permissions (`0600`), without Keychain or `safeStorage`. Existing encrypted `session.bin` logins require one new sign-in; that replaces the old file. Logout removes both session files.
 
 ```sh
 npm install

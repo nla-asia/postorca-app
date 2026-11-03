@@ -22,6 +22,7 @@ export type BrandProject = {
   name: string;
   /** Local to the founder's computer; only the desktop app opens it. */
   path: string;
+  folders: string[];
   description: string;
 };
 export type Brand = {
