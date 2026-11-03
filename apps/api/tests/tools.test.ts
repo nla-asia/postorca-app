@@ -185,7 +185,7 @@ test("link tools save or delete one owned link and profile updates leave links a
   assert.equal(profile.audience, "Builders");
 });
 
-test("completing a profile seeds default routines, and deleting their link pauses them", async () => {
+test("completing a profile seeds only founder defaults, which survive link deletion", async () => {
   const userId = await account();
   await fixture.db.query("UPDATE users SET timezone='Asia/Bangkok' WHERE id=$1", [userId]);
   const context = { userId, taskId: "unused", turnId: "unused" };
@@ -200,20 +200,20 @@ test("completing a profile seeds default routines, and deleting their link pause
     topics: "Research",
     onboarding_status: "completed",
   });
-  assert.ok(profile.default_routines_created.length > 0);
-  // The posts sync and voice review cover every account, so only the link's own routines pause.
-  const deleted = await run(context, "delete_brand_link", { id: link.id });
-  assert.equal(
-    deleted.routines_paused,
-    profile.default_routines_created.length - 2,
+  assert.deepEqual(
+    profile.default_routines_created.map((routine: { title: string }) => routine.title).sort(),
+    ["Read my posts", "Voice review"],
   );
+  // No account defaults are created; founder-wide routines keep running.
+  const deleted = await run(context, "delete_brand_link", { id: link.id });
+  assert.equal(deleted.routines_paused, undefined);
   const { rows } = await fixture.db.query(
     "SELECT platform, active FROM routines WHERE user_id=$1",
     [userId],
   );
   assert.ok(
-    rows.length &&
-      rows.every((row) => row.active === (row.platform === null)),
+    rows.length === 2 &&
+      rows.every((row) => row.active && row.platform === null),
   );
 });
 
