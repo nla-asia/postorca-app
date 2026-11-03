@@ -1,10 +1,25 @@
 import { useEffect, useState } from "react";
-import { Plug, Settings2 } from "lucide-react";
+import {
+  FolderOpen,
+  Plus,
+  Plug,
+  Settings2,
+} from "lucide-react";
 import { navigation, type Page } from "../navigation";
 import { api, type AuthUser } from "../lib/api";
+import type { BrandProject } from "../lib/brand";
+import type { WorkTask } from "../lib/schedules";
+import "./Projects.css";
 import { Button } from "./ui";
 
 export default function Sidebar({
+  projects,
+  tasks,
+  projectId,
+  selectedTaskId,
+  onOpenProject,
+  onOpenTask,
+  onAddProject,
   page,
   onNavigate,
   onOpenConnectApps,
@@ -12,6 +27,13 @@ export default function Sidebar({
   user,
   reviewCount = 0,
 }: {
+  projects: BrandProject[];
+  tasks: WorkTask[];
+  projectId: string | null;
+  selectedTaskId: string | null;
+  onOpenProject: (id: string) => void;
+  onOpenTask: (id: string) => void;
+  onAddProject: () => void;
   page: Page;
   onNavigate: (page: Page) => void;
   onOpenConnectApps: () => void;
@@ -19,6 +41,7 @@ export default function Sidebar({
   user: AuthUser;
   reviewCount?: number;
 }) {
+  const [showAll, setShowAll] = useState<Set<string>>(new Set());
   const [plan, setPlan] = useState<{ userId: string; name: string } | null>(
     null,
   );
@@ -97,6 +120,85 @@ export default function Sidebar({
           </button>
         ))}
       </nav>
+      <section className="sidebar-projects" aria-label="Projects">
+        <div className="sidebar-section-heading">
+          <span>Projects</span>
+          <button
+            className="icon-button"
+            aria-label="Add project"
+            onClick={onAddProject}
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+        {projects.length === 0 && (
+          <button className="project-empty" onClick={onAddProject}>
+            Add your first project
+          </button>
+        )}
+        {projects.map((project) => {
+          const recent = tasks.filter(
+            (task) => task.project_id === project.id && !task.archived_at,
+          );
+          return (
+            <div key={project.id} className="sidebar-project-group">
+              <div
+                className={`sidebar-project-row ${projectId === project.id ? "active" : ""}`}
+              >
+                <button
+                  className="project-name"
+                  title={`Open ${project.name} chat`}
+                  aria-current={
+                    page === "Project" && projectId === project.id
+                      ? "page"
+                      : undefined
+                  }
+                  onClick={() => onOpenProject(project.id)}
+                >
+                  <FolderOpen size={17} />
+                  <span>{project.name}</span>
+                </button>
+              </div>
+              {recent.length > 0 && (
+                <div className="sidebar-project-tasks">
+                  {recent
+                    .slice(0, showAll.has(project.id) ? undefined : 5)
+                    .map((task) => (
+                      <button
+                        key={task.id}
+                        title={task.title}
+                        className={`project-task ${selectedTaskId === task.id ? "active" : ""}`}
+                        onClick={() => onOpenTask(task.id)}
+                      >
+                        <span>{task.title}</span>
+                        {["queued", "running"].includes(task.status ?? "") && (
+                          <span
+                            className="project-task-dot"
+                            aria-label="Working"
+                          />
+                        )}
+                      </button>
+                    ))}
+                  {recent.length > 5 && (
+                    <button
+                      className="project-task project-more"
+                      onClick={() =>
+                        setShowAll((current) => {
+                          const next = new Set(current);
+                          if (!next.delete(project.id)) next.add(project.id);
+                          return next;
+                        })
+                      }
+                    >
+                      {showAll.has(project.id) ? "Show less" : "Show more"}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </section>
       <div className="sidebar-bottom">
         <Button
           type="button"

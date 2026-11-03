@@ -35,10 +35,12 @@ const status = (item: ScheduledTask) =>
 
 export default function Calendar({
   tasks,
+  projectFilter = "all",
   onOpenWork,
   onApprovedSelect,
 }: {
   tasks: WorkTask[];
+  projectFilter?: string;
   onOpenWork: (id: string) => void;
   onApprovedSelect: (id: string) => void;
 }) {
@@ -184,6 +186,13 @@ export default function Calendar({
                 ? (items ?? [])
                     .filter(
                       (item) =>
+                        projectFilter === "all" ||
+                        (projectFilter === "none"
+                          ? !item.project_id
+                          : item.project_id === projectFilter),
+                    )
+                    .filter(
+                      (item) =>
                         sameDay(item.run_at) &&
                         (showPast ||
                           !["Completed", "Failed"].includes(status(item))),
@@ -223,6 +232,9 @@ export default function Calendar({
                             <strong>{timeLabel(item.run_at)}</strong>{" "}
                             {item.title}
                             <small className="calendar-event-status">
+                              {item.project_name
+                                ? `${item.project_name} · `
+                                : ""}
                               {status(item)}
                             </small>
                           </span>
@@ -237,7 +249,14 @@ export default function Calendar({
                             onClick={() => onApprovedSelect(task.id)}
                           >
                             {task.platform && <Platform name={task.platform} />}
-                            <span>{task.title}</span>
+                            <span>
+                              {task.title}
+                              {task.project_name && (
+                                <small className="calendar-event-status">
+                                  {task.project_name}
+                                </small>
+                              )}
+                            </span>
                           </button>
                         ))}
                     </>
@@ -287,6 +306,11 @@ export default function Calendar({
               key={selected?.id ?? "new"}
               item={selected}
               when={when}
+              projectId={
+                projectFilter !== "all" && projectFilter !== "none"
+                  ? projectFilter
+                  : undefined
+              }
               onSaved={() => {
                 setEditing(null);
                 void reload();
@@ -299,11 +323,13 @@ export default function Calendar({
 }
 
 function ScheduleEditor({
+  projectId,
   item,
   when,
   onSaved,
 }: {
   item: ScheduledTask | null;
+  projectId?: string;
   when: string;
   onSaved: () => void;
 }) {
@@ -351,6 +377,7 @@ function ScheduleEditor({
               instructions,
               run_at: date.toISOString(),
               timezone: localZone,
+              ...(!item && projectId ? { project_id: projectId } : {}),
             }),
           }),
         );

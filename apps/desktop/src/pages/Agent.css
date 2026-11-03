@@ -213,3 +213,12 @@
     max-width: 90%;
   }
 }
+
+.project-chat-title {
+  min-width: 0;
+}
+.project-chat-title h1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -42,6 +42,7 @@ const onceFields = fields
   .extend({
     platform: z.enum(platforms).nullable().optional(),
     run_at: runAt,
+    project_id: z.uuid().optional(),
   })
   .strict();
 export function routineRoutes(db: Database, agent: AgentRouter | null) {

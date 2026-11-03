@@ -1,17 +1,18 @@
+import { assertProject } from "./projects.js";
 import { taskPublication } from "./publications.js";
 import { transaction, type Database, type Queryable } from "../db.js";
 import { HttpError } from "../handlers/errors.js";
 import type { StoredMessage } from "../schemas/tasks.js";
 import { completeTurn } from "./turns.js";
 
-/** Agent chat and onboarding (one conversation each per founder), or Inbox work. */
+/** Project agent chats, the retained general chat, onboarding, or Inbox work. */
 export const TASK_KINDS = ["chat", "onboarding", "work"] as const;
 export type TaskKind = (typeof TASK_KINDS)[number];
 export async function ownedTask(db: Queryable, userId: string, taskId: string) {
   const {
     rows: [task],
   } = await db.query(
-    "SELECT t.*,r.status FROM tasks t LEFT JOIN turns r ON r.id=t.current_turn_id WHERE t.id=$1 AND t.user_id=$2",
+    "SELECT t.*,(SELECT name FROM brand_projects WHERE id=t.project_id) AS project_name,r.status FROM tasks t LEFT JOIN turns r ON r.id=t.current_turn_id WHERE t.id=$1 AND t.user_id=$2",
     [taskId, userId],
   );
   if (!task) throw new HttpError(404, "Task not found.");
@@ -158,7 +159,7 @@ export async function startOnboarding(
     if (history.rowCount) return null;
     const turn = await createTurnInTransaction(client, userId, taskId);
     await appendMessage(client, turn.id, "assistant", {
-      text: "Hi, I’m Orca. Let’s set up your brand profile—it takes about 3 minutes. We’ll cover what you’re building, choose the platforms to grow your brand on, add those accounts, pick the topics you want to share, and pick how your posts should sound, then confirm the profile together. You can pick from the suggestions or write your own answers.\n\nTo start: what are you building?",
+      text: "Hi, I’m Orca. Let’s set up your brand profile—it takes about 3 minutes. We’ll choose your platforms, add your accounts, pick the topics you want to share, and learn how your posts should sound, then confirm the profile together. You’ll add what you’re building separately in Projects. You can pick from the suggestions or write your own answers.\n\nTo start: which platforms would you like to build your presence on—Instagram, LinkedIn, or X?",
     });
     // The opening is fixed text, so it completes without a model call;
     // Orca picks up from the founder's first reply.
@@ -179,13 +180,15 @@ export async function createWorkTask(
   instructions: string,
   platform?: string,
   workType: "general" | "content" = "general",
+  projectId?: string | null,
 ) {
   return transaction(db, async (client) => {
+    await assertProject(client, userId, projectId);
     const {
       rows: [task],
     } = await client.query(
-      "INSERT INTO tasks(user_id,kind,title,platform,work_type) VALUES ($1,'work',$2,$3,$4) RETURNING *",
-      [userId, title, platform ?? null, workType],
+      "INSERT INTO tasks(user_id,kind,title,platform,work_type,project_id) VALUES ($1,'work',$2,$3,$4,$5) RETURNING *",
+      [userId, title, platform ?? null, workType, projectId ?? null],
     );
     const turn = await createTurnInTransaction(
       client,
@@ -257,26 +260,42 @@ export async function taskDetail(
   };
 }
 
-/** A founder has one Agent chat: creating it again returns the existing one. */
+/** Reopens the project chat, legacy general chat or onboarding; work is independent. */
 export async function createTask(
   db: Queryable,
   userId: string,
   kind: TaskKind,
   title: string,
   workType: "general" | "content" = "general",
+  projectId?: string | null,
 ) {
-  // Agent chat and onboarding are one conversation per founder; reuse it.
+  await assertProject(db, userId, projectId);
+  if (projectId && kind === "onboarding")
+    throw new HttpError(400, "Onboarding cannot belong to a project.");
+  // A project conversation has a stable ID; opening it never changes another chat.
+  if (kind === "chat" && projectId) {
+    const {
+      rows: [chat],
+    } = await db.query(
+      `INSERT INTO tasks(user_id,kind,title,project_id) VALUES ($1,'chat',$2,$3)
+       ON CONFLICT (user_id,project_id) WHERE kind='chat' AND project_id IS NOT NULL
+       DO UPDATE SET user_id=EXCLUDED.user_id RETURNING *`,
+      [userId, title, projectId],
+    );
+    return chat;
+  }
+  // Preserve the legacy general conversation and the separate onboarding chat.
   const {
     rows: [task],
   } =
     kind !== "work"
       ? await db.query(
-          `INSERT INTO tasks(user_id,kind,title) VALUES ($1,$2,$3) ON CONFLICT (user_id) WHERE kind='${kind}' DO UPDATE SET user_id=EXCLUDED.user_id RETURNING *`,
+          `INSERT INTO tasks(user_id,kind,title) VALUES ($1,$2,$3) ON CONFLICT (user_id) WHERE kind='${kind}'${kind === "chat" ? " AND project_id IS NULL AND archived_at IS NULL" : ""} DO UPDATE SET user_id=EXCLUDED.user_id RETURNING *`,
           [userId, kind, title],
         )
       : await db.query(
-          "INSERT INTO tasks(user_id,kind,title,work_type) VALUES ($1,'work',$2,$3) RETURNING *",
-          [userId, title, workType],
+          "INSERT INTO tasks(user_id,kind,title,work_type,project_id) VALUES ($1,'work',$2,$3,$4) RETURNING *",
+          [userId, title, workType, projectId ?? null],
         );
   return task;
 }
@@ -286,17 +305,18 @@ export async function listTasks(
   db: Queryable,
   userId: string,
   kind?: TaskKind,
+  projectId?: string,
 ) {
   return (
     await db.query(
-      `SELECT t.*,r.status,r.finished_at,CASE WHEN ro.run_at IS NULL THEN ro.title END AS routine_title,
+      `SELECT t.*,(SELECT name FROM brand_projects WHERE id=t.project_id) AS project_name,r.status,r.finished_at,CASE WHEN ro.run_at IS NULL THEN ro.title END AS routine_title,
         (SELECT left(m.content->>'text',280) FROM messages m JOIN turns mt ON mt.id=m.turn_id
          WHERE mt.task_id=t.id AND m.kind='assistant' AND coalesce(m.content->>'text','')<>''
          ORDER BY m.id DESC LIMIT 1) AS summary
        FROM tasks t LEFT JOIN turns r ON r.id=t.current_turn_id
        LEFT JOIN routine_runs rr ON rr.task_id=t.id LEFT JOIN routines ro ON ro.id=rr.routine_id
-       WHERE t.user_id=$1 AND ($2::text IS NULL OR t.kind=$2) ORDER BY t.created_at DESC,t.id LIMIT 100`,
-      [userId, kind ?? null],
+       WHERE t.user_id=$1 AND ($2::text IS NULL OR t.kind=$2) AND ($3::uuid IS NULL OR t.project_id=$3) ORDER BY t.created_at DESC,t.id LIMIT 100`,
+      [userId, kind ?? null, projectId ?? null],
     )
   ).rows;
 }
@@ -306,12 +326,19 @@ export async function taskKind(
   db: Queryable,
   taskId: string,
 ): Promise<
-  { kind: TaskKind; platform: string | null; title: string } | undefined
+  | {
+      kind: TaskKind;
+      platform: string | null;
+      title: string;
+      project_id: string | null;
+    }
+  | undefined
 > {
   return (
-    await db.query("SELECT kind, platform, title FROM tasks WHERE id=$1", [
-      taskId,
-    ])
+    await db.query(
+      "SELECT kind, platform, title, project_id FROM tasks WHERE id=$1",
+      [taskId],
+    )
   ).rows[0];
 }
 

@@ -136,14 +136,11 @@ function OnboardingDone({
         </span>
         <h2>You’re all set</h2>
         <p className="onboarding-done-lead">
-          Orca now knows your brand and will start working on your accounts. You
-          can change any of this later in Brand.
+          Your shared topics, voice, and accounts are ready. You can change them
+          in Brand. Add projects from the sidebar to tell Orca what
+          you’re building.
         </p>
         <section className="onboarding-card">
-          <div className="onboarding-section">
-            <span className="onboarding-label">Building</span>
-            <p>{brand.company}</p>
-          </div>
           <div className="onboarding-section">
             <span className="onboarding-label">Topics</span>
             <p>{brand.topics}</p>
@@ -222,7 +219,7 @@ function OnboardingDone({
             className="onboarding-cta"
             onClick={onFinish}
           >
-            Go to Inbox
+            Open workspace
             <ArrowRight size={16} aria-hidden="true" />
           </Button>
         </div>

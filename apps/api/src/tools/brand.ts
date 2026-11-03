@@ -2,10 +2,16 @@ import { z } from "zod";
 import {
   deleteBrandLink,
   getProfile,
+  getAgentProfile,
   saveBrandLink,
   saveProfile,
 } from "../repositories/brand.js";
-import { brandLinkSchema, profileSchema } from "../schemas/brand.js";
+import {
+  brandLinkSchema,
+  profileSchema,
+  profileChangesSchema,
+} from "../schemas/brand.js";
+import { ownedTask } from "../repositories/tasks.js";
 import { object, type Tool } from "./shared.js";
 
 export const brandTools: Tool[] = [
@@ -15,21 +21,19 @@ export const brandTools: Tool[] = [
       description: "Read the founder’s saved brand profile.",
       parameters: object({}, []),
     },
-    run: ({ db, userId }) => getProfile(db, userId),
+    run: async ({ db, userId, taskId }) => {
+      const task = await ownedTask(db, userId, taskId);
+      return getAgentProfile(db, userId, task.project_id);
+    },
   },
   {
     definition: {
       name: "update_brand_profile",
       description:
-        "Save founder details on the server. Supply only changed fields. This tool does not change links; use save_brand_link or delete_brand_link for individual account and website links. Set onboarding_status=completed only after the founder confirms their company, primary topics, and actual account/site links.",
+        "Save founder details on the server. Supply only changed fields. This tool does not change links; use save_brand_link or delete_brand_link for individual account and website links. Products and what the founder is building belong to Projects, not this profile. Set onboarding_status=completed only after the founder confirms their shared topics, voice, and actual account/site links.",
       parameters: object(
         {
           name: { type: "string" },
-          company: {
-            type: "string",
-            description:
-              "What the founder is building: their company, product, or business description. A company name is not required.",
-          },
           audience: { type: "string" },
           topics: {
             type: "string",
@@ -54,18 +58,18 @@ export const brandTools: Tool[] = [
         [],
       ),
     },
-    run: async ({ db, userId }, args) => {
-      const changes = profileSchema
-        .omit({ links: true })
-        .partial()
-        .strict()
+    run: async ({ db, userId, taskId }, args) => {
+      const changes = profileChangesSchema
+        .omit({ links: true, company: true })
         .parse(args);
-      const { profile, createdRoutines } = await saveProfile(
+      const task = await ownedTask(db, userId, taskId);
+      const { createdRoutines } = await saveProfile(
         db,
         userId,
         profileSchema.parse({ ...(await getProfile(db, userId)), ...changes }),
         { saveLinks: false },
       );
+      const profile = await getAgentProfile(db, userId, task.project_id);
       return createdRoutines.length
         ? { ...profile, default_routines_created: createdRoutines }
         : profile;

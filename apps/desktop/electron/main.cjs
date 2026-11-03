@@ -134,13 +134,13 @@ ipcMain.handle("session:clear", (event) => {
   desktop?.setSession(null);
 });
 
-// A project folder for the Brand Profile: only picked here; the renderer saves it.
+// A project source folder: only picked here; the renderer saves it on the project.
 ipcMain.handle("project-folder:choose", async (event) => {
   if (!trusted(event)) return null;
   const result = await dialog.showOpenDialog(
     BrowserWindow.fromWebContents(event.sender),
     {
-      title: "Add a project folder",
+      title: "Add a source folder",
       message:
         "Orca can read what changes in this folder, such as code, docs and designs, to find content ideas in your work.",
       buttonLabel: "Add project",

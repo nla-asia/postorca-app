@@ -16,11 +16,27 @@ export async function getProfile(db: Database, userId: string) {
         'publishing_instructions',l.publishing_instructions,'access_status',l.access_status) ORDER BY l.name,l.id),'[]'::jsonb)
        FROM brand_profile_links l WHERE l.user_id=u.id) AS links,
       (SELECT coalesce(jsonb_agg(jsonb_build_object('id',b.id,'name',b.name,'path',b.path,
-        'description',b.description) ORDER BY b.created_at,b.id),'[]'::jsonb)
+        'description',b.description,'folders',coalesce(b.folders,ARRAY[b.path])) ORDER BY b.created_at,b.id),'[]'::jsonb)
        FROM brand_projects b WHERE b.user_id=u.id) AS projects
      FROM users u JOIN brand_profiles p ON p.user_id=u.id WHERE u.id=$1`,
     [userId],
   );
+  return profile;
+}
+/** Founder preferences plus the selected product, without the legacy single-company field. */
+export async function getAgentProfile(
+  db: Database,
+  userId: string,
+  projectId?: string | null,
+) {
+  const profile = await getProfile(db, userId);
+  delete profile.company;
+  if (projectId) {
+    profile.projects = profile.projects.filter(
+      (project: { id: string }) => project.id === projectId,
+    );
+    profile.active_project = profile.projects[0] ?? null;
+  }
   return profile;
 }
 export async function saveProfile(
@@ -45,11 +61,11 @@ export async function saveProfile(
         ).rowCount;
     if (
       data.onboarding_status === "completed" &&
-      (!data.company.trim() || !data.topics.trim() || !hasSocialLink)
+      (!data.topics.trim() || !hasSocialLink)
     )
       throw new HttpError(
         400,
-        "Save what you’re building, primary topics, and at least one social account link, such as Instagram, LinkedIn, or X, before completing onboarding.",
+        "Save primary topics and at least one social account link, such as Instagram, LinkedIn, or X, before completing onboarding.",
       );
     if (saveLinks) {
       const ids = data.links.flatMap((link) => (link.id ? [link.id] : []));

@@ -58,7 +58,7 @@ export async function schedulePost(
   const {
     rows: [post],
   } = await db.query(
-    `SELECT a.title, t.platform, coalesce(u.timezone, 'UTC') AS timezone
+    `SELECT a.title, t.platform, t.project_id, coalesce(u.timezone, 'UTC') AS timezone
      FROM artifacts a JOIN tasks t ON t.id = a.task_id JOIN users u ON u.id = t.user_id
      WHERE a.id = $1 AND a.task_id = $2 AND t.user_id = $3 AND a.kind = 'document'`,
     [artifactId, taskId, userId],
@@ -88,6 +88,7 @@ export async function schedulePost(
     run_at: data.post_at,
     timezone: post.timezone,
     work_type: "publish",
+    project_id: post.project_id,
   });
   try {
     const {
@@ -169,7 +170,12 @@ export async function recordPostResult(
       `UPDATE publications SET status = $3,
          posted_url = $4, posted_at = CASE WHEN $3 = 'posted' THEN now() END
        WHERE id = $1 AND user_id = $2 AND status IN ('scheduled', 'due') RETURNING id`,
-      [id, userId, result.status, result.status === "posted" ? result.url : null],
+      [
+        id,
+        userId,
+        result.status,
+        result.status === "posted" ? result.url : null,
+      ],
     );
     if (!publication)
       throw new HttpError(404, "No open scheduled post with this id.");

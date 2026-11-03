@@ -27,7 +27,15 @@ function backgroundDispatch(context: ToolContext): DispatchTask {
 /** The founder's own background work task named by the model. */
 async function workTask(context: ToolContext, taskId: string) {
   const task = await ownedTask(context.db, context.userId, taskId);
-  if (task.kind !== "work") throw new HttpError(400, "Use an execution task ID.");
+  if (task.kind !== "work")
+    throw new HttpError(400, "Use an execution task ID.");
+  const conversation = await ownedTask(
+    context.db,
+    context.userId,
+    context.taskId,
+  );
+  if (conversation.project_id && conversation.project_id !== task.project_id)
+    throw new HttpError(404, "Task not found in this project.");
   return task;
 }
 
@@ -41,6 +49,11 @@ export const taskTools: Tool[] = [
       parameters: object(
         {
           title: { type: "string" },
+          project_id: {
+            type: "string",
+            description:
+              "Only for the legacy general chat or onboarding. Project chats automatically supply their own project ID; it cannot be overridden.",
+          },
           instructions: { type: "string" },
           platform: { type: "string", enum: [...platforms] },
           work_type: {
@@ -55,10 +68,11 @@ export const taskTools: Tool[] = [
     },
     chatOnly: true,
     run: async (context, args) => {
-      await requireChatTask(context, CHAT_ONLY);
+      const conversation = await requireChatTask(context, CHAT_ONLY);
       const data = z
         .object({
           title: z.string().trim().min(1).max(200),
+          project_id: z.uuid().optional(),
           instructions: message,
           platform: z.enum(platforms).optional(),
           work_type: z.enum(["general", "content"]).optional(),
@@ -73,6 +87,7 @@ export const taskTools: Tool[] = [
         data.instructions,
         data.platform,
         data.work_type,
+        conversation.project_id ?? data.project_id,
       );
       dispatch(task.id, turn.id, context.userId);
       return {

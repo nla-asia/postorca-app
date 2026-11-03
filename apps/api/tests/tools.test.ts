@@ -101,7 +101,8 @@ test("unknown tools are refused with a message the model can act on", async () =
 test("link tools save or delete one owned link and profile updates leave links alone", async () => {
   const userId = await account();
   const other = await account();
-  const context = { userId, taskId: "unused", turnId: "unused" };
+  const task = await createTask(fixture.db, userId, "chat", "Orca");
+  const context = { userId, taskId: task.id, turnId: "unused" };
   const first = await run(context, "save_brand_link", {
     name: "Website",
     url: "https://example.com",
@@ -110,7 +111,6 @@ test("link tools save or delete one owned link and profile updates leave links a
   // A website alone is context; onboarding needs a social account.
   await assert.rejects(
     run(context, "update_brand_profile", {
-      company: "Product",
       topics: "Research",
       onboarding_status: "completed",
     }),
@@ -138,7 +138,6 @@ test("link tools save or delete one owned link and profile updates leave links a
   );
 
   await run(context, "update_brand_profile", {
-    company: "Product",
     topics: "Research",
     audience: "Builders",
     onboarding_status: "completed",
@@ -188,7 +187,8 @@ test("link tools save or delete one owned link and profile updates leave links a
 test("completing a profile seeds only founder defaults, which survive link deletion", async () => {
   const userId = await account();
   await fixture.db.query("UPDATE users SET timezone='Asia/Bangkok' WHERE id=$1", [userId]);
-  const context = { userId, taskId: "unused", turnId: "unused" };
+  const task = await createTask(fixture.db, userId, "chat", "Orca");
+  const context = { userId, taskId: task.id, turnId: "unused" };
   const link = await run(context, "save_brand_link", {
     name: "X Profile",
     url: "https://x.com/founder",
@@ -196,7 +196,6 @@ test("completing a profile seeds only founder defaults, which survive link delet
   });
   assert.equal(link.default_routines_created, undefined);
   const profile = await run(context, "update_brand_profile", {
-    company: "Product",
     topics: "Research",
     onboarding_status: "completed",
   });

@@ -21,7 +21,7 @@ type Link = {
   publishing_instructions: string;
   access_status: string;
 };
-type Profile = Omit<ProfileInput, "links"> & { links: Link[] };
+type Profile = Omit<ProfileInput, "links"> & { links: Link[]; projects: unknown[] };
 let fixture: Awaited<ReturnType<typeof temporaryPostgres>>;
 let server: Server;
 let url: string;
@@ -113,6 +113,9 @@ test("profile saves persist brand context and account name without affecting ano
     context.name,
   );
   assert.equal((await request(b.token)).data.company, "");
+  const partial = await request(a.token, { topics: "Founder lessons" });
+  assert.deepEqual(partial.data.colors, context.colors);
+  assert.equal(partial.data.company, context.company);
 });
 
 test("links keep stable IDs, metadata, sort order and multiple accounts per platform", async () => {
@@ -216,7 +219,7 @@ test("profile validation rejects unknown fields, unsafe links, invalid colors an
   assert.deepEqual((await request(a.token)).data, current);
 });
 
-test("completion requires building context, topics and a social account", async () => {
+test("completion requires topics and a social account, without a company or project", async () => {
   assert.equal(
     (await request(b.token, { onboarding_status: "completed" })).status,
     400,
@@ -224,7 +227,7 @@ test("completion requires building context, topics and a social account", async 
   assert.equal(
     (
       await request(b.token, {
-        company: "Product",
+        company: "",
         topics: "Building",
         links: [
           { name: "Website", url: "https://example.com", kind: "website" },
@@ -235,7 +238,7 @@ test("completion requires building context, topics and a social account", async 
     400,
   );
   const complete = await request(b.token, {
-    company: "Product",
+    company: "",
     topics: "Building",
     links: [
       {
@@ -248,6 +251,8 @@ test("completion requires building context, topics and a social account", async 
   });
   assert.equal(complete.status, 200);
   assert.equal(complete.data.onboarding_status, "completed");
+  assert.equal(complete.data.company, "");
+  assert.deepEqual(complete.data.projects, []);
   const removed = await request(b.token, {
     links: [],
     onboarding_status: "in_progress",

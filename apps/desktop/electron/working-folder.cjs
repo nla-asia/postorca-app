@@ -1,4 +1,4 @@
-// The founder's working folder: the one folder on this computer Orca's file tools may
+// The founder's content output folder: the one folder on this computer Orca's file tools may
 // use. Chosen with the system folder picker (required when it isn't set).
 // Saved in the app's settings file in userData.
 const fs = require("node:fs");
@@ -15,7 +15,7 @@ function read() {
   }
 }
 
-/** The saved working folder, or null when none is set or it no longer exists. */
+/** The saved content output folder, or null when none is set or it no longer exists. */
 function get() {
   const folder = read().workingFolder;
   return typeof folder === "string" && fs.existsSync(folder) ? folder : null;
@@ -33,9 +33,9 @@ async function choose(win) {
   const { dialog } = require("electron");
   const current = get();
   const result = await dialog.showOpenDialog(win, {
-    title: "Choose your working folder",
+    title: "Choose your content output folder",
     message:
-      "Orca can read and use the files in this folder, such as music, images and notes for your content.",
+      "Orca saves plans, scripts, recordings, and finished content here. Add project source folders separately in the sidebar.",
     buttonLabel: "Use this folder",
     defaultPath: current ?? require("electron").app.getPath("documents"),
     properties: ["openDirectory", "createDirectory"],
