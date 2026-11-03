@@ -11,6 +11,16 @@ const {
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
+
+// Select the profile before plugins load or the single-instance lock is acquired.
+// Keep packaged installs on their existing path so saved accounts and settings survive.
+if (!app.isPackaged) {
+  const profile = `${app.getPath("userData")}-development`;
+  fs.mkdirSync(profile, { recursive: true });
+  app.setPath("userData", profile);
+  app.setPath("sessionData", profile);
+}
+
 const { DesktopConnection } = require("./connection.cjs");
 const plugins = require("./plugins/index.cjs");
 const workingFolder = require("./working-folder.cjs");
