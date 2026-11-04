@@ -13,6 +13,10 @@ For a short introduction, a useful shape is:
 
 Adapt to the requested length. A longer introduction can give the problem and benefits more room; it doesn't automatically need more features or section cards. A live proof beat is optional. The viewer should still understand the benefit without a demonstration or numerical proof.
 
+## Example product
+
+The examples below use **FileNest**, a fictional app that finds files from descriptions of their contents. They show acceptable wording and tone. Write the actual product's name and supported capabilities when creating a script.
+
 ## Opening / hook examples
 
 Use simple, plain language and speak directly to the customer or user. Give them a natural way into the video so the opening feels like the start of a conversation. Choose a starter that fits the product, audience and founder's voice.
@@ -23,9 +27,21 @@ Use simple, plain language and speak directly to the customer or user. Give them
 | Audience call-out | “If you're always searching for files, this is for you.” |
 | Familiar situation | “Sometimes you remember what's in a file, but not where you saved it.” |
 | Topic opener | “Let's talk about finding your files without opening every folder.” |
-| Straightforward introduction | “Today, I'd like to introduce you to [product], a simple way to [main benefit].” |
+| Straightforward introduction | “Today, I'd like to introduce you to FileNest, a simple way to find your files.” |
 
 These examples show an acceptable starting point. Adapt the wording to the customer's actual problem and the product's supported benefits. Choose one starter for the opening and let it lead naturally into the next line. If the starter already explains what the product is, build on that explanation in the next beat.
+
+## Product definition examples
+
+Say what the product is and what it helps the user do, in plain language. Let this line follow naturally from the starter.
+
+These are three alternative ways to introduce FileNest. Choose one approach that fits the actual product:
+
+- “This is FileNest, an app that helps you find your files.”
+- “FileNest lets you find files by describing what's in them.”
+- “With FileNest, you can find a file even if you've forgotten its name.”
+
+If the starter already explains the product, use the next line to add something useful instead of repeating the definition.
 
 ## Visuals
 
