@@ -1,6 +1,6 @@
 # Product demo
 
-Show the product doing a useful job. Choose a real user need, the actions that address it and the visible result. The viewer should understand what happened and why it helps.
+Explain how the product works by showing it in use. Help the viewer understand its main parts, what they can do and what happens next. Benefits come through the explanation and demonstration.
 
 ## Understand the product
 
@@ -10,17 +10,29 @@ Read the relevant README, docs, screens and behavior for this content's purpose.
 
 ## Plan the content
 
-Open on the need or a preview of the result, then show meaningful actions in an order the app supports. Explain what the user does or gets instead of narrating every click. Routine navigation, sign-in and preparation can happen off camera or across a clear cut. Preserve dependencies the viewer needs to understand the result.
+Choose the scope from the request. A product demo can be a walkthrough of the main parts of the product, covering several connected features, or a focused demonstration of one feature or task. When the request is broad, choose the main parts that help a new viewer understand the product. Follow a requested duration; otherwise choose enough time to explain and show the selected scope. Do not default to a 30-second clip.
 
-Trace the flow in the code where available and inspect it in the running product. Establish the starting state, required inputs, state changes and actual output. Distinguish actions the product performs from statuses the user sets; don't imply an email was sent, a payment collected or work completed just because a label changed.
+Start naturally, tell the viewer what you will show and establish where they are in the product. Move through the selected sections in an order that makes sense, explaining what each part does and demonstrating meaningful actions and results. Connect sections with simple transitions so the walkthrough feels continuous. Routine navigation, sign-in and preparation can happen off camera or across a clear cut. Keep any setup the viewer needs to understand the flow.
+
+Trace the flow in the code where available. Code and docs can support the plan; inspect the running product when needed to resolve uncertainty about behavior or layout. Establish the starting state, required inputs, state changes and actual output. Distinguish actions the product performs from statuses the user sets; don't imply an email was sent, a payment collected or work completed just because a label changed.
 
 Plan live clips for actions that establish the demonstration and hold the result long enough to read. Use close-ups with enough context to follow the flow. Type, diagrams or other visuals can explain context, but the demonstration itself shows real product behavior.
 
-Prefer one focused journey for a short demo. If multiple journeys are requested and fit the duration, introduce each clearly. End on the useful result, with the product name and next step when appropriate.
+Give important actions and results enough time to be understood. A short demo may cover one journey; a longer walkthrough may show several parts and how they connect. Close by briefly recapping what the viewer has seen or can now do, with a next step when useful.
+
+### Baseline example
+
+These examples show an acceptable starting point. Adapt them to the real product and feel free to write better ones; they are not a fixed script or required sequence.
+
+- **Opening:** “Hi, welcome to FileNest. Let me show you how it works.”
+- **Starting point:** “This is your workspace. You can see your recent files here, and your folders are on the left.”
+- **Action and result:** “Let's upload a proposal. Once it's here, I can open it and read it without leaving FileNest.”
+- **Transition:** “Now that the file is in our workspace, let me show you how to share it.”
+- **Close:** “That's a quick look at FileNest: bringing in your files, finding what you need and sharing them with your team.”
 
 ## Write and check the script
 
-Write in plain language as the product's owner speaking to the intended audience. Follow `voice.md` from your instructions and use recent posts (`list_my_posts`) when needed to understand how the founder speaks. Keep features, results, speed claims, prices and availability grounded in supplied or verified sources. Keep narration aligned with the visuals and read it continuously to catch disconnected lines or repetition.
+Write in plain language as the product's owner explaining it directly to the viewer. Use natural phrases such as “This is your dashboard,” “Let me show you” and “Once you save it, you'll see it here” when they fit. Explain what matters on each screen and what happens as you use it. Follow `voice.md` from your instructions and use recent posts (`list_my_posts`) when needed to understand how the founder speaks. Keep features, results, speed claims, prices and availability grounded in supplied or verified sources. Keep narration aligned with the visuals and read it continuously to catch disconnected lines or repetition.
 
 Count the actual spoken words and estimate speech at about 2.5 words per second. Check each shot's timing, including time to read important visuals and hold a result. Raise unresolved questions with the founder in chat.
 
@@ -33,7 +45,7 @@ Include:
 - **Content type**, what the product is and who this piece is for.
 - **Format:** duration, aspect ratio, voiceover and captions. Follow the request; otherwise explain your choices.
 - **Story:** what the viewer should understand or be able to do by the end, with choices and omissions explained.
-- **Numbered shots:** timing, what the viewer sees, added on-screen text and the voiceover. Specify the visual mode: **live clip** for a recorded product action, **product shot** for a prepared real screen, **type card**, **illustration**, **footage** or **animation**. Identify supplied assets or assets to create. For product screens, name the verified state, useful crop and preparation needed.
+- **Numbered shots:** timing, what the viewer sees, added on-screen text and the voiceover. Specify the visual mode: **live clip** for a recorded product action, **product shot** for a prepared real screen, **type card**, **illustration**, **footage** or **animation**. Identify supplied assets or assets to create. For product screens, name the state supported by your project research, useful crop and preparation needed. Capture real product behavior during production and check the recordings before use.
 - **Assumptions:** creative choices for the founder to review. Access requests belong in chat.
 
 Report access problems and requests for help in a separate chat message. Keep them out of `plan.md` and `script.md`. If missing access prevents verifying a planned screen, ask for the needed access or choose a supported alternative before finalizing the plan.
