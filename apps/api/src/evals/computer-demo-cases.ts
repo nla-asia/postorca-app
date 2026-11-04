@@ -158,11 +158,14 @@ export const demoCases: DemoCase[] = [
   {
     id: "script-ledgerly-how-to",
     name: "Ledgerly how-to record an invoice payment",
-    brief: "Can you make a short how-to for Ledgerly users on recording payment for an invoice? Around 20 seconds for LinkedIn, landscape, voiceover and captions. The code is in my projects and the app is running locally. Don't publish anything, sign into accounts or change settings outside the app.",
+    brief: "Can you plan a how-to for Ledgerly users on recording payment for an invoice? For LinkedIn, landscape, with voiceover and captions. Choose enough time to explain the task clearly. The code is in my projects and the app is running locally. Give me the plan and script for approval first; do not publish anything or generate assets yet.",
     criteria: [
-      "The script teaches recording payment on an existing invoice with direct repeatable instructions and the required starting invoice state.",
-      "The relevant controls and final paid status match the inspected app. Recording a payment is a manual record of money already received, not a charge or payment collection.",
-      "The lesson stays focused on the requested task, without an invoice-creation tutorial or whole-product introduction."
+      "General — components: All five components from the how-to guide are present: opening, starting point, steps, result and close. Components can share shots.",
+      "General — explanation: Plain, connected instructions teach repeatable steps and a recognizable result supported by the product, with enough time to follow. Code and docs can support planning; an app visit is not universally required.",
+      "General — delivery: It provides a reviewable plan and complete script for a landscape LinkedIn video with voiceover and captions, explains its chosen duration, asks for approval and stops before production.",
+      "Specific — starting point: It explains which existing Ledgerly invoice is ready for recording payment, so the viewer can start from the right state.",
+      "Specific — task: It explains how to record an invoice payment and recognize the updated paid state. It stays focused on that task, without an invoice-creation tutorial or whole-product walkthrough.",
+      "Specific — meaning: It makes clear that recording a payment records money already received; Ledgerly is not charging the client or collecting payment."
     ],
     level: 3,
     app: "web",

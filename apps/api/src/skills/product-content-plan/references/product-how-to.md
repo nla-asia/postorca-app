@@ -10,13 +10,37 @@ Read the relevant README, docs, screens and behavior for this content's purpose.
 
 ## Plan the content
 
-Inspect the task in the running product and trace conditions or dependencies in the code where available. Identify prerequisites such as an existing project, account state or supported device. Show or state a prerequisite when omitting it would prevent someone repeating the lesson.
+### Required components
+
+Include these components in the plan and script. Components can share a shot; use as many steps as the task needs.
+
+1. **Opening:** Say what the viewer will learn.
+2. **Starting point:** Explain what they need before starting.
+3. **Steps:** Show and explain the actions in order, using the product's own names.
+4. **Result:** Show how to recognize success.
+5. **Close:** Briefly confirm what they have completed.
+
+### Plan the steps
+
+Trace conditions and dependencies in the code where available. Code and docs can support the plan; inspect the running product when needed to resolve uncertainty about behavior or layout. Identify prerequisites such as an existing project, account state or supported device. Show or state a prerequisite when omitting it would prevent someone repeating the lesson.
 
 Use direct instructions in the app's own words: where to go, what to select or enter and how to recognize success. Give meaningful steps enough time to follow. Keep routine preparation in shot notes when it doesn't affect the lesson; include optional actions only when they help with the requested task.
 
 Use real product recordings for the steps. Text, diagrams or animation can clarify them. Phone-only behavior belongs on the phone or Simulator. Don't substitute a browser flow that lacks the action being taught.
 
 End by showing the result and explaining relevant limits: for example, whether sharing sends a copy or creates a live shared item. Stay on this task rather than introducing unrelated product capabilities.
+
+Follow a requested duration; otherwise choose enough time for the viewer to follow the steps and recognize the result.
+
+### Baseline example
+
+These examples show an acceptable starting point. Adapt them to the real product and feel free to write better ones; they are not a fixed script.
+
+- **Opening:** “Let me show you how to rename a file in FileNest.”
+- **Starting point:** “Start in your workspace with the file you want to rename.”
+- **Steps:** “Open the file's menu and choose Rename. Enter the new name, then click Save.”
+- **Result:** “You can see the new name in your file list.”
+- **Close:** “That's it. Your file now has its new name.”
 
 ## Write and check the script
 
@@ -33,7 +57,7 @@ Include:
 - **Content type**, what the product is and who this piece is for.
 - **Format:** duration, aspect ratio, voiceover and captions. Follow the request; otherwise explain your choices.
 - **Story:** what the viewer should understand or be able to do by the end, with choices and omissions explained.
-- **Numbered shots:** timing, what the viewer sees, added on-screen text and the voiceover. Specify the visual mode: **live clip** for a recorded product action, **product shot** for a prepared real screen, **type card**, **illustration**, **footage** or **animation**. Identify supplied assets or assets to create. For product screens, name the verified state, useful crop and preparation needed.
+- **Numbered shots:** timing, what the viewer sees, added on-screen text and the voiceover. Specify the visual mode: **live clip** for a recorded product action, **product shot** for a prepared real screen, **type card**, **illustration**, **footage** or **animation**. Identify supplied assets or assets to create. For product screens, name the state supported by your project research, useful crop and preparation needed. Capture real product behavior during production and check the recordings before use.
 - **Assumptions:** creative choices for the founder to review. Access requests belong in chat.
 
 Report access problems and requests for help in a separate chat message. Keep them out of `plan.md` and `script.md`. If missing access prevents verifying a planned screen, ask for the needed access or choose a supported alternative before finalizing the plan.

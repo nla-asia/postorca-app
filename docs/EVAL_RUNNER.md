@@ -399,7 +399,11 @@ Two separate evals use it, matching the product:
   capture dependency; source inspection supports the product claims.
 - `content-script-ledgerly-how-to`: recording payment on an existing invoice,
   with a repeatable flow and an accurate distinction between recording and collecting
-  money. This web case complements the native Packlight sharing lesson.
+  money. The agent chooses duration. Six focused criteria cover the five how-to
+  components, clear supported steps, delivery, starting invoice state, the task/result
+  and the meaning of recording payment. Code and docs can support planning. This case
+  excludes the extra shared semantic rubric and retains automatic checks.
+  This web case complements the native Packlight sharing lesson.
 
 Shared script reviews check content-type routing, complete drafts, narration, visual
 alignment, supported claims and actual per-shot timing. Review what the agent actually

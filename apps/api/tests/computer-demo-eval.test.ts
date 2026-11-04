@@ -329,6 +329,11 @@ test("focused planning reviews use their own criteria without changing other scr
   assert.equal(walkthrough.revision_change?.from, 2);
   assert.equal(walkthrough.criteria.length, 7);
   assert.deepEqual(walkthrough.criteria.map((c) => c.text), walkthrough.demo!.criteria);
+  const howTo = cases.find((c) => c.id === "content-script-ledgerly-how-to")!;
+  assert.equal(howTo.revision, 3);
+  assert.equal(howTo.revision_change?.from, 2);
+  assert.equal(howTo.criteria.length, 6);
+  assert.deepEqual(howTo.criteria.map((c) => c.text), howTo.demo!.criteria);
   const demo = cases.find((c) => c.id === "content-script-tide-demo")!;
   assert.equal(demo.criteria.length, demo.demo!.criteria.length + 6);
 });

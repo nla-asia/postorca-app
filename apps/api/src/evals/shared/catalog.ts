@@ -235,8 +235,21 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
           ],
         },
       }),
+      ...(c.id === "script-ledgerly-how-to" && {
+        revision: 3,
+        revision_change: {
+          from: 2,
+          reason: "Use the five how-to components plus Ledgerly-specific starting state, payment-recording steps and meaning. Let the agent choose a suitable duration, with code or docs sufficient for supported planning.",
+          preserved_coverage: [
+            "Repeatable payment-recording steps, required invoice state and recognizable paid result",
+            "Recording money received rather than collecting payment",
+            "Landscape LinkedIn voiceover/captions plan and script, approval before production",
+            "Automatic source-read, saved-file and fixture-preservation checks",
+          ],
+        },
+      }),
       criteria: criteria(
-        c.script_only && !["script-tide-intro-no-screens", "script-ledgerly-intro", "script-ledgerly-demo"].includes(c.id)
+        c.script_only && !["script-tide-intro-no-screens", "script-ledgerly-intro", "script-ledgerly-demo", "script-ledgerly-how-to"].includes(c.id)
           ? [...scriptReview, ...c.criteria]
           : c.criteria,
       ),
