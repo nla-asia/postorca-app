@@ -10,6 +10,10 @@ const path = require("node:path");
 
 exports.default = async function afterPack({ appOutDir, packager }) {
   if (packager.platform.name !== "mac") return;
+  require("../scripts/prepare-command.cjs").prepareCommand(path.join(
+    appOutDir, `${packager.appInfo.productFilename}.app`,
+    "Contents/Resources/app.asar.unpacked/node_modules/node-pty",
+  ));
   const remotion = path.join(
     appOutDir,
     `${packager.appInfo.productFilename}.app`,
