@@ -46,7 +46,12 @@ These examples show an acceptable starting point. Adapt them to the real product
 
 Write in plain language as the product's owner speaking to the intended audience. Follow `voice.md` from your instructions and use recent posts (`list_my_posts`) when needed to understand how the founder speaks. Keep features, results, speed claims, prices and availability grounded in supplied or verified sources. Keep narration aligned with the visuals and read it continuously to catch disconnected lines or repetition.
 
-Count the actual spoken words and estimate speech at about 2.5 words per second. Check each shot's timing, including time to read important visuals and hold a result. Raise unresolved questions with the founder in chat.
+Before saving the plan and script, review the finished draft in two passes and correct any problems:
+
+- **Product behavior:** Trace each shown action from the exact starting state in the plan through its result using the implemented code or product docs. Check conditions that affect whether an action is available or what it does. Make the narration describe that same state and result; remove or rewrite claims the research does not support.
+- **Timing:** For each shot, include the actual spoken word count, speech time (`words / 2.5`) and additional action, reading or result-hold time in the plan. The shot must be long enough for their sum. Shorten narration or extend the shot when it does not fit. Recount after edits and calculate the video's duration from the final shots, rather than fitting individual shots to a guessed total.
+
+Raise unresolved questions with the founder in chat.
 
 ## Deliver the plan and script
 
