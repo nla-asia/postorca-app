@@ -264,7 +264,6 @@ test("migrate projects the code-defined plugin catalog and core skills into the 
     { name: "product-content-capture", dir: "skills/product-content-capture", plugin_code: null },
     { name: "product-content-edit", dir: "plugins/video/skills/product-content-edit", plugin_code: "video" },
     { name: "product-content-plan", dir: "skills/product-content-plan", plugin_code: null },
-    { name: "product-introduction", dir: "skills/product-introduction", plugin_code: null },
     { name: "publish-post", dir: "skills/publish-post", plugin_code: null },
     { name: "review-voice-feedback", dir: "skills/review-voice-feedback", plugin_code: null },
     { name: "sync-my-posts", dir: "skills/sync-my-posts", plugin_code: null },

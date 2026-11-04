@@ -5,7 +5,7 @@ description: Record the screenshots and screen recordings that approved product 
 
 # Product content capture
 
-A demo idea comes with a demo plan: what to show, where it is in the product, and the steps. An introduction comes with hero screens instead: the product shown in a perfect state, without the steps. This skill gets the raw material for either: clean, demo-ready screenshots, product shots and short clips. Capture what you can yourself; for what you can't, give the founder a short step-by-step guide, because they can click easily but don't have your context. Then hand the shots on to the post or video.
+A demo idea comes with a demo plan: what to show, where it is in the product, and the steps. An introduction may use prepared product shots alongside type, illustration, footage or animation, or use no product screens at all. This skill handles only the real screen assets in the approved plan: clean, demo-ready screenshots, product shots and short clips. Capture what you can yourself; for what you can't, give the founder a short step-by-step guide, because they can click easily but don't have your context. Then hand the shots on to the post or video.
 
 How to work the browser, the computer or the capture tools is in their own skills and tool descriptions. This skill is about what to capture, how it should look, and who captures it.
 
@@ -13,11 +13,11 @@ Capture starts from a plan and a script the founder has approved. If there isn't
 
 ## 1. Shot list
 
-From the demo plan, list every shot, in the order the demo shows them. For each:
+From the approved plan, list the shots that need screen capture, in their script order. Type cards, illustrations, footage and animation need no product screen capture; leave those assets to production. If no shots need screen capture, continue to production without opening the product. For each screen shot:
 
 - **Purpose**: the viewer's problem, the payoff, or the setup (see the work-content-ideas skill's demo shape: problem, payoff, how little it takes). The payoff gets the most care.
 - **Screen**: where it is and the state it needs (which page, what data on screen).
-- **Mode**: follow the shot's visual mode in the approved script (live clip, product shot or type card; a type card needs no capture).
+- **Mode**: follow the shot's visual mode in the approved script (live clip or product shot).
   - **Live clip (demo mode):** record the action that gets to the screen (the click into the payoff, the result appearing), not just the screen, even when the screen itself doesn't move; a demo built from stills looks like a slideshow. Clips are short, one per step (3–15 seconds); several short clips beat one long take.
   - **Product shot:** the screen prepared in a perfect state, then captured clean: a still (`screen_capture`), or a short loop of 3–6 seconds (`screen_record_start` with nothing touched) when the screen has its own motion worth keeping, such as a result streaming in or a live chart. No operator actions on camera: no clicks, typing, scrolling, menus, navigation or loading, and the cursor parked out of the frame. The video adds framing and motion later, so capture the whole window at full size.
   - For a script without visual modes: a demo video is all live clips, a screenshot post all stills.
