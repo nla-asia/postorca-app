@@ -30,3 +30,5 @@ Read the selected reference with `read_skill`, using `name: "product-content-pla
 | What's new | Explain useful changes from a particular period | [references/whats-new.md](references/whats-new.md) |
 
 For an introduction with a demo beat, read both the introduction and demo guides. Follow the selected guides for all planning and scripting instructions.
+
+When the content needs real product screens, consider what preparation depends on the founder: for example, the account or workspace, data to show or create, permitted changes and where the flow should stop. Use decisions already supplied; if a missing choice affects the shots or execution, ask in chat and settle it before writing the script rather than inventing it. Skip questions that do not matter for this content. Keep the agreed setup and any changes the recording needs in `plan.md`, without credentials, so capture can follow them; creative assumptions are separate from these decisions.

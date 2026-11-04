@@ -37,6 +37,8 @@ Every shot, whoever captures it:
 
 ## Before each capture
 
+Use the setup and boundaries agreed in the plan during preparation and rehearsal as well as recording. If preparation reveals a new choice only the founder can make, ask before proceeding with that part.
+
 Set the stage first; the recording only starts once everything is in place:
 
 - **The app is at the starting point:** open, signed in, on the screen the shot starts from, with its data loaded and nothing still loading. No leftover dialogs, menus, toasts or half-typed text.
