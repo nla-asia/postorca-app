@@ -18,7 +18,7 @@ From the demo plan, list every shot, in the order the demo shows them. For each:
 - **Purpose**: the viewer's problem, the payoff, or the setup (see the work-content-ideas skill's demo shape: problem, payoff, how little it takes). The payoff gets the most care.
 - **Screen**: where it is and the state it needs (which page, what data on screen).
 - **Still or clip**: follow the plan's format. For a video, every shot is a clip: record the action that gets to each screen (the click into the payoff, the result appearing), not just the screen, even when the screen itself doesn't move; a video built from stills looks like a slideshow. For a screenshot post, stills. Clips are short, one per step (3–15 seconds); several short clips beat one long take.
-- **Shape**: capture once, at full size: the video skill cuts the portrait (9:16, for Instagram, TikTok, Shorts) and landscape (16:9 or square, for X, LinkedIn) versions the founder's accounts need from the same shots. A desktop window is captured as it is; a phone screen is already portrait.
+- **Shape**: capture once, at full size: the video skill cuts the portrait (9:16, for Instagram, TikTok, Shorts) and landscape (16:9 or square, for X, LinkedIn) versions the founder's accounts need from the same shots. A desktop window is captured as it is; a phone screen is already portrait. A wide window's text can't be cropped into readable portrait shots, though: when a portrait video shows a desktop screen for its text (messages, a list, a document), make that text large before recording, by zooming the app in (View > Zoom In, ⌘+ in most apps and browsers) or making its window narrower so the lines wrap. Put it back as it was afterwards.
 
 Keep only the shots the demo needs. Three good shots beat ten.
 

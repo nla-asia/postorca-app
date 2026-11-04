@@ -86,6 +86,43 @@ async function grayPixels(file, width, signal) {
   );
   return { gray: stdout, width, height: stdout.length / width };
 }
+/**
+ * Social apps play videos at about -14 LUFS, and a voiceover rendered as generated is
+ * quieter; a quiet video loses to the ones around it. Measures the mix, then brings it
+ * to the target with a linear gain (two-pass loudnorm), keeping the video stream as is.
+ * Returns the loudness before and after, in LUFS, or null for a silent video.
+ */
+const TARGET_LUFS = -14;
+async function normalizeLoudness(input, output, signal) {
+  const { filename, directory } = mediaBinary("ffmpeg");
+  const target = `I=${TARGET_LUFS}:TP=-1.5:LRA=11`;
+  const measure = async (args) => {
+    const { stderr } = await run(filename, args, {
+      cwd: directory,
+      signal,
+      maxBuffer: 16 * 1024 * 1024,
+    });
+    const json = stderr.slice(stderr.lastIndexOf("{"), stderr.lastIndexOf("}") + 1);
+    return JSON.parse(json);
+  };
+  const first = await measure([
+    "-hide_banner", "-nostats", "-i", input, "-vn",
+    "-af", `loudnorm=${target}:print_format=json`, "-f", "null", "-",
+  ]).catch(() => null);
+  const before = Number(first?.input_i);
+  // No audio, or silence: nothing to bring up.
+  if (!first || !Number.isFinite(before) || before < -70) return null;
+  const second = await measure([
+    "-hide_banner", "-nostats", "-i", input, "-c:v", "copy",
+    "-af",
+    `loudnorm=${target}:measured_I=${first.input_i}:measured_TP=${first.input_tp}` +
+      `:measured_LRA=${first.input_lra}:measured_thresh=${first.input_thresh}` +
+      `:offset=${first.target_offset}:linear=true:print_format=json`,
+    "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "-y", output,
+  ]);
+  const round = (value) => Math.round(Number(value) * 10) / 10;
+  return { before: round(before), after: round(second.output_i) };
+}
 /** The lines of text on a recording's frame at `ms`, from macOS text recognition. */
 async function readText(file, ms, still, signal) {
   const { filename, directory } = mediaBinary("ffmpeg");
@@ -143,6 +180,25 @@ async function screenText(props, directory, times, signal) {
     }
   }
   return frames.length ? frames : undefined;
+}
+/**
+ * How big the app's text shows in a rendered frame, on a phone: the median height of
+ * the lines read on it, in pixels of a 1080-wide screen (captions and titles, which are
+ * large, left out). Under about 26 px it is hard to read on a phone; 32 px or more reads
+ * comfortably. Null when nothing small was read (a card, a photo) or off macOS.
+ */
+const SIZES = { "9:16": [1080, 1920], "4:5": [1080, 1350], "1:1": [1080, 1080], "16:9": [1920, 1080] };
+const SMALL_TEXT_PX = 26;
+async function textHeight(still, format, signal) {
+  if (process.platform !== "darwin") return null;
+  const [width, height] = SIZES[format] ?? SIZES["9:16"];
+  const { lines = [] } = await native({ action: "read_text", path: still }, signal).catch(() => ({}));
+  const heights = lines
+    .map((line) => (line.height * height * 1080) / width)
+    .filter((px) => px < 70)
+    .sort((a, b) => a - b);
+  if (heights.length < 2) return null;
+  return Math.round(heights[Math.floor(heights.length / 2)]);
 }
 if (app.isPackaged) {
   const workingDirectory = path.join(app.getPath("userData"), "video");
@@ -304,6 +360,7 @@ function withAssets(args, context, run) {
           device: scene.device ?? null,
           focus,
           highlight: scene.highlight ?? null,
+          captions: scene.captions ?? "bottom",
           aspect: size?.width && size.height ? size.width / size.height : null,
         });
       }
@@ -365,6 +422,7 @@ module.exports = {
       run: (args, context) =>
         withAssets(args, context, async (options, output) => {
           const attachments = [];
+          const heights = [];
           for (const time of args.times_ms) {
             const filename = path.join(output, `${attachments.length}.jpg`);
             await render.renderFrame({
@@ -372,6 +430,7 @@ module.exports = {
               outputPath: filename,
               timeMs: time,
             });
+            heights.push(await textHeight(filename, options.props.format, context.signal));
             const file = await context.upload(
               await fs.readFile(filename),
               "image/jpeg",
@@ -389,8 +448,18 @@ module.exports = {
             args.times_ms,
             context.signal,
           );
+          const small = args.times_ms
+            .map((time, index) => ({ at: time / 1000, px: heights[index] }))
+            .filter(({ px }) => px !== null && px < SMALL_TEXT_PX);
           return {
             frames: args.times_ms.map((time) => time / 1000),
+            // The app's text as it shows on a phone, per frame (null: none read).
+            text_height_px: heights,
+            ...(small.length && {
+              small_text: `On a phone the app's text is too small to read at ${small
+                .map(({ at, px }) => `${at} s (${px} px)`)
+                .join(", ")}; aim for 32 px or more. Show less of the screen in those scenes, such as fewer and shorter lines, or record it again with the app zoomed in or its window narrower so the text wraps larger.`,
+            }),
             ...(text && { screen_text: text }),
             attachments,
           };
@@ -472,7 +541,9 @@ module.exports = {
             ...options,
             outputPath: filename,
           });
-          const data = await fs.readFile(filename);
+          const leveled = path.join(output, "video-leveled.mp4");
+          const loudness = await normalizeLoudness(filename, leveled, context.signal);
+          const data = await fs.readFile(loudness ? leveled : filename);
           const file = await context.upload(data, "video/mp4");
           const saved = args.content_folder
             ? await saveToContentFolder(args.content_folder, `${args.title || "video"}.mp4`, data, args.read_only_roots ?? []).catch(() => null)
@@ -483,6 +554,11 @@ module.exports = {
             height: result.height,
             fps: result.fps,
             megabytes: Math.round(data.length / 1e5) / 10,
+            // Measured on the mix, so the summary can state it rather than guess.
+            ...(loudness && {
+              loudness_lufs: loudness.after,
+              loudness_before_lufs: loudness.before,
+            }),
             render_seconds: Math.round((Date.now() - started) / 1000),
             ref: file.split("/").at(-1).slice(0, 8),
             attachments: [{ file, mime_type: "video/mp4", title: args.title }],
