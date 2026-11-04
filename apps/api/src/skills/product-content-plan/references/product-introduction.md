@@ -6,12 +6,26 @@ Help a new viewer understand what the product is, who it's for and why they'd wa
 
 For a short introduction, a useful shape is:
 
-1. Open with the audience's problem or the change the product makes.
+1. Open with a natural video starter that speaks to the intended customer. It often leads into their problem; a straightforward introduction can name the product immediately. Choose an approach from the examples below.
 2. Name the product and explain it in a plain sentence: its category and main promise. Make the audience clear here or in the opening.
 3. Develop the promise through two or three capabilities, described as what the viewer gets. Order them so the story builds rather than sounding like a feature list.
 4. Close with the concrete outcome for the viewer and an appropriate next step. Use a URL or availability detail only when confirmed.
 
 Adapt to the requested length. A longer introduction can give the problem and benefits more room; it doesn't automatically need more features or section cards. A live proof beat is optional. The viewer should still understand the benefit without a demonstration or numerical proof.
+
+## Opening / hook examples
+
+Use simple, plain language and speak directly to the customer or user. Give them a natural way into the video so the opening feels like the start of a conversation. Choose a starter that fits the product, audience and founder's voice.
+
+| Starter type | Example |
+| --- | --- |
+| Question | “Do you have trouble finding your files?” |
+| Audience call-out | “If you're always searching for files, this is for you.” |
+| Familiar situation | “Sometimes you remember what's in a file, but not where you saved it.” |
+| Topic opener | “Let's talk about finding your files without opening every folder.” |
+| Straightforward introduction | “Today, I'd like to introduce you to [product], a simple way to [main benefit].” |
+
+These examples show an acceptable starting point. Adapt the wording to the customer's actual problem and the product's supported benefits. Choose one starter for the opening and let it lead naturally into the next line. If the starter already explains what the product is, build on that explanation in the next beat.
 
 ## Visuals
 
