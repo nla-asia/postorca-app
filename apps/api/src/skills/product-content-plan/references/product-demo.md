@@ -12,13 +12,25 @@ Read the relevant README, docs, screens and behavior for this content's purpose.
 
 Choose the scope from the request. A product demo can be a walkthrough of the main parts of the product, covering several connected features, or a focused demonstration of one feature or task. When the request is broad, choose the main parts that help a new viewer understand the product. Follow a requested duration; otherwise choose enough time to explain and show the selected scope. Do not default to a 30-second clip.
 
-Start naturally, tell the viewer what you will show and establish where they are in the product. Move through the selected sections in an order that makes sense, explaining what each part does and demonstrating meaningful actions and results. Connect sections with simple transitions so the walkthrough feels continuous. Routine navigation, sign-in and preparation can happen off camera or across a clear cut. Keep any setup the viewer needs to understand the flow.
+### Required components
+
+Include these components in the plan and script. They give the demo a structure without forcing every video into the same script. Components can share a shot; repeat the demonstration and transitions as the selected scope needs.
+
+1. **Opening:** Welcome the viewer and say what you will show.
+2. **Starting point:** Explain where the viewer is in the product and any setup they need to understand.
+3. **Demonstration:** Show what each selected part does, the actions you take and what happens next. Repeat for each selected feature or flow, in an order that makes sense.
+4. **Transitions:** Connect the sections so the viewer can follow. A short demo can use a brief phrase to move from the starting point into the action.
+5. **Close:** Briefly recap what you showed and how the viewer can use it, with a next step when useful.
+
+Routine navigation, sign-in and preparation can happen off camera or across a clear cut. Keep any setup the viewer needs to understand the flow.
+
+### Demonstration details
 
 Trace the flow in the code where available. Code and docs can support the plan; inspect the running product when needed to resolve uncertainty about behavior or layout. Establish the starting state, required inputs, state changes and actual output. Distinguish actions the product performs from statuses the user sets; don't imply an email was sent, a payment collected or work completed just because a label changed.
 
 Plan live clips for actions that establish the demonstration and hold the result long enough to read. Use close-ups with enough context to follow the flow. Type, diagrams or other visuals can explain context, but the demonstration itself shows real product behavior.
 
-Give important actions and results enough time to be understood. A short demo may cover one journey; a longer walkthrough may show several parts and how they connect. Close by briefly recapping what the viewer has seen or can now do, with a next step when useful.
+Give important actions and results enough time to be understood. A short demo may cover one journey; a longer walkthrough may show several parts and how they connect.
 
 ### Baseline example
 
@@ -26,8 +38,8 @@ These examples show an acceptable starting point. Adapt them to the real product
 
 - **Opening:** “Hi, welcome to FileNest. Let me show you how it works.”
 - **Starting point:** “This is your workspace. You can see your recent files here, and your folders are on the left.”
-- **Action and result:** “Let's upload a proposal. Once it's here, I can open it and read it without leaving FileNest.”
-- **Transition:** “Now that the file is in our workspace, let me show you how to share it.”
+- **Demonstration:** “Let's upload a proposal. Once it's here, I can open it and read it without leaving FileNest.”
+- **Transitions:** “Now that the file is in our workspace, let me show you how to share it.”
 - **Close:** “That's a quick look at FileNest: bringing in your files, finding what you need and sharing them with your team.”
 
 ## Write and check the script
