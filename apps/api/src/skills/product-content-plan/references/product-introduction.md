@@ -2,6 +2,8 @@
 
 Help a new viewer understand what the product is, who it's for and why they'd want it. Choose a clear promise and the capabilities that explain it. A first introduction isn't a tour of every feature or a lesson in operating the app.
 
+The examples in this guide are acceptable baselines. Use your judgment to write better versions for the actual product, audience and founder's voice. Keep the language simple and natural. Explain each idea clearly, using more than one sentence when helpful.
+
 ## Story
 
 For a short introduction, a useful shape is:
@@ -15,7 +17,7 @@ Adapt to the requested length. A longer introduction can give the problem and be
 
 ## Example product
 
-The examples below use **FileNest**, a fictional app that finds files from descriptions of their contents. They show acceptable wording and tone. Write the actual product's name and supported capabilities when creating a script.
+The examples below use **FileNest**, a fictional app that finds files from descriptions of their contents. Write the actual product's name and supported capabilities when creating a script.
 
 ## Opening / hook examples
 
@@ -42,6 +44,18 @@ These are three alternative ways to introduce FileNest. Choose one approach that
 - “With FileNest, you can find a file even if you've forgotten its name.”
 
 If the starter already explains the product, use the next line to add something useful instead of repeating the definition.
+
+## Capabilities and benefits examples
+
+Explain what the user can do and why it helps. Give the explanation enough room to be clear; it can take more than one sentence.
+
+The first two examples are alternative ways to describe FileNest's search. The third explains opening a file from the results:
+
+- “Describe what you remember, and FileNest looks for the file.”
+- “You can search what's inside your files, even if you've forgotten their names.”
+- “Once you find the file you need, just click it in FileNest to open it. You can start working on it right away, without going through your folders to find it again.”
+
+Choose capabilities that matter to the actual audience and explain their benefits in the user's terms.
 
 ## Visuals
 
