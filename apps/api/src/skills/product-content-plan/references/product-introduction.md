@@ -77,7 +77,7 @@ Choose a close that fits the audience and purpose. It can reinforce the benefit,
 
 Typography, illustrations, footage and animation can carry the introduction, with or without product screens. The opening doesn't need a product screen or logo card. Choose visuals that explain the situation or promise instead of leaving the words to do all the work.
 
-When using product shots, use real screens you inspected. Choose a state that shows the capability clearly, crop it so the relevant detail reads, and note any preparation needed. Prepared screens can arrive ready without clicks or navigation on camera. Don't invent a UI state or result to illustrate a claim. Conceptual visuals may explain the situation or promise without pretending to be the product interface.
+When planning product shots, use screens supported by the implemented code or product docs. Inspect the running app when needed to resolve uncertainty about a screen or behavior. Capture real screens for production and check those captures before use. Choose a state that shows the capability clearly, plan a crop so the relevant detail reads, and note any preparation needed. Prepared screens can arrive ready without clicks or navigation on camera. Don't invent a UI state or result to illustrate a claim. Conceptual visuals may explain the situation or promise without pretending to be the product interface.
 
 Use live product action when a short demonstration helps prove the promise; read [product-demo.md](product-demo.md) for that beat. Keep it focused so the introduction retains its purpose.
 
@@ -98,7 +98,7 @@ Include:
 - **Content type**, what the product is and who this piece is for.
 - **Format:** duration, aspect ratio, voiceover and captions. Follow the request; otherwise explain your choices.
 - **Story:** what the viewer should understand or be able to do by the end, with choices and omissions explained.
-- **Numbered shots:** timing, what the viewer sees, added on-screen text and the voiceover. Specify the visual mode: **live clip** for a recorded product action, **product shot** for a prepared real screen, **type card**, **illustration**, **footage** or **animation**. Identify supplied assets or assets to create. For product screens, name the verified state, useful crop and preparation needed.
+- **Numbered shots:** timing, what the viewer sees, added on-screen text and the voiceover. Specify the visual mode: **live clip** for a recorded product action, **product shot** for a prepared real screen, **type card**, **illustration**, **footage** or **animation**. Identify supplied assets or assets to create. For product screens, name the state supported by your project research, useful crop and preparation needed.
 - **Assumptions:** creative choices for the founder to review. Access requests belong in chat.
 
 Report access problems and requests for help in a separate chat message. Keep them out of `plan.md` and `script.md`. If missing access prevents verifying a planned screen, ask for the needed access or choose a supported alternative before finalizing the plan.

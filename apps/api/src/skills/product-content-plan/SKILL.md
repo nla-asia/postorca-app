@@ -11,7 +11,7 @@ Before reading a type-specific guide or drafting a plan, make a real attempt to 
 
 - Identify the project from the request and brand profile. Use `active_project` when supplied and its source `folders` (or older `path` field); ask if the intended project is unclear.
 - Read the brief, README or product docs, and relevant code with the available project tools (`list_dir`, `read_file`, `git_activity`). Establish what the product does, who it helps, its main capabilities and its main user flow.
-- When a running app or supplied product screenshots are available, inspect the main screens and user flow without recording. Use this to understand the actual experience before planning shots. The selected guide determines the video's visual treatment.
+- Use the running app or supplied screenshots when they help resolve questions about behavior or layout. Code and docs can be sufficient to understand the project; opening the app is not a universal requirement. Any inspection here is research, without recording. The selected guide determines the video's visual treatment.
 
 If files or app access are unavailable, report the gap directly in chat, separately from the plan and script. Keep access-status notes out of the deliverables. Use the material you can verify and carry this project understanding into the selected guide.
 
