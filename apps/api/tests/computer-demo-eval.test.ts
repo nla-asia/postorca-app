@@ -315,10 +315,15 @@ test("script-only cases are portable except for the native Quill fixture", async
 test("the focused intro review uses its own criteria without changing other script cases", async () => {
   const { builtinCases } = await import("../src/evals/shared/catalog.js");
   const cases = builtinCases();
-  const intro = cases.find((c) => c.id === "content-script-tide-intro-no-screens")!;
-  assert.equal(intro.revision, 5);
-  assert.equal(intro.criteria.length, 4);
-  assert.deepEqual(intro.criteria.map((c) => c.text), intro.demo!.criteria);
+  for (const [id, revision] of [
+    ["content-script-tide-intro-no-screens", 5],
+    ["content-script-ledgerly-intro", 4],
+  ] as const) {
+    const intro = cases.find((c) => c.id === id)!;
+    assert.equal(intro.revision, revision);
+    assert.equal(intro.criteria.length, 4);
+    assert.deepEqual(intro.criteria.map((c) => c.text), intro.demo!.criteria);
+  }
   const demo = cases.find((c) => c.id === "content-script-tide-demo")!;
   assert.equal(demo.criteria.length, demo.demo!.criteria.length + 6);
 });

@@ -406,7 +406,10 @@ introduction components from the guide, then an explanation of what Tide is, who
 it is for and how it helps with organizing tasks. Feature selection and wording
 are open. The brief's format/visual requirements still apply. This case does not
 inherit the extra shared semantic rubric.
-Its automatic source-read, file-save and pre-production checks remain in place.
+The Ledgerly introduction uses the same review structure for a different product:
+what it is, who it is for and how it helps with invoices and what clients owe.
+Its brief lets the agent choose the duration and visual approach for LinkedIn.
+Both cases retain automatic source-read, file-save and pre-production checks.
 Case revisions preserve previous frozen briefs and rubrics. The initial diagnostic
 batch and its measurement corrections are recorded in
 [the 4 November script evaluation report](eval-product-planning-2026-11-04.md).

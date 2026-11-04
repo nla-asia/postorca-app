@@ -408,15 +408,15 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
     url: "http://127.0.0.1:4130",
     fixture_script: "scripts/evals/ledgerly-fixture.mjs",
     script_only: true,
-    brief: introRequest("Ledgerly"),
+    brief: "Can you plan a product introduction video for Ledgerly for LinkedIn? Landscape, with voiceover and captions. Choose a suitable duration and visual approach. The code is in my projects and the app is running locally. Give me the plan and script for approval first; do not publish anything or generate assets yet.",
     typed: [],
     min_clips: 0,
     // The direction and flow this script needs; wording is the script's own.
     criteria: [
-      "This is an introduction: the spoken script names Ledgerly and explains it plainly as invoicing for freelancers and small studios, makes the audience clear, and gives a concrete reason to care.",
-      "The opening earns attention through a relevant problem or promise. The story develops a small number of useful capabilities and closes on a credible viewer outcome; it does not require a logo opening, product screens or a step-by-step tour.",
-      "Capabilities and benefits stay within the product: creating invoices and tracking what is owed; marking sent and recording payment are manual statuses, not email delivery or payment collection; no bank links or integrations.",
-      "The story and visual plan fit the requested 30-second landscape video; choices are selective rather than a feature inventory."
+      "General: All required components from the product introduction guide are present: an opening, a product definition, capabilities and benefits, and a close.",
+      "Specific — product: It explains what Ledgerly is and who it is for.",
+      "Specific — value: It explains how Ledgerly helps users handle client invoices and understand what they are owed. The agent can choose which of Ledgerly's features best support that explanation.",
+      "Specific — brief: A landscape introduction for LinkedIn, with voiceover and captions. The plan chooses and explains a suitable duration and visual approach.",
     ],
   },
   // Not every video is a product introduction. A feature launch is about one change: the

@@ -196,7 +196,7 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
           ],
         },
       }),
-      // This founder-reviewed intro case uses guide components plus product/brief
+      // These founder-reviewed intro cases use guide components plus product/brief
       // requirements, without the extra shared semantic writing rubric.
       ...(c.id === "script-tide-intro-no-screens" && {
         revision: 5,
@@ -210,8 +210,20 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
           ],
         },
       }),
+      ...(c.id === "script-ledgerly-intro" && {
+        revision: 4,
+        revision_change: {
+          from: 3,
+          reason: "Apply the founder's guide-component and product-explanation rubric to a different product. Let the agent choose the introduction duration and visuals.",
+          preserved_coverage: [
+            "Required introduction components",
+            "Ledgerly purpose, audience and invoicing value",
+            "Landscape LinkedIn voiceover/captions planning and approval before production",
+          ],
+        },
+      }),
       criteria: criteria(
-        c.script_only && c.id !== "script-tide-intro-no-screens"
+        c.script_only && !["script-tide-intro-no-screens", "script-ledgerly-intro"].includes(c.id)
           ? [...scriptReview, ...c.criteria]
           : c.criteria,
       ),
