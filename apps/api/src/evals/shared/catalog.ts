@@ -16,7 +16,7 @@ import {
 } from "../media-cases.js";
 import { writingCases, writingToolsCase } from "../writing-cases.js";
 import { browserToolsCase } from "../browser-tools.js";
-import { demoCases } from "../computer-demo-cases.js";
+import { demoCases, scriptReview } from "../computer-demo-cases.js";
 import { editCases } from "../edit-cases.js";
 import { caseSchema, type EvalCase } from "./contracts.js";
 
@@ -73,6 +73,14 @@ const bullets = (text: string) =>
     .split(/\r?\n/)
     .map((s) => s.replace(/^-\s*/, "").trim())
     .filter(Boolean);
+// Existing script contracts were revision 2 in the first planning-reference
+// batch; new scenarios were revision 1. Preserve those frozen attempts.
+const originalScriptCases = new Set([
+  "script-packlight-intro", "script-tide-intro", "script-streaks-intro",
+  "script-ledgerly-intro", "script-ledgerly-feature-launch", "script-packlight-how-to",
+  "script-ledgerly-whats-new", "script-quill-intro", "script-postorca-intro",
+]);
+
 /** `plugin` is the case's category: browser, computer and media (levels 1–2)
  * test tools and processes, writing (level 2) the founder's voice, and content
  * (level 3) end-to-end work. Case IDs stay stable when a case changes category.
@@ -175,7 +183,20 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
             }
           : { brief: c.brief },
       ],
-      criteria: criteria(c.criteria),
+      ...(c.script_only && {
+        revision: originalScriptCases.has(c.id) ? 3 : 2,
+        revision_change: {
+          from: originalScriptCases.has(c.id) ? 2 : 1,
+          reason: "Align with planning references: allow problem-first openings and non-screen announcement visuals, assess actual timing without shot quotas, and accept supported flows for generic demo requests.",
+          preserved_coverage: [
+            "Product capability limits and audience",
+            "Requested format, duration and repeatable demonstrations",
+            "Script approval before production and required saved files",
+            "Correct release/period selection and inspected UI when used",
+          ],
+        },
+      }),
+      criteria: criteria(c.script_only ? [...scriptReview, ...c.criteria] : c.criteria),
       // Code to script is the first stage of a content task.
       ...(c.script_only && { work_type: "content" as const }),
       demo: c,
@@ -188,7 +209,7 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
         "desktop_connected",
         ...(c.script_only ? [] : ["screen_recording_permission"]),
         ...(c.app === "simulator" ? ["simulator_iphone_booted"] : []),
-        ...(c.app === "web" ? ["browser_connected"] : []),
+        ...(c.app === "web" && c.id !== "script-tide-intro-no-screens" ? ["browser_connected"] : []),
         ...(c.read_work || c.fixture_script
           ? ["work_fixture_project_added", "fixture_ready"]
           : []),

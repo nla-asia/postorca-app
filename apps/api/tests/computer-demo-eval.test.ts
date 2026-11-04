@@ -275,6 +275,16 @@ test("code to script reads the project and records nothing", () => {
   const names = (calls: any[]) =>
     failed(gradeDemoCapture(entry, { status: "completed", calls, artifacts: [] }));
   assert.deepEqual(names(script), []);
+  const artifact = call("create_artifact", { id: "draft" }, { kind: "document" });
+  assert.deepEqual(names([call("read_file"), artifact]), ["Saved the plan and the script in the task's folder"]);
+  assert.deepEqual(names([artifact, call("read_file")]), [
+    "Read the project before writing the script",
+    "Saved the plan and the script in the task's folder",
+  ]);
+
+  assert.deepEqual(names([call("read_file", { error: "not found" }), ...saves]), ["Read the project before writing the script"]);
+  assert.deepEqual(names([...saves, call("read_file")]), ["Read the project before writing the script"]);
+
   assert.deepEqual(names([...script, call("screen_record_start", { id: "a" })]), [
     "Recorded and made nothing: the script comes first",
   ]);
@@ -290,7 +300,7 @@ test("script-only cases are portable except for the native Quill fixture", async
   const { builtinCases } = await import("../src/evals/shared/catalog.js");
   const cases = builtinCases();
   const scripts = cases.filter((entry) => entry.demo?.script_only);
-  assert.equal(scripts.length, 9);
+  assert.equal(scripts.length, 15);
   for (const entry of scripts) {
     assert.equal(entry.platform, entry.id === "content-script-quill-intro" ? "darwin" : undefined);
     assert.ok(!entry.prerequisites.includes("screen_recording_permission"));

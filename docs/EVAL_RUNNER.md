@@ -261,8 +261,8 @@ over merely asserting that a tool was invoked.
 
 ## Existing case migration
 
-All 31 agent cases are registered: Browser 5, Computer 8, Media 5, Writing 4,
-Ideas 4, Content 5.
+All 55 agent cases are registered: Browser 5, Computer 8, Media 5, Writing 4,
+Ideas 4, Content 29.
 
 ### Categories
 
@@ -343,12 +343,13 @@ Two separate evals use it, matching the product:
   reads the code and replies with a script only: what it is, numbered shots with
   on-screen text and voiceover, format and assumptions. It records nothing. Two apps,
   so a skill fitted to one shows. The observer judges the script as the founder, against
-  criteria written for that product and task: the journey or change that matters, what
-  the product really does, and what has to stay out. They set direction and flow, not
-  wording.
+  criteria written for that product and task: what it is, who it helps, the benefits,
+  supported claims and suitable visuals. Introductions need not show product screens
+  or a step-by-step journey. The criteria set direction, not wording.
   Script-only cases have no OS restriction unless their fixture starts a native
   macOS app (currently Quill). They still need a connected desktop for project
-  files, and web cases need the browser connection to inspect the running app.
+  files. Web cases that may show UI need the browser connection to inspect the app;
+  the explicitly no-screen introduction does not require a browser.
   Recording and Simulator cases retain their macOS requirements.
 - `content-script-ledgerly-intro`: the same on Ledgerly (`scripts/evals/ledgerly-fixture.mjs`,
   port 4130), an invoicing SaaS with sign-in (local demo login in its README), a
@@ -382,6 +383,28 @@ Two separate evals use it, matching the product:
   (revenue chart, status filter, add a client in a modal, print to PDF, overdue), with a
   one-cent fix, a dependency bump and pilot notes; the core is older. The script picks
   and orders the features for viewers, not as a changelog.
+- `content-script-tide-demo` / `content-script-ledgerly-demo`: generic requests to
+  demonstrate a useful job, on two products. Evaluate a supported action-to-result
+  flow without silently requiring one specific task from a generic brief.
+- `content-script-tide-mix` / `content-script-ledgerly-mix`: introductions with a
+  focused demonstration. Both planning references should be read.
+- `content-script-tide-intro-no-screens`: the founder explicitly requests typography
+  and simple animation, with no product screens. The plan must not introduce a
+  capture dependency; source inspection supports the product claims.
+- `content-script-ledgerly-how-to`: recording payment on an existing invoice,
+  with a repeatable flow and an accurate distinction between recording and collecting
+  money. This web case complements the native Packlight sharing lesson.
+
+Shared script reviews check content-type routing, complete drafts, narration, visual
+alignment, supported claims and actual per-shot timing. Review what the agent actually
+read and delivered, not just the claimed word count or the presence of a tool name.
+The source-read check requires a successful read before the first persisted draft;
+missing named saves remain a separate failure. Production calls blocked by the
+approval guard are retained tool errors and still require semantic review and triage.
+Case revisions preserve previous frozen briefs and rubrics. The initial diagnostic
+batch and its measurement corrections are recorded in
+[the 4 November script evaluation report](eval-product-planning-2026-11-04.md).
+
 - `content-demo-quill-from-script`: script to video on Quill, from an approved script, all
   through computer use: typing with the live preview, the File menu, search, pinning
   and the Settings window.

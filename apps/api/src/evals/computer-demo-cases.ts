@@ -53,9 +53,120 @@ const videoReview = [
 
 const introRequest = (product: string, format = "for LinkedIn? Around 30 sec, landscape") =>
   `I haven't posted anything about ${product} yet. Can you make a launch video introducing the whole product ${format}, voiceover and captions. The code is in my projects and the app is running locally; record it yourself. ${noPublish}`;
+export const scriptReview = [
+  "The plan identifies the requested content type and the agent reads product-content-plan plus the matching reference file before drafting; a mix uses introduction and demo guidance.",
+  "The deliverable contains a reviewable plan and complete script: intended audience, format, numbered shots with timing, narration and visual descriptions, plus meaningful assumptions. It asks for approval and stops before production.",
+  "The narration reads naturally as a connected explanation in the supplied founder voice, without disconnected slogans or invented personal experiences.",
+  "Each visual supports its narration. Typography, illustration, footage and animation are valid choices; product screens are optional for an introduction. If product UI or behavior is shown, the planned screen and result are supported by inspected app evidence, with unverified preparation clearly identified.",
+  "All public claims, results, prices, availability and next steps are supported by supplied sources; internal notes remain private. The script does not confuse manually set statuses with actions the product performs.",
+  "The actual spoken word count and per-shot timings plausibly fit the requested duration, including time to read important visuals; a claimed word count alone is not evidence."
+];
+
 const reel = "as an Instagram reel? Around 30 sec, portrait";
 
 export const demoCases: DemoCase[] = [
+  {
+    id: "script-tide-demo",
+    name: "Tide product demo script",
+    brief: "Can you make a short product demo of Tide for LinkedIn? Show how it does a useful job, around 30 seconds, landscape, voiceover and captions. The code is in my projects and the app is running locally. Don't publish anything, sign into accounts or change settings outside the app.",
+    criteria: [
+      "The plan is a product demo with a useful action-to-result sequence, rather than an introduction made only of benefit statements.",
+      "The chosen flow demonstrates a meaningful task Tide supports. If quick add is used, the date/time/project interpretation and resulting task are accurate; no reminders, accounts or sharing are invented.",
+      "Live clips show meaningful real product actions and a readable result; preparation and irrelevant navigation are kept in shot notes."
+    ],
+    level: 3,
+    app: "web",
+    url: "http://127.0.0.1:4120",
+    fixture_script: "scripts/evals/tide-fixture.mjs",
+    script_only: true,
+    typed: [],
+    min_clips: 0
+  },
+  {
+    id: "script-tide-mix",
+    name: "Tide product mix script",
+    brief: "Can you introduce Tide to people who have never heard of it, with one short demonstration to show the main benefit? Around 35 seconds for LinkedIn, landscape, voiceover and captions. The code is in my projects and the app is running locally. Don't publish anything, sign into accounts or change settings outside the app.",
+    criteria: [
+      "The plan is an introduction with a focused demo beat: the script explains what the product is, who it helps and why it matters, then uses real behavior to support a promise.",
+      "The demo beat has a supported starting state, meaningful action and visible result, without taking over the introduction or becoming a full walkthrough.",
+      "If quick add is demonstrated, it creates a dated task accurately. Other supported task flows are valid proof beats; no reminders, accounts or sharing are invented."
+    ],
+    level: 3,
+    app: "web",
+    url: "http://127.0.0.1:4120",
+    fixture_script: "scripts/evals/tide-fixture.mjs",
+    script_only: true,
+    typed: [],
+    min_clips: 0
+  },
+  {
+    id: "script-ledgerly-demo",
+    name: "Ledgerly product demo script",
+    brief: "Can you make a short product demo of Ledgerly for LinkedIn? Show how it does a useful job, around 30 seconds, landscape, voiceover and captions. The code is in my projects and the app is running locally. Don't publish anything, sign into accounts or change settings outside the app.",
+    criteria: [
+      "The plan is a product demo with a useful action-to-result sequence, rather than an introduction made only of benefit statements.",
+      "The chosen flow demonstrates a meaningful invoicing or tracking job Ledgerly supports, with accurate inputs and results. It does not imply the app emails invoices or collects payment.",
+      "Live clips show meaningful real product actions and a readable result; preparation and irrelevant navigation are kept in shot notes."
+    ],
+    level: 3,
+    app: "web",
+    url: "http://127.0.0.1:4130",
+    fixture_script: "scripts/evals/ledgerly-fixture.mjs",
+    script_only: true,
+    typed: [],
+    min_clips: 0
+  },
+  {
+    id: "script-ledgerly-mix",
+    name: "Ledgerly product mix script",
+    brief: "Can you introduce Ledgerly to people who have never heard of it, with one short demonstration to show the main benefit? Around 35 seconds for LinkedIn, landscape, voiceover and captions. The code is in my projects and the app is running locally. Don't publish anything, sign into accounts or change settings outside the app.",
+    criteria: [
+      "The plan is an introduction with a focused demo beat: the script explains what the product is, who it helps and why it matters, then uses real behavior to support a promise.",
+      "The demo beat has a supported starting state, meaningful action and visible result, without taking over the introduction or becoming a full walkthrough.",
+      "Invoice creation and status tracking are accurate; marking sent and recording payment do not send email or collect money."
+    ],
+    level: 3,
+    app: "web",
+    url: "http://127.0.0.1:4130",
+    fixture_script: "scripts/evals/ledgerly-fixture.mjs",
+    script_only: true,
+    typed: [],
+    min_clips: 0
+  },
+  {
+    id: "script-tide-intro-no-screens",
+    name: "Tide introduction with typography and animation only",
+    brief: "I need a 30-second landscape introduction to Tide for LinkedIn, with voiceover and captions. Please use typography and simple animation, with no product screens or screen recordings. The code is in my projects. Don't publish anything or generate assets before I approve the script.",
+    criteria: [
+      "The script introduces Tide plainly as a calm todo app, makes its audience and useful promise clear, and ends on a concrete benefit.",
+      "The shot plan follows the requested typography and simple animation treatment throughout, with no product screen shots, demonstrations or screen capture dependencies.",
+      "It can be planned from product sources without requiring the founder to start or stage the app. It does not invent reminders, notifications, cloud syncing, accounts or sharing."
+    ],
+    level: 3,
+    app: "web",
+    url: "http://127.0.0.1:4120",
+    fixture_script: "scripts/evals/tide-fixture.mjs",
+    script_only: true,
+    typed: [],
+    min_clips: 0
+  },
+  {
+    id: "script-ledgerly-how-to",
+    name: "Ledgerly how-to record an invoice payment",
+    brief: "Can you make a short how-to for Ledgerly users on recording payment for an invoice? Around 20 seconds for LinkedIn, landscape, voiceover and captions. The code is in my projects and the app is running locally. Don't publish anything, sign into accounts or change settings outside the app.",
+    criteria: [
+      "The script teaches recording payment on an existing invoice with direct repeatable instructions and the required starting invoice state.",
+      "The relevant controls and final paid status match the inspected app. Recording a payment is a manual record of money already received, not a charge or payment collection.",
+      "The lesson stays focused on the requested task, without an invoice-creation tutorial or whole-product introduction."
+    ],
+    level: 3,
+    app: "web",
+    url: "http://127.0.0.1:4130",
+    fixture_script: "scripts/evals/ledgerly-fixture.mjs",
+    script_only: true,
+    typed: [],
+    min_clips: 0
+  },
   {
     id: "script-packlight-intro",
     level: 3,
@@ -69,13 +180,10 @@ export const demoCases: DemoCase[] = [
     min_clips: 0,
     // What this script has to get right for this app and brief, checkable by reading it.
     criteria: [
-      "The first shot says what Packlight is in plain words, a packing checklist for a trip, naming Packlight on screen and in the voiceover.",
-      "It starts where a new user starts: the list of trips, then opening one.",
-      "It shows packing working: an item ticked off and the progress going up (for example 2 of 6 packed to 3 of 6, with the bar moving).",
-      "It shows adding your own item to the list.",
-      "It ends on sharing the list from the iPhone, the iOS share sheet opening, planned in the iPhone Simulator because the web version has no Share button. Previewing the list is optional.",
-      "Only what Packlight does: no accounts, syncing, reminders, bookings, saved data or camera (it has none; trip dates are labels), and no developer language.",
-      "It fits a 30-second portrait reel: about 4–6 shots, roughly 60–80 words of voiceover, one thing per shot.",
+      "This is an introduction: the spoken script names Packlight and explains it plainly as a packing checklist for trips, makes the audience clear, and gives a concrete reason to care.",
+      "The opening earns attention through a relevant problem or promise. The story develops a small number of useful capabilities and closes on a credible viewer outcome; it does not require a logo opening, product screens or a step-by-step tour.",
+      "Capabilities and benefits stay within the product: packing preparation, progress and optionally sending a copy of a list; no accounts, syncing, reminders, bookings, durable saved data or camera. Trip dates are labels; native sharing is iPhone-only.",
+      "The story and visual plan fit the requested 30-second portrait reel; choices are selective rather than a feature inventory."
     ],
   },
   // Script to video on a mobile app, two ways: through its web version, and in the
@@ -263,13 +371,10 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
     min_clips: 0,
     // The direction and flow this script needs; wording is the script's own.
     criteria: [
-      "The first shot says what Tide is in plain words, a calm todo app, naming Tide on screen and in the voiceover.",
-      "It opens on Today: the day's tasks, with an overdue one standing out.",
-      "Quick add is the heart of it: typing one sentence with a date, time and project, seeing them picked up as you type, and the dated task it becomes.",
-      "It shows checking a task off and where finished tasks go.",
-      "It shows Upcoming for what's coming, with project tags visible; adding from anywhere with a key is optional.",
-      "Only what Tide does: no reminders, notifications, syncing, accounts or sharing; nothing from the beta notes (tester counts or results), and no developer language.",
-      "It fits a 30-second landscape video: about 4–6 shots, roughly 60–80 words of voiceover, one thing per shot.",
+      "This is an introduction: the spoken script names Tide and explains it plainly as a calm todo app, makes the audience clear, and gives a concrete reason to care.",
+      "The opening earns attention through a relevant problem or promise. The story develops a small number of useful capabilities and closes on a credible viewer outcome; it does not require a logo opening, product screens or a step-by-step tour.",
+      "Capabilities and benefits stay within the product: keeping track of tasks, dates and projects; no reminders, notifications, syncing services, accounts or sharing.",
+      "The story and visual plan fit the requested 30-second landscape video; choices are selective rather than a feature inventory."
     ],
   },
   {
@@ -285,13 +390,10 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
     min_clips: 0,
     // The direction and flow this script needs; wording is the script's own.
     criteria: [
-      "The first shot says what Streaks is in plain words, tracking small daily habits and keeping your streaks going, naming Streaks on screen and in the voiceover.",
-      "It starts on your habits and their streaks, so the idea reads at a glance.",
-      "Checking in is the core: checking in on a habit and its streak going up.",
-      "It shows adding a habit of your own.",
-      "It ends on the weekly recap, your week at a glance ready to copy and share, as the payoff rather than the subject.",
-      "Only what Streaks does: no reminders, notifications, accounts, syncing, social feed or stats beyond the recap; nothing from the beta notes or the time-zone fix, and no developer language.",
-      "It fits a 30-second landscape video: about 4–6 shots, roughly 60–80 words of voiceover, one thing per shot.",
+      "This is an introduction: the spoken script names Streaks and explains it plainly as a daily habit tracker, makes the audience clear, and gives a concrete reason to care.",
+      "The opening earns attention through a relevant problem or promise. The story develops a small number of useful capabilities and closes on a credible viewer outcome; it does not require a logo opening, product screens or a step-by-step tour.",
+      "Capabilities and benefits stay within the product: check-ins, streaks and the weekly recap; no reminders, accounts, syncing, social feed or additional analytics.",
+      "The story and visual plan fit the requested 30-second landscape video; choices are selective rather than a feature inventory."
     ],
   },
   // A richer product than a list: sign in, a dashboard with a chart, invoices with line
@@ -310,12 +412,10 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
     min_clips: 0,
     // The direction and flow this script needs; wording is the script's own.
     criteria: [
-      "The first shot says what Ledgerly is in plain words, invoicing for freelancers and small studios, naming Ledgerly on screen and in the voiceover.",
-      "It follows the main journey: an invoice for a client with line items and the total adding up, marked as sent, and the payment recorded when it comes in.",
-      "It shows the overview a freelancer cares about, who owes them what (outstanding, paid, overdue), at the start or as the payoff.",
-      "It chooses rather than tours: sign-in happens off camera, and the extras (chart, filter, adding a client, print to PDF) get a glance at most or are left out.",
-      "Only what Ledgerly does: it doesn't claim to email invoices or take payments (sent and paid are statuses you set), and there are no bank links, integrations or accounts; nothing from the pilot notes or the cent fix, and no developer language.",
-      "It fits a 30-second landscape video: about 4–6 shots, roughly 60–80 words of voiceover, one thing per shot.",
+      "This is an introduction: the spoken script names Ledgerly and explains it plainly as invoicing for freelancers and small studios, makes the audience clear, and gives a concrete reason to care.",
+      "The opening earns attention through a relevant problem or promise. The story develops a small number of useful capabilities and closes on a credible viewer outcome; it does not require a logo opening, product screens or a step-by-step tour.",
+      "Capabilities and benefits stay within the product: creating invoices and tracking what is owed; marking sent and recording payment are manual statuses, not email delivery or payment collection; no bank links or integrations.",
+      "The story and visual plan fit the requested 30-second landscape video; choices are selective rather than a feature inventory."
     ],
   },
   // Not every video is a product introduction. A feature launch is about one change: the
@@ -333,13 +433,13 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
     typed: [],
     min_clips: 0,
     criteria: [
-      "The first shot says what's new in plain words, Ledgerly now shows which invoices are overdue, naming Ledgerly and the feature on screen and in the voiceover.",
+      "The opening establishes the relevant problem or new ability, then names Ledgerly and explains its new overdue-invoice capability early in the spoken script and on screen. A problem-first hook is valid.",
       "It gives the reason in the user's terms: seeing at a glance who hasn't paid you on time, without the pilot numbers.",
-      "It shows where a user meets it first: the Overdue card on the dashboard, with the amount and how many invoices are past due.",
-      "It shows an overdue invoice itself: the Overdue badge in the list or the Overdue filter narrowing to them (one is enough).",
+      "It explains the new overdue visibility in the user's terms, including the dashboard total/count when useful. If that UI is planned, its Overdue card and displayed data match inspected app evidence.",
+      "The explanation of overdue invoices is concrete: the automatic badge or the filter makes the benefit clear. Product footage is optional; any planned badge or filter shot matches the inspected app.",
       "It makes clear this happens on its own once a sent invoice passes its due date, and doesn't claim reminders, emails to clients or late fees (Ledgerly has none).",
       "Only the feature: not a tour of Ledgerly, nothing about the cent fix, the dependency bump or older features presented as new; nothing from the pilot notes, and no developer language.",
-      "It fits about 20 seconds of landscape video: roughly 3–4 shots and 40–55 words of voiceover, one thing per shot.",
+      "The actual narration and per-shot timing plausibly fit about 20 seconds of landscape video, with room to understand the feature; no fixed shot count is required.",
     ],
   },
   // A how-to teaches one task, step by step. Sharing a packing list is iPhone-only: the
@@ -363,7 +463,7 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
       "It is shown on the iPhone, planned in the iPhone Simulator, because the web version has no Share button.",
       "Only the steps the task needs: no Preview, adding items or ticking things off as steps, and no product introduction beyond naming Packlight.",
       "Plain instructions to the viewer (\"open your trip, tap…\") that claim nothing the app doesn't do: the list is sent as a copy, with no live shared list, inviting companions or accounts; no developer language.",
-      "It fits a short portrait reel: about 15–25 seconds, 3–5 shots and roughly 35–60 words, one step per shot.",
+      "It fits a short portrait reel of about 15–25 seconds, with enough time to follow the necessary steps and read the result; no fixed shot count or word quota is required.",
     ],
   },
   // A round-up of what changed: Ledgerly's last two weeks hold five user-facing features
@@ -381,13 +481,13 @@ Founder's note: Make it a ~20 sec landscape video with voiceover and captions. R
     typed: [],
     min_clips: 0,
     criteria: [
-      "The first shot says it's what's new in Ledgerly, on screen and in the voiceover.",
-      "It covers the five changes users got, each shown working: the revenue chart, filtering invoices by status, adding a client without leaving the page, Print / PDF, and overdue invoices; if one is left out, the assumptions say why.",
-      "Each change is shown where a user meets it, with a plain line on what it does for them (seeing revenue month by month, finding just the unpaid invoices, and so on).",
+      "The opening establishes that this is a what's-new piece for Ledgerly and makes the requested period clear early, on screen and in the narration.",
+      "It selects useful changes from the requested period: revenue chart, status filters, add-client modal, Print / PDF and overdue invoices. Meaningful omissions are explained; selection and grouping serve the viewer rather than requiring every feature.",
+      "Each selected change is explained by its user benefit. Visuals support that explanation; if product UI is planned, the screen and behavior match inspected app evidence.",
       "It is ordered for the viewer, not by commit date: for example leading with what matters most, or grouping changes by the screen they're on.",
       "The totals fix gets at most a plain line; nothing on the dependency bump, and nothing older (sign-in, the dashboard cards, the invoice form) presented as new.",
       "It claims nothing Ledgerly doesn't do (PDF is through printing; nothing is emailed or paid online); nothing from the pilot notes, and no developer language.",
-      "It fits 30–40 seconds of landscape video: about 6–8 shots and 75–100 words of voiceover, one change per shot.",
+      "The actual narration and shot timings fit 30–40 seconds of landscape video. Related changes may share a beat when the visuals and narration stay clear; no fixed shot count is required.",
     ],
   },
   // Script to video: starts from an approved script, fixed so recording runs compare.
@@ -436,13 +536,10 @@ You sent me this script and I approved it, go ahead and make the video:
     min_clips: 0,
     // The direction and flow this script needs; wording is the script's own.
     criteria: [
-      "The first shot says what Quill is in plain words, quiet notes for your desktop written in Markdown and formatted as you type, naming Quill on screen and in the voiceover.",
-      "Writing is the heart of it: typing in Markdown and seeing it formatted beside it, live.",
-      "It shows finding and keeping notes: the notes in the sidebar, with search narrowing them or pinning keeping a few at the top (one is enough).",
-      "It chooses rather than tours: a new note, Settings (text size, dark theme) and the word count get a glance at most or are left out.",
-      "It is shown as the Mac app it is, planned in its desktop window, not a browser.",
-      "Only what Quill does: no syncing, cloud, accounts, sharing, collaboration or mobile app (notes stay on this computer); nothing from the tester feedback or the preview fix, and no developer language (Markdown is fine: it's what users write in).",
-      "It fits a 30-second landscape video: about 4–6 shots, roughly 60–80 words of voiceover, one thing per shot.",
+      "This is an introduction: the spoken script names Quill and explains it plainly as a desktop Markdown notes app, makes the audience clear, and gives a concrete reason to care.",
+      "The opening earns attention through a relevant problem or promise. The story develops a small number of useful capabilities and closes on a credible viewer outcome; it does not require a logo opening, product screens or a step-by-step tour.",
+      "Capabilities and benefits stay within the product: writing, finding and keeping notes locally; no cloud syncing, accounts, collaboration, sharing or mobile app.",
+      "The story and visual plan fit the requested 30-second landscape video; choices are selective rather than a feature inventory."
     ],
   },
   // PostOrca's own repository: a real product with many features and plenty of internal
@@ -460,14 +557,10 @@ You sent me this script and I approved it, go ahead and make the video:
     min_clips: 0,
     // The direction and flow this script needs; wording is the script's own.
     criteria: [
-      "The first shot says what PostOrca is in plain words, a desktop app whose agent, Orca, helps builders grow their personal brand while they keep building, naming PostOrca on screen and in the voiceover.",
-      "It finds the core loop and builds on it: Orca knows your brand, Orca does the work (ideas, drafts, images, video), and you review it in the Inbox.",
-      "It shows two or three journeys, each in its own introduced section rather than mixed, for example asking Orca in chat and the result landing in the Inbox, routines as the work Orca does for you every day on its own (for example, keeping track of how your posts do or noticing what changed in your projects), or the Brand Profile Orca learns from.",
-      "It chooses rather than tours: connectors, the browser extension, computer use, the Calendar, Posts, credits and plans get a glance at most or are left out.",
-      "The founder stays in charge: they review what Orca made, and it doesn't claim PostOrca posts or grows the audience on its own (no follower or growth promises).",
-      "In the product owner's public voice: features described by what they do for you, not how or where they run (servers, running while the app is closed); nothing internal (eval docs, the git workflow, what share of the price goes to AI, model or provider names), and no developer language (Electron, API, MCP, agent loop).",
-      "It is planned in the desktop app's own window, on its real screens.",
-      "It fits 45–60 seconds of landscape video: about 7–10 shots and 110–150 words of voiceover, one thing per shot.",
+      "This is an introduction: the spoken script names PostOrca and explains it plainly as a desktop app whose agent helps builders grow their personal brand while they keep building, makes the audience clear, and gives a concrete reason to care.",
+      "The opening earns attention through a relevant problem or promise. The story develops a small number of useful capabilities and closes on a credible viewer outcome; it does not require a logo opening, product screens or a step-by-step tour.",
+      "Capabilities and benefits stay within the product: brand context, content work and founder review; no automatic posting or audience-growth promises, and no private provider, pricing or operational details.",
+      "The story and visual plan fit the requested 45\u201360-second landscape video; choices are selective rather than a feature inventory."
     ],
   },
   // Script to video on a richer app: sign in off camera, a dropdown, line items added and
@@ -607,11 +700,18 @@ function scriptChecks(calls: any[]): EvalCheck[] {
   );
   const saved = (name: string) =>
     ok.some((c) => c.name === "save_content_file" && c.args?.name === name);
+  // Artifact-only delivery is still a draft. Missing named saves is a separate
+  // failure and must not erase a source read that happened before that draft.
+  const firstDraft = calls.findIndex((c) =>
+    ok.includes(c) && (c.name === "save_content_file" ||
+      (c.name === "create_artifact" && c.args?.kind === "document")),
+  );
   return [
     {
       name: "Read the project before writing the script",
-      passed: calls.some((c) =>
-        ["read_file", "list_dir", "git_activity"].includes(c.name),
+      passed: ok.some((c) =>
+        ["read_file", "list_dir", "git_activity"].includes(c.name) &&
+        (firstDraft < 0 || calls.indexOf(c) < firstDraft),
       ),
     },
     {
