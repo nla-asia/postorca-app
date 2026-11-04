@@ -334,8 +334,18 @@ test("focused planning reviews use their own criteria without changing other scr
   assert.equal(howTo.revision_change?.from, 2);
   assert.equal(howTo.criteria.length, 6);
   assert.deepEqual(howTo.criteria.map((c) => c.text), howTo.demo!.criteria);
-  const demo = cases.find((c) => c.id === "content-script-tide-demo")!;
-  assert.equal(demo.criteria.length, demo.demo!.criteria.length + 6);
+  for (const [id, revision, count] of [
+    ["content-script-tide-demo", 3, 7],
+    ["content-script-packlight-how-to", 4, 6],
+  ] as const) {
+    const secondProduct = cases.find((c) => c.id === id)!;
+    assert.equal(secondProduct.revision, revision);
+    assert.equal(secondProduct.revision_change?.from, revision - 1);
+    assert.equal(secondProduct.criteria.length, count);
+    assert.deepEqual(secondProduct.criteria.map((c) => c.text), secondProduct.demo!.criteria);
+  }
+  const mix = cases.find((c) => c.id === "content-script-tide-mix")!;
+  assert.equal(mix.criteria.length, mix.demo!.criteria.length + 6);
 });
 
 test("a local web app opened as localhost counts as opened", () => {

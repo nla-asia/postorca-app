@@ -248,8 +248,32 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
           ],
         },
       }),
+      ...(c.id === "script-tide-demo" && {
+        revision: 3,
+        revision_change: {
+          from: 2,
+          reason: "Apply the five-component walkthrough rubric to a second product, with agent-chosen scope and duration and source-supported planning.",
+          preserved_coverage: [
+            "Demo components and understandable action-to-result explanation",
+            "Supported Tide task behavior and capability limits",
+            "Requested format, saved drafts, approval before production and unchanged source fixture",
+          ],
+        },
+      }),
+      ...(c.id === "script-packlight-how-to" && {
+        revision: 4,
+        revision_change: {
+          from: 3,
+          reason: "Apply the five-component how-to rubric to a second product. Retain native-only sharing and copy semantics while allowing suitable duration and source-supported planning.",
+          preserved_coverage: [
+            "How-to components, repeatable steps and recognizable result",
+            "Existing trip, iPhone-only share sheet and copied list with packed items",
+            "Portrait reel, saved drafts, approval before production and unchanged source fixture",
+          ],
+        },
+      }),
       criteria: criteria(
-        c.script_only && !["script-tide-intro-no-screens", "script-ledgerly-intro", "script-ledgerly-demo", "script-ledgerly-how-to"].includes(c.id)
+        c.script_only && !["script-tide-intro-no-screens", "script-ledgerly-intro", "script-ledgerly-demo", "script-ledgerly-how-to", "script-tide-demo", "script-packlight-how-to"].includes(c.id)
           ? [...scriptReview, ...c.criteria]
           : c.criteria,
       ),

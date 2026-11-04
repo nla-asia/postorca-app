@@ -383,8 +383,9 @@ Two separate evals use it, matching the product:
   (revenue chart, status filter, add a client in a modal, print to PDF, overdue), with a
   one-cent fix, a dependency bump and pilot notes; the core is older. The script picks
   and orders the features for viewers, not as a changelog.
-- `content-script-tide-demo`: a short demonstration of a useful job. Evaluate a
-  supported action-to-result flow without requiring one specific task from a generic brief.
+- `content-script-tide-demo`: a second product explanation walkthrough, using the
+  same seven-criterion structure as Ledgerly with Tide-specific task behavior.
+  The agent chooses features and duration; source-based planning is supported.
 - `content-script-ledgerly-demo`: a product explanation walkthrough for LinkedIn.
   The agent chooses features and duration. Its own seven criteria cover the five
   demo components, plain connected explanation, supported behavior, requested delivery,
@@ -404,6 +405,10 @@ Two separate evals use it, matching the product:
   and the meaning of recording payment. Code and docs can support planning. This case
   excludes the extra shared semantic rubric and retains automatic checks.
   This web case complements the native Packlight sharing lesson.
+- `content-script-packlight-how-to`: the second how-to uses the same six-criterion
+  structure, with an existing iPhone trip, native sharing steps, the copied list
+  and its packed markers, and no live collaboration claims. Duration is chosen by
+  the agent. Source-based planning is supported and the extra shared rubric is excluded.
 
 Shared script reviews check content-type routing, complete drafts, narration, visual
 alignment, supported claims and actual per-shot timing. Review what the agent actually
