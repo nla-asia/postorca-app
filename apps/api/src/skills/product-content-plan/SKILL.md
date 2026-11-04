@@ -23,7 +23,7 @@ Read the matching reference with `read_skill`, using `name: "product-content-pla
 
 For an introduction with a demo beat, read the introduction and demo references. Keep the introduction's story and use the demonstration to support its promise.
 
-## 2. Understand what supports the story
+## 2. Understand the product
 
 Use the brief, brand profile and supplied material. When code is available, read the selected project and relevant source folders in its `folders` list (`list_dir`, `read_file`, `git_activity`). Use `active_project` when supplied; otherwise identify the project from the brand profile and ask if ambiguous. Older records may expose only `path`.
 
@@ -40,7 +40,9 @@ For a demonstration or lesson, trace the relevant actions through their handlers
 
 An introduction can use typography, illustration, footage or animation without product screens. Verify its claims from the available sources; a running app isn't required for content that doesn't show or demonstrate its UI.
 
-## 3. Write the story and visuals together
+## 3. Write the script and shot plan
+
+Describe what the viewer will see alongside each narration line. This is a written shot plan; recording, generating assets and editing happen after approval.
 
 Follow the selected reference. Write as the product's owner speaking to the intended audience. Follow `voice.md` from your instructions and use recent posts (`list_my_posts`) when needed to understand how the founder speaks.
 
