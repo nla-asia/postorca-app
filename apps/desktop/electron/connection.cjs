@@ -35,6 +35,7 @@ class DesktopConnection {
   }
   /** Connect for a session ({token, apiUrl}); null disconnects. */
   setSession(session) {
+    if (session !== this.session) require("./tools/command.cjs").shutdown();
     this.session = session;
     this.deviceToken = null;
     this.reconnectAttempts = 0;
@@ -233,6 +234,7 @@ class DesktopConnection {
       const result = await Promise.race([
         tools[call.tool].run(call.arguments ?? {}, {
           tools: Object.keys(tools),
+          deviceId: this.deviceId,
           taskId: call.taskId,
           turnId: call.turnId,
           upload: (data, type) => this.upload(session, data, type),

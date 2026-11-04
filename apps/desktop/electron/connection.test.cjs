@@ -15,6 +15,10 @@ for (const stub of ["./tools/index.cjs", "./plugins/computer/index.cjs"]) {
     exports: { shutdown() {} },
   };
 }
+let commandShutdowns = 0;
+const commandFile = require.resolve("./tools/command.cjs");
+require.cache[commandFile] = { id: commandFile, filename: commandFile, loaded: true,
+  exports: { shutdown() { commandShutdowns++; } } };
 const { DesktopConnection } = require("./connection.cjs");
 
 const deviceToken = () =>
@@ -132,4 +136,20 @@ test("a renewed token that is still rejected is not renewed again", async () => 
     connection.setSession(null);
     await api.close();
   }
+});
+
+
+test("command sessions survive transport teardown and token refresh, but end on sign-out", () => {
+  const connection = new DesktopConnection(randomUUID());
+  const session = { token: "token", apiUrl: "http://localhost" };
+  connection.session = session;
+  const before = commandShutdowns;
+  connection.teardown();
+  assert.equal(commandShutdowns, before);
+  // Renewal updates this same session object, without ending its processes.
+  session.token = "renewed";
+  connection.teardown();
+  assert.equal(commandShutdowns, before);
+  connection.setSession(null);
+  assert.equal(commandShutdowns, before + 1);
 });

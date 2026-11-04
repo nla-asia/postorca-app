@@ -4,6 +4,7 @@ Check before delivering shots or a guide. Keep this checklist out of the deliver
 
 - The shot list follows the demo plan: problem, payoff, short setup; only the shots the demo needs, clips short and one per step.
 - You checked for a web way into a desktop or mobile app (an Electron renderer, Expo or react-native-web, Flutter web) and used it only where those screens match the real product.
+- Any necessary app/server was started using the documented project commands; existing sessions were reused, readiness was verified in the app, and only owned sessions no longer needed were stopped.
 - Each shot was captured the right way: web pages navigated with the browser, clips recorded with the screen recording tools on the browser window (the browser has no recording), desktop apps navigated with the computer plugin and recorded by window (never computer_observe screenshots as shots), iOS apps with the Simulator target (its own screenshot and recording), never the Simulator window or the whole screen.
 - Any sign-in used a test account the founder gave for their own local or test app, happened before recording, and the password appears nowhere: not in memory, artifacts, guides, posts or shots.
 - Each capture started from a prepared state: the app on the starting screen with its data loaded, the window in front and fully visible, nothing loading or left open, steps rehearsed once, and the window was checked with screen_capture right before recording: no browser pop-up or overlay covering the page.

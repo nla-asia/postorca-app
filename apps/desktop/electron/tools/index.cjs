@@ -7,6 +7,7 @@
 // A tool module exports run(args, context) → JSON-serializable result. Throwing
 // reports the call as failed with the error's message.
 const tools = {
+  command: require("./command.cjs").command,
   desktop_status: require("./desktop-status.cjs"),
   download_file: require("./download-file.cjs"),
   list_dir: require("./files.cjs").list_dir,
