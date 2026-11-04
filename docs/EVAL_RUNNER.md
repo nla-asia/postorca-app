@@ -402,8 +402,9 @@ The source-read check requires a successful read before the first persisted draf
 missing named saves remain a separate failure. Production calls blocked by the
 approval guard are retained tool errors and still require semantic review and triage.
 The focused `content-script-tide-intro-no-screens` review is simpler: required
-introduction components from the guide, then Tide accuracy and the specific brief's
-format/visual requirements. It does not inherit the extra shared semantic rubric.
+introduction components from the guide, then explicit Tide details (daily tasks,
+quick-add date/time/project parsing, Today versus Upcoming, and absent features)
+and the specific brief's format/visual requirements. It does not inherit the extra shared semantic rubric.
 Its automatic source-read, file-save and pre-production checks remain in place.
 Case revisions preserve previous frozen briefs and rubrics. The initial diagnostic
 batch and its measurement corrections are recorded in

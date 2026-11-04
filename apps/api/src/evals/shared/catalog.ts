@@ -199,10 +199,10 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
       // This founder-reviewed intro case uses guide components plus product/brief
       // requirements, without the extra shared semantic writing rubric.
       ...(c.id === "script-tide-intro-no-screens" && {
-        revision: 3,
+        revision: 4,
         revision_change: {
-          from: 2,
-          reason: "Use the founder's simpler rubric: required introduction components, then product-specific and brief-specific requirements. Accept the guide's approved closing choices.",
+          from: 3,
+          reason: "State the Tide details explicitly: daily tasks, quick-add date/time/project parsing, Today versus Upcoming, and absent reminder/sharing/account/device-sync features. Retain guide components and the requested format.",
           preserved_coverage: [
             "Required introduction components",
             "Tide product accuracy and requested format/visual treatment",
