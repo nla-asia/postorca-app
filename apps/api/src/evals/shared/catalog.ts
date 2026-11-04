@@ -196,7 +196,7 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
           ],
         },
       }),
-      // These founder-reviewed intro cases use guide components plus product/brief
+      // These founder-reviewed cases use guide components plus product/brief
       // requirements, without the extra shared semantic writing rubric.
       ...(c.id === "script-tide-intro-no-screens" && {
         revision: 5,
@@ -222,8 +222,21 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
           ],
         },
       }),
+      ...(c.id === "script-ledgerly-demo" && {
+        revision: 3,
+        revision_change: {
+          from: 2,
+          reason: "Evaluate a product explanation walkthrough using the five demo components and Ledgerly-specific expectations. Let the agent choose features and duration, with code or docs sufficient for supported planning.",
+          preserved_coverage: [
+            "Required demo components and understandable action-to-result demonstrations",
+            "Ledgerly invoicing and tracking behavior, including manual status limits",
+            "Landscape LinkedIn voiceover/captions plan and script, with approval before production",
+            "Automatic source-read, saved-file and fixture-preservation checks",
+          ],
+        },
+      }),
       criteria: criteria(
-        c.script_only && !["script-tide-intro-no-screens", "script-ledgerly-intro"].includes(c.id)
+        c.script_only && !["script-tide-intro-no-screens", "script-ledgerly-intro", "script-ledgerly-demo"].includes(c.id)
           ? [...scriptReview, ...c.criteria]
           : c.criteria,
       ),

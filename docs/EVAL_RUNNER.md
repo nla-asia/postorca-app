@@ -383,9 +383,15 @@ Two separate evals use it, matching the product:
   (revenue chart, status filter, add a client in a modal, print to PDF, overdue), with a
   one-cent fix, a dependency bump and pilot notes; the core is older. The script picks
   and orders the features for viewers, not as a changelog.
-- `content-script-tide-demo` / `content-script-ledgerly-demo`: generic requests to
-  demonstrate a useful job, on two products. Evaluate a supported action-to-result
-  flow without silently requiring one specific task from a generic brief.
+- `content-script-tide-demo`: a short demonstration of a useful job. Evaluate a
+  supported action-to-result flow without requiring one specific task from a generic brief.
+- `content-script-ledgerly-demo`: a product explanation walkthrough for LinkedIn.
+  The agent chooses features and duration. Its own seven criteria cover the five
+  demo components, plain connected explanation, supported behavior, requested delivery,
+  the selected Ledgerly sections, invoicing and tracking, and manual status limits.
+  Code and docs can support the plan; an app visit is not universally required.
+  This case does not inherit the extra shared semantic rubric. Automatic source-read,
+  saved-file, approval-before-production and fixture-preservation checks still apply.
 - `content-script-tide-mix` / `content-script-ledgerly-mix`: introductions with a
   focused demonstration. Both planning references should be read.
 - `content-script-tide-intro-no-screens`: the founder explicitly requests typography

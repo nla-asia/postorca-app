@@ -102,11 +102,15 @@ export const demoCases: DemoCase[] = [
   {
     id: "script-ledgerly-demo",
     name: "Ledgerly product demo script",
-    brief: "Can you make a short product demo of Ledgerly for LinkedIn? Show how it does a useful job, around 30 seconds, landscape, voiceover and captions. The code is in my projects and the app is running locally. Don't publish anything, sign into accounts or change settings outside the app.",
+    brief: "Can you plan a product demo of Ledgerly for LinkedIn? Walk viewers through how the product works. Landscape, with voiceover and captions. Choose suitable features to show and enough time to explain them. The code is in my projects and the app is running locally. Give me the plan and script for approval first; do not publish anything or generate assets yet.",
     criteria: [
-      "The plan is a product demo with a useful action-to-result sequence, rather than an introduction made only of benefit statements.",
-      "The chosen flow demonstrates a meaningful invoicing or tracking job Ledgerly supports, with accurate inputs and results. It does not imply the app emails invoices or collects payment.",
-      "Live clips show meaningful real product actions and a readable result; preparation and irrelevant navigation are kept in shot notes."
+      "General — components: All five components from the demo guide are present: opening, starting point, demonstration, transitions and close. Components can share shots, and demonstration and transitions can repeat as needed.",
+      "General — explanation: It explains how the product works in plain, connected language, with enough time to follow the selected features and their results.",
+      "General — accuracy: The demonstrated actions and results are supported by the product. Code and docs can support planning; an app visit is not universally required.",
+      "General — delivery: It provides a reviewable plan and complete script for a landscape LinkedIn video with voiceover and captions, explains its chosen duration, asks for approval and stops before production.",
+      "Specific — product: It explains the main parts of Ledgerly that it chooses to show. Feature selection is open.",
+      "Specific — demonstration: It demonstrates how someone uses Ledgerly to manage invoices and track what clients owe.",
+      "Specific — status: It clearly distinguishes recording an invoice's status from sending an email or collecting payment."
     ],
     level: 3,
     app: "web",
