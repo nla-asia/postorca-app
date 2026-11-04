@@ -1,6 +1,6 @@
 ---
 name: product-content-plan
-description: Plan a piece of product content from the product's code and running app - an introduction to the whole product, a feature launch, a how-to or a what's-new - and write the script the founder approves before anything is recorded or made. Then product-content-capture records it and product-content-edit edits it.
+description: Plan a piece of product content from the product's code and running app - a demo, an introduction to the whole product, a feature launch, a how-to or a what's-new - and write the script the founder approves before anything is recorded or made. Then product-content-capture records it and product-content-edit edits it.
 ---
 
 # Product content plan
@@ -42,9 +42,12 @@ How each platform is framed and edited is in product-content-edit.
 
 ## 3. What the content is
 
+**Pick the content type first:** demo, introduction, feature launch, how-to, what's new, or a mix (an introduction with one or two demo beats for the payoff). Infer it from the request ("an introduction video" is an introduction, "show how it works" is a demo) and state it at the top of the plan and the script ("Treating this as an introduction"), so the founder can correct it. Ask only when the request doesn't say and the context doesn't settle it.
+
 Each kind has its own subject; keep to it:
 
-- **Introduction** (the whole product, often a first post): what it is, who it's for, and the journey that matters most to a new user, step by step in the order they meet it, ending on the payoff. When the product has more than one main journey, give each its own section, introduced so the viewer knows what's next, rather than mixing them; keep to the two or three that matter most. Not the latest change, and not a tour of every feature.
+- **Demo** (proving the product works): the journey that matters most, step by step in the order a user takes it, ending on the payoff. When the product has more than one main journey, give each its own section, introduced so the viewer knows what's next, rather than mixing them; keep to the two or three that matter most.
+- **Introduction** (the whole product, often a first post): what it is, who it's for and why they should care, not how to use it. Read `product-introduction` with `read_skill` for its structure, word budget and visuals. Not the latest change, and not a tour of every feature.
 - **Feature launch** (something just shipped): that one change, found in the latest commits, where a user meets it and why it helps them, with only enough of the product around it to place it. Chores and internal fixes aren't features.
 - **How-to** (a task users asked about): teach the actions the viewer needs to complete that task, in their real order, speaking to them ("open…, tap…"). Include an optional action when it materially helps the requested lesson; leave it out when it adds no useful understanding. Handle routine execution details in the shot plan without giving each its own spoken instruction.
 - **What's new** (a period's changes): the changes users got in that period, chosen and ordered for the viewer, each shown working with what it does for them. Not a changelog, and nothing older presented as new.
@@ -67,8 +70,9 @@ Before saving, walk through the shot plan as the person operating the app, then 
 One message, short enough to review without scrolling back and forth:
 
 - **What it is** and **who it's for**, one line each.
-- **Format:** the platform and shape first, then length, voiceover and captions. Follow the founder's request; otherwise the platform's usual length (around 30–45 seconds for an introduction, shorter for a launch or how-to).
-- **Shots**, numbered, one per beat. For each: what's on screen (which screen and what happens, and where it's recorded), its on-screen text if it has any, and the voiceover line. Keep any necessary setup or silent transition in the recording notes for that shot. On-screen text is a line the video adds over the shot, not text already in the app. The voiceover read in order is the whole script, about 2.5 words per second of video.
+- **Content type:** the type you chose, in one line ("Treating this as an introduction").
+- **Format:** length, shape (16:9 for X, LinkedIn, YouTube; 9:16 for Reels, TikTok, Shorts), voiceover and captions. Follow the founder's request; otherwise the platform's usual length (around 30–45 seconds for an introduction, shorter for a launch or how-to).
+- **Shots**, numbered, one per beat. For each: its visual mode, what's on screen (which screen and what happens, and where it's recorded), its on-screen text if it has any, and the voiceover line. The visual mode is one of: **live clip** (the action recorded as it happens, for a demo step or payoff), **product shot** (a prepared screen in a perfect state, captured clean as a still or a short loop, with no actions on camera) or **type card** (text on the brand background, such as the opening line, a section title or the end card). A demo is mostly live clips; an introduction is mostly product shots and type cards. Keep any necessary setup or silent transition in the recording notes for that shot. On-screen text is a line the video adds over the shot, not text already in the app. The voiceover read in order is the whole script, about 2.5 words per second of video.
 - **Assumptions:** what you chose and left out and why, in a line or two, so the founder can correct it quickly.
 
 On a content task, save the plan (what the content is for, who it's for, the format, what it shows and what you assumed or left out) as `plan.md` and the script as `script.md` with `save_content_file`, then reply with the script. End by asking the founder to approve it or say what to change, and stop.
@@ -77,4 +81,4 @@ On a content task, save the plan (what the content is for, who it's for, the for
 
 - **Apply every change** they asked for. If they rewrite the story, show the new script and wait for approval again; otherwise go ahead.
 - **On a content task,** save the updated `script.md` and record their approval with `approve_content_script`, quoting them. Recording and making anything wait for it.
-- **Capture and edit** with the next skills, with the approved shots as the demo plan and the approved voiceover as the script. The founder's requested length and format win over those skills' defaults. In the final message, say in a line what changed from the approved script, if anything had to.
+- **Capture and edit** with the next skills, with the approved shots and their visual modes as the shot plan and the approved voiceover as the script. The founder's requested length and format win over those skills' defaults. In the final message, say in a line what changed from the approved script, if anything had to.
