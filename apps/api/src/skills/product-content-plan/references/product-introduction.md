@@ -57,6 +57,16 @@ The first two examples are alternative ways to describe FileNest's search. The t
 
 Choose capabilities that matter to the actual audience and explain their benefits in the user's terms.
 
+## Closing examples
+
+Choose a close that fits the audience and purpose. It can reinforce the benefit, recap the product or invite a next step. Use an invitation when that next step is actually available.
+
+| Closing type | Example |
+| --- | --- |
+| Benefit | “With FileNest, you can spend less time looking for files and get back to your work.” |
+| Recap | “That's FileNest. Describe the file you need, and it helps you find it.” |
+| Invitation | “If this would help with your work, give FileNest a try.” |
+
 ## Visuals
 
 Typography, illustrations, footage and animation can carry the introduction, with or without product screens. The opening doesn't need a product screen or logo card. Choose visuals that explain the situation or promise instead of leaving the words to do all the work.
