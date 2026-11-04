@@ -20,7 +20,7 @@ Use product footage when it helps show the difference; type, illustration or ani
 
 Write in plain language as the product's owner speaking to the intended audience. Follow `voice.md` from your instructions and use recent posts (`list_my_posts`) when needed to understand how the founder speaks. Keep features, results, speed claims, prices and availability grounded in supplied or verified sources. Keep narration aligned with the visuals and read it continuously to catch disconnected lines or repetition.
 
-Count the actual spoken words and estimate speech at about 2.5 words per second. Check each shot's timing, including time to read important visuals and hold a result. Keep meaningful uncertainty visible to the founder.
+Count the actual spoken words and estimate speech at about 2.5 words per second. Check each shot's timing, including time to read important visuals and hold a result. Raise unresolved questions with the founder in chat.
 
 ## Deliver the plan and script
 
@@ -31,8 +31,10 @@ Include:
 - **Content type**, what the product is and who this piece is for.
 - **Format:** duration, aspect ratio, voiceover and captions. Follow the request; otherwise explain your choices.
 - **Story:** what the viewer should understand or be able to do by the end, with choices and omissions explained.
-- **Numbered shots:** timing, what the viewer sees, added on-screen text and the voiceover. Specify the visual mode: **live clip** for a recorded product action, **product shot** for a prepared real screen, **type card**, **illustration**, **footage** or **animation**. Identify supplied assets or assets to create. For product screens, name the observed state, useful crop and preparation needed; keep anything unverified explicit.
-- **Assumptions:** anything the founder must confirm or supply.
+- **Numbered shots:** timing, what the viewer sees, added on-screen text and the voiceover. Specify the visual mode: **live clip** for a recorded product action, **product shot** for a prepared real screen, **type card**, **illustration**, **footage** or **animation**. Identify supplied assets or assets to create. For product screens, name the verified state, useful crop and preparation needed.
+- **Assumptions:** creative choices for the founder to review. Access requests belong in chat.
+
+Report access problems and requests for help in a separate chat message. Keep them out of `plan.md` and `script.md`. If missing access prevents verifying a planned screen, ask for the needed access or choose a supported alternative before finalizing the plan.
 
 On a content task, save `plan.md` and `script.md` with `save_content_file`, then reply with the script. Ask the founder to approve or say what to change, and stop. No recording, asset generation or editing before approval.
 
