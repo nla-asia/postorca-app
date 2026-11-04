@@ -312,6 +312,17 @@ test("script-only cases are portable except for the native Quill fixture", async
   }
 });
 
+test("the focused intro review uses its own criteria without changing other script cases", async () => {
+  const { builtinCases } = await import("../src/evals/shared/catalog.js");
+  const cases = builtinCases();
+  const intro = cases.find((c) => c.id === "content-script-tide-intro-no-screens")!;
+  assert.equal(intro.revision, 3);
+  assert.equal(intro.criteria.length, 3);
+  assert.deepEqual(intro.criteria.map((c) => c.text), intro.demo!.criteria);
+  const demo = cases.find((c) => c.id === "content-script-tide-demo")!;
+  assert.equal(demo.criteria.length, demo.demo!.criteria.length + 6);
+});
+
 test("a local web app opened as localhost counts as opened", () => {
   const entry = demo("demo-packlight-web-from-script");
   const names = failed(

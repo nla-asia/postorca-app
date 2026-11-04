@@ -138,9 +138,9 @@ export const demoCases: DemoCase[] = [
     name: "Tide introduction with typography and animation only",
     brief: "I need a 30-second landscape introduction to Tide for LinkedIn, with voiceover and captions. Please use typography and simple animation, with no product screens or screen recordings. The code is in my projects. Don't publish anything or generate assets before I approve the script.",
     criteria: [
-      "The script introduces Tide plainly as a calm todo app, makes its audience and useful promise clear, and ends on a concrete benefit.",
-      "The shot plan follows the requested typography and simple animation treatment throughout, with no product screen shots, demonstrations or screen capture dependencies.",
-      "It can be planned from product sources without requiring the founder to start or stage the app. It does not invent reminders, notifications, cloud syncing, accounts or sharing."
+      "General: All required components from the product introduction guide are present: an opening, a product definition, capabilities and benefits, and a close.",
+      "Specific — product: Introduces Tide as a calm todo app. Product details and claims match the supplied Tide sources.",
+      "Specific — brief: A 30-second landscape introduction for LinkedIn, with voiceover and captions, planned using only typography and simple animation.",
     ],
     level: 3,
     app: "web",

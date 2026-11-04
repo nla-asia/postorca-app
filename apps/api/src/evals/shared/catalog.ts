@@ -196,7 +196,25 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
           ],
         },
       }),
-      criteria: criteria(c.script_only ? [...scriptReview, ...c.criteria] : c.criteria),
+      // This founder-reviewed intro case uses guide components plus product/brief
+      // requirements, without the extra shared semantic writing rubric.
+      ...(c.id === "script-tide-intro-no-screens" && {
+        revision: 3,
+        revision_change: {
+          from: 2,
+          reason: "Use the founder's simpler rubric: required introduction components, then product-specific and brief-specific requirements. Accept the guide's approved closing choices.",
+          preserved_coverage: [
+            "Required introduction components",
+            "Tide product accuracy and requested format/visual treatment",
+            "Automatic source-read, saved-file and pre-production checks",
+          ],
+        },
+      }),
+      criteria: criteria(
+        c.script_only && c.id !== "script-tide-intro-no-screens"
+          ? [...scriptReview, ...c.criteria]
+          : c.criteria,
+      ),
       // Code to script is the first stage of a content task.
       ...(c.script_only && { work_type: "content" as const }),
       demo: c,

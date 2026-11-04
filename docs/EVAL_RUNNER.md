@@ -401,6 +401,10 @@ read and delivered, not just the claimed word count or the presence of a tool na
 The source-read check requires a successful read before the first persisted draft;
 missing named saves remain a separate failure. Production calls blocked by the
 approval guard are retained tool errors and still require semantic review and triage.
+The focused `content-script-tide-intro-no-screens` review is simpler: required
+introduction components from the guide, then Tide accuracy and the specific brief's
+format/visual requirements. It does not inherit the extra shared semantic rubric.
+Its automatic source-read, file-save and pre-production checks remain in place.
 Case revisions preserve previous frozen briefs and rubrics. The initial diagnostic
 batch and its measurement corrections are recorded in
 [the 4 November script evaluation report](eval-product-planning-2026-11-04.md).
