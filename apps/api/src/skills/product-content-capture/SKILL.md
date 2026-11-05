@@ -5,7 +5,7 @@ description: Record the screenshots and screen recordings that approved product 
 
 # Product content capture
 
-A demo idea comes with a demo plan: what to show, where it is in the product, and the steps. This skill gets the raw material for it: clean, demo-ready screenshots and short clips. Capture what you can yourself; for what you can't, give the founder a short step-by-step guide, because they can click easily but don't have your context. Then hand the shots on to the post or video.
+A demo idea comes with a demo plan: what to show, where it is in the product, and the steps. An introduction may use prepared product shots alongside type, illustration, footage or animation, or use no product screens at all. This skill handles only the real screen assets in the approved plan: clean, demo-ready screenshots, product shots and short clips. Capture what you can yourself; for what you can't, give the founder a short step-by-step guide, because they can click easily but don't have your context. Then hand the shots on to the post or video.
 
 How to work the browser, the computer or the capture tools is in their own skills and tool descriptions. This skill is about what to capture, how it should look, and who captures it.
 
@@ -13,11 +13,14 @@ Capture starts from a plan and a script the founder has approved. If there isn't
 
 ## 1. Shot list
 
-From the demo plan, list every shot, in the order the demo shows them. For each:
+From the approved plan, list the shots that need screen capture, in their script order. Type cards, illustrations, footage and animation need no product screen capture; leave those assets to production. If no shots need screen capture, continue to production without opening the product. For each screen shot:
 
 - **Purpose**: the viewer's problem, the payoff, or the setup (see the work-content-ideas skill's demo shape: problem, payoff, how little it takes). The payoff gets the most care.
 - **Screen**: where it is and the state it needs (which page, what data on screen).
-- **Still or clip**: follow the plan's format. For a video, every shot is a clip: record the action that gets to each screen (the click into the payoff, the result appearing), not just the screen, even when the screen itself doesn't move; a video built from stills looks like a slideshow. For a screenshot post, stills. Clips are short, one per step (3–15 seconds); several short clips beat one long take.
+- **Mode**: follow the shot's visual mode in the approved script (live clip or product shot).
+  - **Live clip (demo mode):** record the action that gets to the screen (the click into the payoff, the result appearing), not just the screen, even when the screen itself doesn't move; a demo built from stills looks like a slideshow. Clips are short, one per step (3–15 seconds); several short clips beat one long take.
+  - **Product shot:** the screen prepared in a perfect state, then captured clean: a still (`screen_capture`), or a short loop of 3–6 seconds (`screen_record_start` with nothing touched) when the screen has its own motion worth keeping, such as a result streaming in or a live chart. No operator actions on camera: no clicks, typing, scrolling, menus, navigation or loading, and the cursor parked out of the frame. The video adds framing and motion later, so capture the whole window at full size.
+  - For a script without visual modes: a demo video is all live clips, a screenshot post all stills.
 - **Shape**: capture once, at full size: the video skill cuts the portrait (9:16, for Instagram, TikTok, Shorts) and landscape (16:9 or square, for X, LinkedIn) versions the founder's accounts need from the same shots. A desktop window is captured as it is; a phone screen is already portrait. A wide window's text can't be cropped into readable portrait shots, though: when a portrait video shows a desktop screen for its text (messages, a list, a document), make that text large before recording, by zooming the app in (View > Zoom In, ⌘+ in most apps and browsers) or making its window narrower so the lines wrap. Put it back as it was afterwards.
 
 Keep only the shots the demo needs. Three good shots beat ten.
@@ -30,8 +33,11 @@ Every shot, whoever captures it:
 - **Real-looking data:** the screen shows the feature doing its job with believable content, not empty states or "test test". Prefer the founder's real work where it is fine to show.
 - **Readable:** text large enough to read on a phone; light or dark mode as the founder's brand prefers, the same in every shot.
 - **The payoff held:** a clip of the payoff stays on the result for 2–3 seconds before it ends.
+- **Product shots, the same rules:** a product shot is a still, so every flaw stays on screen for seconds. Full data (no empty states such as "Nothing here yet"), nothing internal (internal links, deploy or preview URLs, unrelated tasks or chats), nothing loading. If a screen can't be made to look right with real content, ask the founder for it rather than capturing an empty one.
 
 ## Before each capture
+
+Use the setup and boundaries agreed in the plan during preparation and rehearsal as well as recording. If preparation reveals a new choice only the founder can make, ask before proceeding with that part.
 
 Set the stage first; the recording only starts once everything is in place:
 
@@ -42,7 +48,7 @@ Set the stage first; the recording only starts once everything is in place:
 - **Look at it as the recording will:** right before recording, take a `screen_capture` of the exact window you will record and look at it. A page screenshot (`browser_screenshot`) shows only the page; the window also shows the browser's own pop-ups (save password, permissions, translate), banners and other overlays, and those end up in the clip. If one covers the page, close it if you can; if the page tools can't reach it (browser pop-ups usually), ask the founder to dismiss it, for example "Never" on the save-password prompt for this site so it doesn't come back. The browser's tab bar, address bar and "started debugging" banner are fine: the video skill crops them.
 - **Rehearse once:** go through the steps once without recording, so you know each one works and where things appear, then return to the starting point.
 
-Then start the recording, wait a second, perform the steps at a calm pace (with computer use, the real cursor moving and clicking shows in the clip, which suits a demo), hold on the payoff, and stop right away: a clip runs only as long as its step (3–15 seconds), so stop promptly instead of leaving it running while you think. A screenshot gets the same preparation, taken at the exact moment the shot describes.
+For a product shot, the stage is the shot: get the screen to its perfect state, check it with `screen_capture`, then take the still or record the loop without touching anything. For a live clip, start the recording, wait a second, perform the steps at a calm pace (with computer use, the real cursor moving and clicking shows in the clip, which suits a demo), hold on the payoff, and stop right away: a clip runs only as long as its step (3–15 seconds), so stop promptly instead of leaving it running while you think. A screenshot gets the same preparation, taken at the exact moment the shot describes.
 
 ## 3. Who captures each shot
 

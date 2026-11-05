@@ -16,7 +16,7 @@ import {
 } from "../media-cases.js";
 import { writingCases, writingToolsCase } from "../writing-cases.js";
 import { browserToolsCase } from "../browser-tools.js";
-import { demoCases } from "../computer-demo-cases.js";
+import { demoCases, scriptReview } from "../computer-demo-cases.js";
 import { editCases } from "../edit-cases.js";
 import { caseSchema, type EvalCase } from "./contracts.js";
 
@@ -73,6 +73,14 @@ const bullets = (text: string) =>
     .split(/\r?\n/)
     .map((s) => s.replace(/^-\s*/, "").trim())
     .filter(Boolean);
+// Existing script contracts were revision 2 in the first planning-reference
+// batch; new scenarios were revision 1. Preserve those frozen attempts.
+const originalScriptCases = new Set([
+  "script-packlight-intro", "script-tide-intro", "script-streaks-intro",
+  "script-ledgerly-intro", "script-ledgerly-feature-launch", "script-packlight-how-to",
+  "script-ledgerly-whats-new", "script-quill-intro", "script-postorca-intro",
+]);
+
 /** `plugin` is the case's category: browser, computer and media (levels 1–2)
  * test tools and processes, writing (level 2) the founder's voice, and content
  * (level 3) end-to-end work. Case IDs stay stable when a case changes category.
@@ -175,7 +183,100 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
             }
           : { brief: c.brief },
       ],
-      criteria: criteria(c.criteria),
+      ...(c.script_only && {
+        revision: originalScriptCases.has(c.id) ? 3 : 2,
+        revision_change: {
+          from: originalScriptCases.has(c.id) ? 2 : 1,
+          reason: "Align with planning references: allow problem-first openings and non-screen announcement visuals, assess actual timing without shot quotas, and accept supported flows for generic demo requests.",
+          preserved_coverage: [
+            "Product capability limits and audience",
+            "Requested format, duration and repeatable demonstrations",
+            "Script approval before production and required saved files",
+            "Correct release/period selection and inspected UI when used",
+          ],
+        },
+      }),
+      // These founder-reviewed cases use guide components plus product/brief
+      // requirements, without the extra shared semantic writing rubric.
+      ...(c.id === "script-tide-intro-no-screens" && {
+        revision: 5,
+        revision_change: {
+          from: 4,
+          reason: "Judge whether the introduction explains what Tide is, who it is for and how it helps with task organization. Leave feature selection and wording open instead of requiring a feature checklist.",
+          preserved_coverage: [
+            "Required introduction components",
+            "Tide product accuracy and requested format/visual treatment",
+            "Automatic source-read, saved-file and pre-production checks",
+          ],
+        },
+      }),
+      ...(c.id === "script-ledgerly-intro" && {
+        revision: 4,
+        revision_change: {
+          from: 3,
+          reason: "Apply the founder's guide-component and product-explanation rubric to a different product. Let the agent choose the introduction duration and visuals.",
+          preserved_coverage: [
+            "Required introduction components",
+            "Ledgerly purpose, audience and invoicing value",
+            "Landscape LinkedIn voiceover/captions planning and approval before production",
+          ],
+        },
+      }),
+      ...(c.id === "script-ledgerly-demo" && {
+        revision: 3,
+        revision_change: {
+          from: 2,
+          reason: "Evaluate a product explanation walkthrough using the five demo components and Ledgerly-specific expectations. Let the agent choose features and duration, with code or docs sufficient for supported planning.",
+          preserved_coverage: [
+            "Required demo components and understandable action-to-result demonstrations",
+            "Ledgerly invoicing and tracking behavior, including manual status limits",
+            "Landscape LinkedIn voiceover/captions plan and script, with approval before production",
+            "Automatic source-read, saved-file and fixture-preservation checks",
+          ],
+        },
+      }),
+      ...(c.id === "script-ledgerly-how-to" && {
+        revision: 3,
+        revision_change: {
+          from: 2,
+          reason: "Use the five how-to components plus Ledgerly-specific starting state, payment-recording steps and meaning. Let the agent choose a suitable duration, with code or docs sufficient for supported planning.",
+          preserved_coverage: [
+            "Repeatable payment-recording steps, required invoice state and recognizable paid result",
+            "Recording money received rather than collecting payment",
+            "Landscape LinkedIn voiceover/captions plan and script, approval before production",
+            "Automatic source-read, saved-file and fixture-preservation checks",
+          ],
+        },
+      }),
+      ...(c.id === "script-tide-demo" && {
+        revision: 3,
+        revision_change: {
+          from: 2,
+          reason: "Apply the five-component walkthrough rubric to a second product, with agent-chosen scope and duration and source-supported planning.",
+          preserved_coverage: [
+            "Demo components and understandable action-to-result explanation",
+            "Supported Tide task behavior and capability limits",
+            "Requested format, saved drafts, approval before production and unchanged source fixture",
+          ],
+        },
+      }),
+      ...(c.id === "script-packlight-how-to" && {
+        revision: 4,
+        revision_change: {
+          from: 3,
+          reason: "Apply the five-component how-to rubric to a second product. Retain native-only sharing and copy semantics while allowing suitable duration and source-supported planning.",
+          preserved_coverage: [
+            "How-to components, repeatable steps and recognizable result",
+            "Existing trip, iPhone-only share sheet and copied list with packed items",
+            "Portrait reel, saved drafts, approval before production and unchanged source fixture",
+          ],
+        },
+      }),
+      criteria: criteria(
+        c.script_only && !["script-tide-intro-no-screens", "script-ledgerly-intro", "script-ledgerly-demo", "script-ledgerly-how-to", "script-tide-demo", "script-packlight-how-to"].includes(c.id)
+          ? [...scriptReview, ...c.criteria]
+          : c.criteria,
+      ),
       // Code to script is the first stage of a content task.
       ...(c.script_only && { work_type: "content" as const }),
       demo: c,
@@ -188,7 +289,7 @@ export function builtinCases(attempt = 1, nonce = "project-notes"): EvalCase[] {
         "desktop_connected",
         ...(c.script_only ? [] : ["screen_recording_permission"]),
         ...(c.app === "simulator" ? ["simulator_iphone_booted"] : []),
-        ...(c.app === "web" ? ["browser_connected"] : []),
+        ...(c.app === "web" && c.id !== "script-tide-intro-no-screens" ? ["browser_connected"] : []),
         ...(c.read_work || c.fixture_script
           ? ["work_fixture_project_added", "fixture_ready"]
           : []),
