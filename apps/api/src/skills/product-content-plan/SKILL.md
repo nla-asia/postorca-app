@@ -15,6 +15,8 @@ Before reading a type-specific guide or drafting a plan, make a real attempt to 
 
 If files or app access are unavailable, report the gap directly in chat, separately from the plan and script. Keep access-status notes out of the deliverables. Use the material you can verify and carry this project understanding into the selected guide.
 
+When app inspection is needed and the app is not running, check `desktop_status`, list existing `command` sessions, and start the project's documented command in its project `cwd`. Read the output and verify the app opens. Keep the session for capture and check sessions before retrying so a timeout does not start a duplicate server. For a native phone app, use its documented Simulator build/install/start steps; opening Simulator alone does not install the app. Report an actual startup error and the help needed if blocked.
+
 ## 2. Identify the type and follow its guide
 
 Identify the content type from the request and context, then read and follow its guide. Ask only when the type is unclear and the distinction would change the result. A launch can introduce a whole product or announce one feature; use the subject and purpose to decide.
@@ -30,5 +32,15 @@ Read the selected reference with `read_skill`, using `name: "product-content-pla
 | What's new | Explain useful changes from a particular period | [references/whats-new.md](references/whats-new.md) |
 
 For an introduction with a demo beat, read both the introduction and demo guides. Follow the selected guides for all planning and scripting instructions.
+
+### Platform and shape
+
+Choose the platform and shape before selecting visuals: use the request, otherwise the founder's accounts in the brand profile, and ask only if a missing choice affects the result. Common shapes are 16:9 for X, LinkedIn and YouTube; 9:16 for Reels, TikTok and Shorts; and 4:5 or 1:1 for feed posts. For product screens in those visuals:
+
+- **Phone apps:** preserve the whole phone screen and its controls; it is already portrait.
+- **Desktop or web apps in 16:9:** show real screens in use and focus on the action.
+- **Desktop or web apps in 9:16:** show one complete element large enough to read, such as a card, message, list, dialog or result. Do not crop through its text or show an unreadable whole window. If a portrait demo or how-to trades away needed context, explain the tradeoff and offer 16:9 or 4:5.
+
+Follow `product-content-edit` for framing each shape. The selected type guide still determines whether the content uses product screens, typography, illustration, footage or animation.
 
 When the content needs real product screens, consider what preparation depends on the founder: for example, the account or workspace, data to show or create, permitted changes and where the flow should stop. Use decisions already supplied; if a missing choice affects the shots or execution, ask in chat and settle it before writing the script rather than inventing it. Skip questions that do not matter for this content. Keep the agreed setup and any changes the recording needs in `plan.md`, without credentials, so capture can follow them; creative assumptions are separate from these decisions.
