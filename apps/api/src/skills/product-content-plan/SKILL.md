@@ -1,70 +1,46 @@
 ---
 name: product-content-plan
-description: Plan a piece of product content from the product's code and running app - an introduction to the whole product, a feature launch, a how-to or a what's-new - and write the script the founder approves before anything is recorded or made. Then product-content-capture records it and product-content-edit edits it.
+description: "Understand the project, identify the requested product content type and follow its planning guide."
 ---
 
 # Product content plan
 
-The founder asks for content about their product: a launch video introducing it, an announcement of something just shipped, a how-to for a task users asked about, a round-up of what's new. Often all there is to go on is the code. This skill is the first stage: understand the product, decide what the content shows, and write a script the founder can approve. A script is fast and cheap to change and a recording is not, so nothing is recorded, generated or edited until they approve it.
+## 1. Understand the project first
 
-The stages, each its own skill:
+Before reading a type-specific guide or drafting a plan, make a real attempt to understand the intended project.
 
-1. **Plan and script** (this skill): `plan.md` and `script.md`, then the founder's approval.
-2. **Capture**: read `product-content-capture` with `read_skill` and record the approved shots.
-3. **Edit**: activate the video plugin and read its `product-content-edit` skill to build the video from the recordings.
+- Identify the project from the request and brand profile. Use `active_project` when supplied and its source `folders` (or older `path` field); ask if the intended project is unclear.
+- Read the brief, README or product docs, and relevant code with the available project tools (`list_dir`, `read_file`, `git_activity`). Establish what the product does, who it helps, its main capabilities and its main user flow.
+- Use the running app or supplied screenshots when they help resolve questions about behavior or layout. Code and docs can be sufficient to understand the project; opening the app is not a universal requirement. Any inspection here is research, without recording. The selected guide determines the video's visual treatment.
 
-## 1. Understand the product
+If files or app access are unavailable, report the gap directly in chat, separately from the plan and script. Keep access-status notes out of the deliverables. Use the material you can verify and carry this project understanding into the selected guide.
 
-Read the selected project and all relevant source folders in its `folders` list (`list_dir`, `read_file`, `git_activity`). Use `active_project` when supplied; otherwise identify the intended project from the brand profile and ask if ambiguous. Older records may expose only `path`:
+When app inspection is needed and the app is not running, check `desktop_status`, list existing `command` sessions, and start the project's documented command in its project `cwd`. Read the output and verify the app opens. Keep the session for capture and check sessions before retrying so a timeout does not start a duplicate server. For a native phone app, use its documented Simulator build/install/start steps; opening Simulator alone does not install the app. Report an actual startup error and the help needed if blocked.
 
-- **README and docs:** what the product says it is, who it's for, how it runs and where (its local address).
-- **The app's screens:** the pages, routes and main components show what a user can actually do. Name things in the app's own words.
-- **The history:** the commits show what the product is made of and what changed when. A long-built core flow matters more than a recent tweak, unless the content is about that change.
-- **Notes:** user feedback, pilot or beta notes and plans can confirm what matters to users. They are background for choosing what to show, never material for the content.
+## 2. Identify the type and follow its guide
 
-Then open the running app (the README's address) and look at the screens the content will show, without recording, so the script matches what is really there. If it isn't running, say which command starts it and ask the founder to start it. **A mobile app is shown on the phone,** where people use it: check whether it runs in the iOS Simulator (`list_capture_targets`, the project's scripts or README) and look at it there. Anything only the phone does, such as the share sheet, the camera or notifications, is shown on the phone, never left out because the web version lacks it.
+Identify the content type from the request and context, then read and follow its guide. Ask only when the type is unclear and the distinction would change the result. A launch can introduce a whole product or announce one feature; use the subject and purpose to decide.
 
-**Understand the whole product before choosing anything.** A real product has many features, screens and settings; the content can't show them all and shouldn't try. Work out what the product is for and the few journeys that deliver it: the paths a user takes from a need to the product doing its job. Then choose what matters for this piece of content and leave the rest out, however much of it there is.
+Read the selected reference with `read_skill`, using `name: "product-content-plan"` and its `file` path:
 
-For the journey you choose, trace the relevant screen actions through their handlers, conditions, state changes and results. Establish what must happen, what is optional, and which actions are independent of each other. Check that each planned action is reachable from the state left by the previous one, and what the user actually receives at the end. Use the running app to resolve uncertain behavior; keep any unverified assumptions visible to the founder.
+| Type | Purpose | Guide |
+| --- | --- | --- |
+| Product introduction | What it is, who it's for and why they'd care | [references/product-introduction.md](references/product-introduction.md) |
+| Product demo | Show the product doing a useful job | [references/product-demo.md](references/product-demo.md) |
+| Product how-to | Teach a particular task | [references/product-how-to.md](references/product-how-to.md) |
+| Product feature release | Announce a specific new capability | [references/product-feature-release.md](references/product-feature-release.md) |
+| What's new | Explain useful changes from a particular period | [references/whats-new.md](references/whats-new.md) |
 
-Separate that execution path from the viewer's story. In the plan, keep the preparation and non-obvious transitions needed to reproduce the shots. In the script, show or explain what establishes the feature, advances the viewer's understanding or reveals the payoff. Routine navigation and incidental confirmations can happen silently, before recording or across an intentional cut. The resulting screen must still follow from real app behavior; understanding an action does not mean it needs narration.
+For an introduction with a demo beat, read both the introduction and demo guides. Follow the selected guides for all planning and scripting instructions.
 
-## 2. What the content is
+### Platform and shape
 
-Each kind has its own subject; keep to it:
+Choose the platform and shape before selecting visuals: use the request, otherwise the founder's accounts in the brand profile, and ask only if a missing choice affects the result. Common shapes are 16:9 for X, LinkedIn and YouTube; 9:16 for Reels, TikTok and Shorts; and 4:5 or 1:1 for feed posts. For product screens in those visuals:
 
-- **Introduction** (the whole product, often a first post): what it is, who it's for, and the journey that matters most to a new user, step by step in the order they meet it, ending on the payoff. When the product has more than one main journey, give each its own section, introduced so the viewer knows what's next, rather than mixing them; keep to the two or three that matter most. Not the latest change, and not a tour of every feature.
-- **Feature launch** (something just shipped): that one change, found in the latest commits, where a user meets it and why it helps them, with only enough of the product around it to place it. Chores and internal fixes aren't features.
-- **How-to** (a task users asked about): teach the actions the viewer needs to complete that task, in their real order, speaking to them ("open…, tap…"). Include an optional action when it materially helps the requested lesson; leave it out when it adds no useful understanding. Handle routine execution details in the shot plan without giving each its own spoken instruction.
-- **What's new** (a period's changes): the changes users got in that period, chosen and ordered for the viewer, each shown working with what it does for them. Not a changelog, and nothing older presented as new.
+- **Phone apps:** preserve the whole phone screen and its controls; it is already portrait.
+- **Desktop or web apps in 16:9:** show real screens in use and focus on the action.
+- **Desktop or web apps in 9:16:** show one complete element large enough to read, such as a card, message, list, dialog or result. Do not crop through its text or show an unreadable whole window. If a portrait demo or how-to trades away needed context, explain the tradeoff and offer 16:9 or 4:5.
 
-## 3. The script is public
+Follow `product-content-edit` for framing each shape. The selected type guide still determines whether the content uses product screens, typography, illustration, footage or animation.
 
-Write it as the product's owner speaking to the people who use it: what they can do and why it helps them, in their words. Internal material (pilot or beta feedback, user counts, notes, plans) and how the product is built (commits, code, technical terms) only guide what to show; none of it is in what viewers see or hear.
-
-What a good script does, for any product:
-
-- **The first shot says what this is:** the product, what's new, or what it teaches, on screen as well as spoken, because many people watch with the sound off.
-- **Every shot earns its place:** if the viewer doesn't need it for the point, cut it.
-- **One thing per shot, shown working:** each shot shows one screen or action doing its job, with a plain line on what it does for the viewer; never several things listed in one line.
-- **Concrete:** make the product's behavior and benefit clear, in a voice that fits the founder and the purpose of this content. Keep capabilities and outcomes grounded in what you inspected.
-
-Before saving, walk through the shot plan as the person operating the app, then read the voiceover as a first-time viewer. Fix an unreachable transition or unsupported outcome, and cut details that do not help the viewer follow the point. Leave meaningful choices and uncertainty easy for the founder to review.
-
-## 4. The script for the founder
-
-One message, short enough to review without scrolling back and forth:
-
-- **What it is** and **who it's for**, one line each.
-- **Format:** length, shape (16:9 for X, LinkedIn, YouTube; 9:16 for Reels, TikTok, Shorts), voiceover and captions. Follow the founder's request; otherwise the platform's usual length (around 30–45 seconds for an introduction, shorter for a launch or how-to).
-- **Shots**, numbered, one per beat. For each: what's on screen (which screen and what happens, and where it's recorded), its on-screen text if it has any, and the voiceover line. Keep any necessary setup or silent transition in the recording notes for that shot. On-screen text is a line the video adds over the shot, not text already in the app. The voiceover read in order is the whole script, about 2.5 words per second of video.
-- **Assumptions:** what you chose and left out and why, in a line or two, so the founder can correct it quickly.
-
-On a content task, save the plan (what the content is for, who it's for, the format, what it shows and what you assumed or left out) as `plan.md` and the script as `script.md` with `save_content_file`, then reply with the script. End by asking the founder to approve it or say what to change, and stop.
-
-## 5. When the founder replies
-
-- **Apply every change** they asked for. If they rewrite the story, show the new script and wait for approval again; otherwise go ahead.
-- **On a content task,** save the updated `script.md` and record their approval with `approve_content_script`, quoting them. Recording and making anything wait for it.
-- **Capture and edit** with the next skills, with the approved shots as the demo plan and the approved voiceover as the script. The founder's requested length and format win over those skills' defaults. In the final message, say in a line what changed from the approved script, if anything had to.
+When the content needs real product screens, consider what preparation depends on the founder: for example, the account or workspace, data to show or create, permitted changes and where the flow should stop. Use decisions already supplied; if a missing choice affects the shots or execution, ask in chat and settle it before writing the script rather than inventing it. Skip questions that do not matter for this content. Keep the agreed setup and any changes the recording needs in `plan.md`, without credentials, so capture can follow them; creative assumptions are separate from these decisions.

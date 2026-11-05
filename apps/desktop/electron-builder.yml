@@ -20,6 +20,7 @@ files:
 asarUnpack:
   - electron/plugins/computer/native/windows.ps1
   - node_modules/robotjs/**/*
+  - node_modules/node-pty/**/*
   # Browsers start it with the app's binary as plain Node (browser/pairing.cjs).
   - electron/plugins/browser/native-host.cjs
   # Remotion's compositor and ffmpeg run as child processes (video/index.cjs).

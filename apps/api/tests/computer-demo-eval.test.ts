@@ -275,6 +275,16 @@ test("code to script reads the project and records nothing", () => {
   const names = (calls: any[]) =>
     failed(gradeDemoCapture(entry, { status: "completed", calls, artifacts: [] }));
   assert.deepEqual(names(script), []);
+  const artifact = call("create_artifact", { id: "draft" }, { kind: "document" });
+  assert.deepEqual(names([call("read_file"), artifact]), ["Saved the plan and the script in the task's folder"]);
+  assert.deepEqual(names([artifact, call("read_file")]), [
+    "Read the project before writing the script",
+    "Saved the plan and the script in the task's folder",
+  ]);
+
+  assert.deepEqual(names([call("read_file", { error: "not found" }), ...saves]), ["Read the project before writing the script"]);
+  assert.deepEqual(names([...saves, call("read_file")]), ["Read the project before writing the script"]);
+
   assert.deepEqual(names([...script, call("screen_record_start", { id: "a" })]), [
     "Recorded and made nothing: the script comes first",
   ]);
@@ -290,7 +300,7 @@ test("script-only cases are portable except for the native Quill fixture", async
   const { builtinCases } = await import("../src/evals/shared/catalog.js");
   const cases = builtinCases();
   const scripts = cases.filter((entry) => entry.demo?.script_only);
-  assert.equal(scripts.length, 9);
+  assert.equal(scripts.length, 15);
   for (const entry of scripts) {
     assert.equal(entry.platform, entry.id === "content-script-quill-intro" ? "darwin" : undefined);
     assert.ok(!entry.prerequisites.includes("screen_recording_permission"));
@@ -300,6 +310,42 @@ test("script-only cases are portable except for the native Quill fixture", async
     assert.equal(entry.platform, "darwin");
     assert.ok(entry.prerequisites.includes("screen_recording_permission"));
   }
+});
+
+test("focused planning reviews use their own criteria without changing other script cases", async () => {
+  const { builtinCases } = await import("../src/evals/shared/catalog.js");
+  const cases = builtinCases();
+  for (const [id, revision] of [
+    ["content-script-tide-intro-no-screens", 5],
+    ["content-script-ledgerly-intro", 4],
+  ] as const) {
+    const intro = cases.find((c) => c.id === id)!;
+    assert.equal(intro.revision, revision);
+    assert.equal(intro.criteria.length, 4);
+    assert.deepEqual(intro.criteria.map((c) => c.text), intro.demo!.criteria);
+  }
+  const walkthrough = cases.find((c) => c.id === "content-script-ledgerly-demo")!;
+  assert.equal(walkthrough.revision, 3);
+  assert.equal(walkthrough.revision_change?.from, 2);
+  assert.equal(walkthrough.criteria.length, 7);
+  assert.deepEqual(walkthrough.criteria.map((c) => c.text), walkthrough.demo!.criteria);
+  const howTo = cases.find((c) => c.id === "content-script-ledgerly-how-to")!;
+  assert.equal(howTo.revision, 3);
+  assert.equal(howTo.revision_change?.from, 2);
+  assert.equal(howTo.criteria.length, 6);
+  assert.deepEqual(howTo.criteria.map((c) => c.text), howTo.demo!.criteria);
+  for (const [id, revision, count] of [
+    ["content-script-tide-demo", 3, 7],
+    ["content-script-packlight-how-to", 4, 6],
+  ] as const) {
+    const secondProduct = cases.find((c) => c.id === id)!;
+    assert.equal(secondProduct.revision, revision);
+    assert.equal(secondProduct.revision_change?.from, revision - 1);
+    assert.equal(secondProduct.criteria.length, count);
+    assert.deepEqual(secondProduct.criteria.map((c) => c.text), secondProduct.demo!.criteria);
+  }
+  const mix = cases.find((c) => c.id === "content-script-tide-mix")!;
+  assert.equal(mix.criteria.length, mix.demo!.criteria.length + 6);
 });
 
 test("a local web app opened as localhost counts as opened", () => {

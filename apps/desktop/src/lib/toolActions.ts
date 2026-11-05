@@ -84,6 +84,11 @@ function describe(
       return "Checked background work";
     case "follow_up_task":
       return "Sent feedback to background work";
+    case "command":
+      if (args.action === "list") return "Listed command sessions";
+      if (args.action === "read") return "Read command output";
+      if (args.action === "kill") return "Stopped a command session";
+      return args.session_id ? "Sent input to a command session" : `Ran “${clip(args.command, 60)}”`;
     case "desktop_status":
       return "Checked the desktop app";
     case "list_dir":

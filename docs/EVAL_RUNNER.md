@@ -261,8 +261,8 @@ over merely asserting that a tool was invoked.
 
 ## Existing case migration
 
-All 31 agent cases are registered: Browser 5, Computer 8, Media 5, Writing 4,
-Ideas 4, Content 5.
+All 55 agent cases are registered: Browser 5, Computer 8, Media 5, Writing 4,
+Ideas 4, Content 29.
 
 ### Categories
 
@@ -343,12 +343,13 @@ Two separate evals use it, matching the product:
   reads the code and replies with a script only: what it is, numbered shots with
   on-screen text and voiceover, format and assumptions. It records nothing. Two apps,
   so a skill fitted to one shows. The observer judges the script as the founder, against
-  criteria written for that product and task: the journey or change that matters, what
-  the product really does, and what has to stay out. They set direction and flow, not
-  wording.
+  criteria written for that product and task: what it is, who it helps, the benefits,
+  supported claims and suitable visuals. Introductions need not show product screens
+  or a step-by-step journey. The criteria set direction, not wording.
   Script-only cases have no OS restriction unless their fixture starts a native
   macOS app (currently Quill). They still need a connected desktop for project
-  files, and web cases need the browser connection to inspect the running app.
+  files. Web cases that may show UI need the browser connection to inspect the app;
+  the explicitly no-screen introduction does not require a browser.
   Recording and Simulator cases retain their macOS requirements.
 - `content-script-ledgerly-intro`: the same on Ledgerly (`scripts/evals/ledgerly-fixture.mjs`,
   port 4130), an invoicing SaaS with sign-in (local demo login in its README), a
@@ -382,6 +383,52 @@ Two separate evals use it, matching the product:
   (revenue chart, status filter, add a client in a modal, print to PDF, overdue), with a
   one-cent fix, a dependency bump and pilot notes; the core is older. The script picks
   and orders the features for viewers, not as a changelog.
+- `content-script-tide-demo`: a second product explanation walkthrough, using the
+  same seven-criterion structure as Ledgerly with Tide-specific task behavior.
+  The agent chooses features and duration; source-based planning is supported.
+- `content-script-ledgerly-demo`: a product explanation walkthrough for LinkedIn.
+  The agent chooses features and duration. Its own seven criteria cover the five
+  demo components, plain connected explanation, supported behavior, requested delivery,
+  the selected Ledgerly sections, invoicing and tracking, and manual status limits.
+  Code and docs can support the plan; an app visit is not universally required.
+  This case does not inherit the extra shared semantic rubric. Automatic source-read,
+  saved-file, approval-before-production and fixture-preservation checks still apply.
+- `content-script-tide-mix` / `content-script-ledgerly-mix`: introductions with a
+  focused demonstration. Both planning references should be read.
+- `content-script-tide-intro-no-screens`: the founder explicitly requests typography
+  and simple animation, with no product screens. The plan must not introduce a
+  capture dependency; source inspection supports the product claims.
+- `content-script-ledgerly-how-to`: recording payment on an existing invoice,
+  with a repeatable flow and an accurate distinction between recording and collecting
+  money. The agent chooses duration. Six focused criteria cover the five how-to
+  components, clear supported steps, delivery, starting invoice state, the task/result
+  and the meaning of recording payment. Code and docs can support planning. This case
+  excludes the extra shared semantic rubric and retains automatic checks.
+  This web case complements the native Packlight sharing lesson.
+- `content-script-packlight-how-to`: the second how-to uses the same six-criterion
+  structure, with an existing iPhone trip, native sharing steps, the copied list
+  and its packed markers, and no live collaboration claims. Duration is chosen by
+  the agent. Source-based planning is supported and the extra shared rubric is excluded.
+
+Shared script reviews check content-type routing, complete drafts, narration, visual
+alignment, supported claims and actual per-shot timing. Review what the agent actually
+read and delivered, not just the claimed word count or the presence of a tool name.
+The source-read check requires a successful read before the first persisted draft;
+missing named saves remain a separate failure. Production calls blocked by the
+approval guard are retained tool errors and still require semantic review and triage.
+The focused `content-script-tide-intro-no-screens` review is simpler: required
+introduction components from the guide, then an explanation of what Tide is, who
+it is for and how it helps with organizing tasks. Feature selection and wording
+are open. The brief's format/visual requirements still apply. This case does not
+inherit the extra shared semantic rubric.
+The Ledgerly introduction uses the same review structure for a different product:
+what it is, who it is for and how it helps with invoices and what clients owe.
+Its brief lets the agent choose the duration and visual approach for LinkedIn.
+Both cases retain automatic source-read, file-save and pre-production checks.
+Case revisions preserve previous frozen briefs and rubrics. The initial diagnostic
+batch and its measurement corrections are recorded in
+[the 4 November script evaluation report](eval-product-planning-2026-11-04.md).
+
 - `content-demo-quill-from-script`: script to video on Quill, from an approved script, all
   through computer use: typing with the live preview, the File menu, search, pinning
   and the Settings window.

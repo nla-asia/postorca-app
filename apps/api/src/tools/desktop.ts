@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { commandArgs, commandDefinition } from "./command.js";
 import { callDesktop } from "../desktop/calls.js";
 import { ownedTask } from "../repositories/tasks.js";
 import { listProjects } from "../repositories/projects.js";
@@ -72,6 +73,12 @@ const captureTargetArgs = z.discriminatedUnion("type", [
 ]);
 
 const desktopTools: DesktopTool[] = [
+  {
+    definition: commandDefinition,
+    args: commandArgs,
+    timeoutMs: 30_000,
+    readsProjects: true,
+  },
   {
     definition: {
       name: "list_capture_targets",
@@ -315,7 +322,12 @@ export const desktopToolset: Tool[] = desktopTools.map((tool) => ({
     return callDesktop(
       context,
       tool.definition.name,
-      tool,
+      {
+        ...tool,
+        ...(tool.definition.name === "command" && typeof args.session_id === "string"
+          ? { deviceId: args.session_id.split(":")[0] }
+          : {}),
+      },
       tool.readsProjects
         ? {
             ...args,

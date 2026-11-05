@@ -145,6 +145,12 @@ const clipArgs = z
             highlight: region
               .optional()
               .describe("Outline this region and dim the surrounding content."),
+            captions: z
+              .enum(["bottom", "top", "off"])
+              .optional()
+              .describe(
+                "Where captions sit during this scene. bottom is the default; top when the lower part of the frame holds what the line is about (and the scene has no text); off when the scene already shows the same words, such as a clip of a captioned video.",
+              ),
           })
           .strict()
           .refine(
@@ -714,6 +720,7 @@ async function prepare(context: PluginContext, clip: Clip) {
         focus_on: scene.focus_on,
         zoom: scene.zoom,
         highlight: scene.highlight,
+        captions: scene.captions,
       })),
       voiceover_file: voice,
       voiceover_pauses: pauses.length ? pauses : undefined,
@@ -912,7 +919,7 @@ export const videoPlugin: PluginDefinition = {
   tools: [
     videoTool(
       "video_preview_frames",
-      "Inspect still previews before exporting. Renders at most 8 chosen times; requires the desktop app. A frame on a screen recording also returns the text on screen (screen_text, macOS) with each line's box in the recording's fractions.",
+      "Inspect still previews before exporting. Renders at most 8 chosen times; requires the desktop app. A frame on a screen recording also returns the text on screen (screen_text, macOS) with each line's box in the recording's fractions, and every frame how tall the app's text shows on a phone (text_height_px, macOS), with small_text naming frames too small to read.",
       clipArgs
         .extend({
           times_seconds: z.array(z.number().min(0)).min(1).max(30),
@@ -923,7 +930,7 @@ export const videoPlugin: PluginDefinition = {
     ),
     videoTool(
       "video_export",
-      "Export an MP4 at 30 fps in the selected format (default 1080×1920). Requires the desktop app; returns a saved attachment.",
+      "Export an MP4 at 30 fps in the selected format (default 1080×1920), with its sound brought to the loudness social apps play at (loudness_lufs). Requires the desktop app; returns a saved attachment.",
       clipArgs.extend({ title: z.string().trim().min(1).max(200) }).strict(),
       600_000,
     ),

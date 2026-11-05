@@ -409,6 +409,7 @@ test("video previews and exports use the real desktop transport, cached speech t
         device: "browser",
         focus: { x: 0.1, y: 0.1, width: 0.5, height: 0.5 },
         highlight: { x: 0, y: 0, width: 0.2, height: 0.2 },
+        captions: "top",
       },
     ],
     voiceover_file: fileRef(voice),
@@ -438,6 +439,7 @@ test("video previews and exports use the real desktop transport, cached speech t
   assert.equal(calls[1].timeoutMs, 600_000);
   assert.equal(calls[0].arguments.scenes[0].file, image);
   assert.equal(calls[0].arguments.scenes[0].duration_ms, 2800);
+  assert.equal(calls[0].arguments.scenes[0].captions, "top");
   assert.equal(calls[0].arguments.brand.highlight, "#abcdef");
   assert.deepEqual(calls[0].arguments.music.voice_ranges_ms, [[200, 2200]]);
   assert.equal(calls[0].arguments.music.volume, 0.15);
