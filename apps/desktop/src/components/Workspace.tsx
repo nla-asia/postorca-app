@@ -213,9 +213,9 @@ export default function Workspace({
         }}
       />
       <main className="workspace" aria-label={page}>
-        {/* The Inbox list already brings incoming work to the founder's attention.
+        {/* The Inbox already brings incoming work to the founder's attention.
             Unmount its notification queue here so old banners do not return later. */}
-        {(page !== "Inbox" || selected) && (
+        {page !== "Inbox" && (
           <InAppNotifications onOpen={openWork} />
         )}
         {page !== "Project" && !selected && (
