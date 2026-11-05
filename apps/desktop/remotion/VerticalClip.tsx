@@ -41,6 +41,9 @@ export type VerticalClipProps = {
     focus?: Region | null;
     highlight?: Region | null;
     aspect?: number | null;
+    // Where captions sit during this scene: at the bottom (the default), at the top
+    // when the bottom holds what the line is about, or off (the scene already has text).
+    captions?: "bottom" | "top" | "off";
   }[];
   voiceover: string | null;
   // Where the voiceover stops (in its own time) and for how long, while a clip plays with its sound.
@@ -785,17 +788,30 @@ function Music({
 }
 
 type Page = ReturnType<typeof createTikTokStyleCaptions>["pages"][number];
-function CaptionPage({ page, highlight }: { page: Page; highlight: string }) {
+function CaptionPage({
+  page,
+  highlight,
+  place,
+  startFrame,
+}: {
+  page: Page;
+  highlight: string;
+  place: "bottom" | "top";
+  // The video frame this part of the page starts at (a page can be split at a cut).
+  startFrame: number;
+}) {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const safe = safeArea(width, height);
-  const now = page.startMs + (frame * 1000) / fps;
+  const now = ((startFrame + frame) * 1000) / fps;
   return (
     <AbsoluteFill
       style={{
         alignItems: "center",
-        justifyContent: "flex-end",
-        paddingBottom: safe.bottom,
+        justifyContent: place === "top" ? "flex-start" : "flex-end",
+        ...(place === "top"
+          ? { paddingTop: safe.top }
+          : { paddingBottom: safe.bottom }),
         paddingLeft: safe.left,
         paddingRight: safe.right,
       }}
@@ -923,6 +939,35 @@ export function VerticalClip({
       return { ...range, shot };
     });
   }, [scenes, fps]);
+  // Each caption page, split at scene cuts so it takes each scene's placement, and
+  // left out where a scene has captions off.
+  const captionSpans = useMemo(() => {
+    const spans: { page: Page; from: number; to: number; place: "bottom" | "top" }[] = [];
+    pages.forEach((page, index) => {
+      const from = Math.round((page.startMs * fps) / 1000);
+      // A caption holds until the next one, but not into a voiceover pause.
+      const pause = pausesInVideo.find((at) => at > page.startMs);
+      const end = Math.round(
+        (Math.min(
+          pages[index + 1]?.startMs ?? page.startMs + page.durationMs,
+          pause ?? Infinity,
+        ) *
+          fps) /
+          1000,
+      );
+      timeline.forEach((range, position) => {
+        const place = scenes[position].captions ?? "bottom";
+        const start = Math.max(from, range.from);
+        const stop = Math.min(end, range.to);
+        if (place === "off" || stop <= start) return;
+        const last = spans.at(-1);
+        if (last && last.page === page && last.place === place && last.to === start)
+          last.to = stop;
+        else spans.push({ page, from: start, to: stop, place });
+      });
+    });
+    return spans;
+  }, [pages, pausesInVideo, timeline, scenes, fps]);
   return (
     <AbsoluteFill style={{ backgroundColor: brand.background }}>
       {scenes.map((scene, index) => {
@@ -938,7 +983,7 @@ export function VerticalClip({
               scene={scene}
               shot={shot}
               base={assetBaseUrl}
-              captioned={pages.length > 0}
+              captioned={pages.length > 0 && scene.captions !== "off"}
               brand={brand}
               previousTitled={
                 continues(scenes[index - 1], scene) && !!scenes[index - 1].text
@@ -956,28 +1001,11 @@ export function VerticalClip({
           </Sequence>
         );
       })}
-      {pages.map((page, index) => {
-        const from = Math.round((page.startMs * fps) / 1000);
-        // A caption holds until the next one, but not into a voiceover pause.
-        const pause = pausesInVideo.find((at) => at > page.startMs);
-        const end = Math.round(
-          (Math.min(
-            pages[index + 1]?.startMs ?? page.startMs + page.durationMs,
-            pause ?? Infinity,
-          ) *
-            fps) /
-            1000,
-        );
-        return end > from ? (
-          <Sequence
-            key={page.startMs}
-            from={from}
-            durationInFrames={end - from}
-          >
-            <CaptionPage page={page} highlight={brand.highlight} />
-          </Sequence>
-        ) : null;
-      })}
+      {captionSpans.map(({ page, from, to, place }) => (
+        <Sequence key={`${page.startMs}-${from}`} from={from} durationInFrames={to - from}>
+          <CaptionPage page={page} highlight={brand.highlight} place={place} startFrame={from} />
+        </Sequence>
+      ))}
       {voiceover && (
         <Voiceover
           src={asset(assetBaseUrl, voiceover)}

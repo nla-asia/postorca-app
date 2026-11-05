@@ -30,7 +30,17 @@ For the journey you choose, trace the relevant screen actions through their hand
 
 Separate that execution path from the viewer's story. In the plan, keep the preparation and non-obvious transitions needed to reproduce the shots. In the script, show or explain what establishes the feature, advances the viewer's understanding or reveals the payoff. Routine navigation and incidental confirmations can happen silently, before recording or across an intentional cut. The resulting screen must still follow from real app behavior; understanding an action does not mean it needs narration.
 
-## 2. What the content is
+## 2. Platform and shape
+
+Decide where the content will be posted before choosing what it shows: the platform the founder asked for, otherwise their accounts in the brand profile; ask if it isn't clear. The platform sets the shape (16:9 for X, LinkedIn and YouTube; 9:16 for Reels, TikTok and Shorts; 4:5 or 1:1 for feed posts) and the usual length, and with the product it sets what a shot can be:
+
+- **A phone app** is portrait already and is recorded as it is, in any shape.
+- **A desktop or web app in 16:9:** its real screens, recorded in use and zoomed on the action. This suits demos, how-tos and launches.
+- **A desktop or web app in 9:16:** a whole desktop screen can't be read on a phone, and crops through it stop looking like an app. Each shot is one of the product's pieces instead, shown whole and large: a card, a message, a list, a dialog, a result. On-screen text carries the story. This suits an introduction. A portrait demo or how-to of a desktop app trades readability for context, so say so and offer 16:9 or 4:5.
+
+How each platform is framed and edited is in product-content-edit.
+
+## 3. What the content is
 
 Each kind has its own subject; keep to it:
 
@@ -39,7 +49,7 @@ Each kind has its own subject; keep to it:
 - **How-to** (a task users asked about): teach the actions the viewer needs to complete that task, in their real order, speaking to them ("open…, tap…"). Include an optional action when it materially helps the requested lesson; leave it out when it adds no useful understanding. Handle routine execution details in the shot plan without giving each its own spoken instruction.
 - **What's new** (a period's changes): the changes users got in that period, chosen and ordered for the viewer, each shown working with what it does for them. Not a changelog, and nothing older presented as new.
 
-## 3. The script is public
+## 4. The script is public
 
 Write it as the product's owner speaking to the people who use it: what they can do and why it helps them, in their words. Internal material (pilot or beta feedback, user counts, notes, plans) and how the product is built (commits, code, technical terms) only guide what to show; none of it is in what viewers see or hear.
 
@@ -52,18 +62,18 @@ What a good script does, for any product:
 
 Before saving, walk through the shot plan as the person operating the app, then read the voiceover as a first-time viewer. Fix an unreachable transition or unsupported outcome, and cut details that do not help the viewer follow the point. Leave meaningful choices and uncertainty easy for the founder to review.
 
-## 4. The script for the founder
+## 5. The script for the founder
 
 One message, short enough to review without scrolling back and forth:
 
 - **What it is** and **who it's for**, one line each.
-- **Format:** length, shape (16:9 for X, LinkedIn, YouTube; 9:16 for Reels, TikTok, Shorts), voiceover and captions. Follow the founder's request; otherwise the platform's usual length (around 30–45 seconds for an introduction, shorter for a launch or how-to).
+- **Format:** the platform and shape first, then length, voiceover and captions. Follow the founder's request; otherwise the platform's usual length (around 30–45 seconds for an introduction, shorter for a launch or how-to).
 - **Shots**, numbered, one per beat. For each: what's on screen (which screen and what happens, and where it's recorded), its on-screen text if it has any, and the voiceover line. Keep any necessary setup or silent transition in the recording notes for that shot. On-screen text is a line the video adds over the shot, not text already in the app. The voiceover read in order is the whole script, about 2.5 words per second of video.
 - **Assumptions:** what you chose and left out and why, in a line or two, so the founder can correct it quickly.
 
 On a content task, save the plan (what the content is for, who it's for, the format, what it shows and what you assumed or left out) as `plan.md` and the script as `script.md` with `save_content_file`, then reply with the script. End by asking the founder to approve it or say what to change, and stop.
 
-## 5. When the founder replies
+## 6. When the founder replies
 
 - **Apply every change** they asked for. If they rewrite the story, show the new script and wait for approval again; otherwise go ahead.
 - **On a content task,** save the updated `script.md` and record their approval with `approve_content_script`, quoting them. Recording and making anything wait for it.
