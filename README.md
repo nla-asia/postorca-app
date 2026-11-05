@@ -39,20 +39,50 @@ PostOrca is a desktop app with an AI agent, Orca, that turns what you build into
 
 ## Getting started
 
-Requires Node.js 22.12+ and npm 11.
+There are two ways to try PostOrca.
 
-The desktop keeps login tokens in `session.json` inside its local user-data profile, with owner-only file permissions (`0600`), without Keychain or `safeStorage`. Existing encrypted `session.bin` logins require one new sign-in; that replaces the old file. Logout removes both session files.
+### Option 1: download the Mac app
+
+The quickest way. Download the latest `.dmg` from [Releases](https://github.com/nla-asia/postorca-app/releases/latest) (macOS on Apple Silicon), open it and drag PostOrca to Applications. The app connects to the hosted PostOrca server, so there is nothing else to set up. Create an account in the app; every new account gets 250 welcome credits.
+
+### Option 2: run it from source
+
+#### Requirements
+
+- macOS on Apple Silicon. Development and testing happen on macOS; the Windows computer-use code path exists but is not tested.
+- Node.js 22.12+ and npm 11
+- Xcode Command Line Tools (`xcode-select --install`). The desktop app compiles a small Swift helper for computer use the first time Orca uses it.
+- A [Meta Model API](https://dev.meta.ai/docs) key. Orca, image generation and transcription all run on it.
+- An [ElevenLabs](https://elevenlabs.io) key, for videos with voiceover, music and captions.
+- Optional: Google Chrome, Edge or Brave, so Orca can use your browser.
+
+You don't need a separate database: `npm run db:local` runs PostgreSQL from inside the project.
+
+#### 1. Install and configure
 
 ```sh
+git clone https://github.com/nla-asia/postorca-app.git
+cd postorca-app
 npm install
 cp apps/api/.env.example apps/api/.env
 ```
 
-In `apps/api/.env`, set `JWT_SECRET` to a random string of at least 32 characters, and add `META_MODEL_API_KEY` to turn Orca, image generation and transcription on. Models are chosen in `apps/api/src/settings.ts`; keys never choose a model. `ELEVENLABS_API_KEY` provides speech, music, sound effects and the video's separate word-timed caption transcription. `.env` holds secrets and values that differ between environments (URLs, client IDs, price IDs); settings that are the same everywhere, like models and welcome credits, live in `apps/api/src/settings.ts`.
+Edit `apps/api/.env`:
 
-`media_transcribe` defaults to Meta (`muse-voice-transcribe-1.0`). Meta takes only WAV, so this needs the desktop app, which converts the audio; the API server does no media conversion. To switch it back to ElevenLabs, set `transcription: { provider: "elevenlabs", model: "scribe_v2" }` in that same settings file and provide `ELEVENLABS_API_KEY`. Failed paid requests do not automatically fall back to another provider. Meta transcription converts saved audio or public HTTPS audio to temporary mono PCM WAV and supports recordings up to 10 minutes / 32 MB. Its results contain turn timings rather than word timings.
+| Variable | Needed? | What it does |
+| --- | --- | --- |
+| `JWT_SECRET` | Required | Any random string of at least 32 characters, e.g. from `openssl rand -base64 32` |
+| `META_MODEL_API_KEY` | Required | Turns on Orca (chat and agent), image generation and transcription |
+| `ELEVENLABS_API_KEY` | For videos | Voiceover, music, sound effects and word-timed captions |
+| `STRIPE_*` | Optional | Buying plans and credits (test mode). Locally, add credits with `npm run credits:add` instead |
+| `GOOGLE_*`, `CONNECTOR_ENCRYPTION_KEY`, `MCP_CONNECTOR_*` | Optional | Gmail and Google Drive connectors |
+| `OPENAI_API_KEY`, `OPENAI_IMAGE_API_KEY` | Not used by default | Only needed if `apps/api/src/settings.ts` is switched to OpenAI |
 
-Then start each of these in its own terminal:
+Leave `DATABASE_URL`, `PORT` and `CLIENT_ORIGINS` as they are, since they already match the local setup. The desktop app talks to `http://127.0.0.1:3001/api` by default; `apps/desktop/.env.example` shows how to point it somewhere else.
+
+#### 2. Start it
+
+Start each of these in its own terminal, in this order:
 
 ```sh
 npm run db:local
@@ -66,9 +96,42 @@ npm run db:migrate && npm run api:dev
 npm run dev
 ```
 
-`db:local` runs a project-local PostgreSQL (no install needed); to use your own database, set `DATABASE_URL` and skip it. The API runs on `http://127.0.0.1:3001` and `npm run dev` opens the desktop app.
+`db:local` starts PostgreSQL on port 55433 and keeps its data inside the project. To use your own database, set `DATABASE_URL` and skip it. The API runs on `http://127.0.0.1:3001`, and `npm run dev` opens the desktop app (its renderer runs on port 5173).
 
-To let Orca use your browser, open `chrome://extensions`, turn on Developer mode, choose **Load unpacked** and select `apps/browser-extension`.
+#### 3. Sign up and try it
+
+1. In the desktop app, choose **Sign up** and create an account. Any email and password work: the account lives only in your local database, and no email is sent.
+2. Go through setup. Pick a **working folder**, where Orca saves plans, scripts, recordings and videos.
+3. Add a **project** and give it the source folder of an app you've built. Orca only reads source folders.
+4. Open the project's chat and ask, for example, *"Make a 30-second launch video for this app."* Orca reads the code, asks what it needs to know, and writes a plan and a script for you to approve. Then it opens the app, records it and edits the video.
+
+New accounts start with 250 credits. To add more to a local account:
+
+```sh
+npm run credits:add -- you@example.com 1000
+```
+
+#### 4. macOS permissions
+
+The first time Orca records the screen or controls an app, macOS asks for **Screen Recording** and **Accessibility** access. When running from source, macOS shows the request for Electron, or for the terminal you started it from. Grant the access in System Settings → Privacy & Security, then restart `npm run dev`.
+
+#### 5. Optional: let Orca use your browser
+
+Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked** and select `apps/browser-extension`.
+
+#### Troubleshooting
+
+- **Port already in use**: something else is on 55433 (database), 3001 (API) or 5173 (desktop renderer). Stop it, or change `DATABASE_URL` / `PORT` in `apps/api/.env`.
+- **Orca doesn't reply**: if the API terminal says `Orca is off`, set `META_MODEL_API_KEY` in `apps/api/.env` and restart `npm run api:dev`. Provider errors also show in that terminal.
+- **Orca stops for lack of credits**: run `npm run credits:add` as shown above.
+
+#### Notes on models and storage
+
+Models are chosen in `apps/api/src/settings.ts`, never by which keys are present. `.env` holds secrets and values that differ between environments (URLs, client IDs, price IDs); settings that are the same everywhere, like models and welcome credits, live in `settings.ts`.
+
+`media_transcribe` defaults to Meta (`muse-voice-transcribe-1.0`). Meta takes only WAV, so this needs the desktop app, which converts the audio; the API server does no media conversion. To switch back to ElevenLabs, set `transcription: { provider: "elevenlabs", model: "scribe_v2" }` in `settings.ts` and provide `ELEVENLABS_API_KEY`. Failed paid requests do not fall back to another provider automatically. Meta transcription converts saved audio or public HTTPS audio to temporary mono PCM WAV and supports recordings up to 10 minutes / 32 MB. Its results contain turn timings rather than word timings.
+
+The desktop app keeps login tokens in `session.json` inside its local user-data profile, with owner-only file permissions (`0600`). It doesn't use Keychain or `safeStorage`. Existing encrypted `session.bin` logins need one new sign-in, which replaces the old file. Logging out removes both session files.
 
 ## Credits and plans
 
